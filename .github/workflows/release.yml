@@ -219,8 +219,8 @@ jobs:
         run: |
           deb=$(ls packages/*.deb)
           dpkg-deb -c "$deb" > deb.txt
-          grep -q './usr/bin/editlicious$' deb.txt
-          grep -q 'THIRD-PARTY-NOTICES.txt$' deb.txt
+          grep -Eq ' (\./)?usr/bin/editlicious$' deb.txt
+          grep -Eq ' (\./)?usr/lib/editlicious/THIRD-PARTY-NOTICES.txt$' deb.txt
           mkdir debx && dpkg-deb -x "$deb" debx
           desktop=$(find debx -name '*.desktop')
           grep -q '^Exec=editlicious %F$' "$desktop"
