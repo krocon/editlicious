@@ -1,0 +1,49 @@
+# Builds the live demo of the website (prompt 011): the engine ed-core as WebAssembly.
+# The result (site/demo/pkg) is uploaded as the artifact "demo-pkg" and committed to the repo by
+# hand (or `pnpm site:demo` locally) – the website stays plain files without a build step.
+name: Site demo
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src-tauri/core/**'
+      - 'src-tauri/wasm/**'
+      - 'scripts/site-demo.sh'
+      - '.github/workflows/site-demo.yml'
+
+permissions:
+  contents: read
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+
+jobs:
+  wasm:
+    name: Engine → WebAssembly
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri/wasm
+      - name: Tests of the bindings (native)
+        run: cargo test --locked --manifest-path src-tauri/wasm/Cargo.toml
+      - name: wasm-bindgen in the version of the lock file
+        run: |
+          v=$(awk '/^name = "wasm-bindgen"$/ { getline; gsub(/version = |"/, ""); print; exit }' src-tauri/wasm/Cargo.lock)
+          echo "WASM_BINDGEN=$v" >> "$GITHUB_ENV"
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen@${{ env.WASM_BINDGEN }}
+      - run: bash scripts/site-demo.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: demo-pkg
+          path: site/demo/pkg
+          if-no-files-found: error

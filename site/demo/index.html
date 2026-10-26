@@ -1,0 +1,186 @@
+<!doctype html>
+<!--
+  editlicious – live demo (prompt 011): the editor engine ed-core compiled to WebAssembly (pkg/, built with
+  `pnpm site:demo` or the "Site demo" workflow). Everything runs in the browser; nothing is sent anywhere.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>editlicious – try the engine in your browser</title>
+    <meta name="description" content="The editing engine of editlicious, compiled to WebAssembly: type, select, open a file with a million lines or one line with five million characters – right in your browser.">
+    <meta name="color-scheme" content="light dark">
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <style>
+      :root {
+        --accent: #e00034;
+        --bg: #f6f3ec;
+        --surface: #fbfaf7;
+        --line: #e2ddd0;
+        --text: #2a2d33;
+        --muted: #6b6f78;
+        --ed-gutter: #b3b0a6;
+        --ed-gutter-active: #5d6068;
+        --ed-current: rgb(0 0 0 / 3.5%);
+        --ed-sel: rgb(47 111 223 / 22%);
+        --ed-caret: #2f6fdf;
+        --ed-ws: rgb(0 0 0 / 18%);
+        --ed-match: rgb(255 196 0 / 38%);
+        --ed-match-current: rgb(255 140 0 / 55%);
+        --ed-bar: rgb(0 0 0 / 22%);
+        --syn-comment: #8a8f98; --syn-string: #2f7d32; --syn-keyword: #8e44ad; --syn-number: #b5532b;
+        --syn-type: #1f6fb2; --syn-function: #0b6e8c; --syn-attribute: #8a6d00; --syn-operator: #6b6f78;
+        --syn-punct: #6b6f78; --syn-link: #2f6fdf; --syn-invalid: #b42318; --syn-inserted: #2f7d32;
+        --syn-changed: #8a6d00;
+        --sans: system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Noto Sans', sans-serif;
+        --mono: ui-monospace, 'SF Mono', Menlo, 'Cascadia Mono', Consolas, 'DejaVu Sans Mono', monospace;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --accent: #ff4d6d;
+          --bg: #111316;
+          --surface: #17191d;
+          --line: #2b2f37;
+          --text: #d7d9de;
+          --muted: #969ba5;
+          --ed-gutter: #4b505a;
+          --ed-gutter-active: #a3a8b2;
+          --ed-current: rgb(255 255 255 / 3.5%);
+          --ed-sel: rgb(106 168 255 / 26%);
+          --ed-caret: #8fbcff;
+          --ed-ws: rgb(255 255 255 / 16%);
+          --ed-match: rgb(255 196 0 / 26%);
+          --ed-match-current: rgb(255 140 0 / 48%);
+          --ed-bar: rgb(255 255 255 / 18%);
+          --syn-comment: #6b7280; --syn-string: #a5d6a7; --syn-keyword: #c792ea; --syn-number: #f78c6c;
+          --syn-type: #82aaff; --syn-function: #7fd1e8; --syn-attribute: #ffcb6b; --syn-operator: #89ddff;
+          --syn-punct: #8f96a3; --syn-link: #8fbcff; --syn-invalid: #f97066; --syn-inserted: #a5d6a7;
+          --syn-changed: #ffcb6b;
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg);
+        color: var(--text);
+        font: 15px/1.5 var(--sans);
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 16px;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--line);
+      }
+      header a.home { color: var(--accent); font-weight: 700; text-decoration: none; }
+      header .spacer { flex: 1; }
+      button, select, input[type='search'] {
+        font: inherit;
+        color: inherit;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 4px 10px;
+      }
+      button { cursor: pointer; }
+      button:hover { border-color: var(--accent); }
+      :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+      label.check { display: inline-flex; gap: 6px; align-items: center; }
+      #loaded, #status { color: var(--muted); font-size: 13px; }
+      main { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 16px; gap: 8px; }
+      #editor {
+        position: relative;
+        flex: 1;
+        min-height: 320px;
+        overflow: hidden;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font: 14px var(--mono);
+        line-height: var(--lh, 22px);
+        cursor: text;
+        user-select: none;
+      }
+      #measure { position: absolute; visibility: hidden; white-space: pre; }
+      #gutter { position: absolute; inset: 0 auto 0 0; color: var(--ed-gutter); text-align: right; }
+      #gutter .ln { position: absolute; right: 8px; height: var(--lh); }
+      #gutter .ln.active { color: var(--ed-gutter-active); }
+      #text { position: absolute; top: 0; right: 10px; bottom: 0; }
+      .row { position: absolute; left: 0; right: 0; white-space: pre; }
+      #editor:focus-within .row.current { background: var(--ed-current); }
+      .run { position: absolute; white-space: pre; }
+      .wide { display: inline-block; text-align: center; }
+      .tab::before { content: '→'; color: var(--ed-ws); font-size: 0.8em; padding-left: 0.15em; }
+      .ctrl { color: var(--syn-invalid); }
+      .sel, .mark, .marker { position: absolute; height: var(--lh); }
+      .sel { background: var(--ed-sel); }
+      .mark { background: var(--ed-match); border-radius: 2px; }
+      .mark.current { background: var(--ed-match-current); }
+      .marker { background: rgb(255 99 132 / 30%); border-radius: 2px; }
+      .caret {
+        position: absolute; top: 0; left: 0; width: 2px; height: var(--lh);
+        background: var(--ed-caret); animation: blink 1.1s steps(1) infinite;
+      }
+      #editor:not(:focus-within) .caret { display: none; }
+      @keyframes blink { 50% { opacity: 0; } }
+      @media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
+      #input {
+        position: absolute; width: 1px; height: var(--lh); padding: 0; border: 0;
+        opacity: 0; resize: none; overflow: hidden; color: transparent; background: transparent;
+      }
+      #vbar { position: absolute; top: 0; right: 0; bottom: 0; width: 10px; }
+      #thumb { width: 6px; margin-left: 2px; border-radius: 3px; background: var(--ed-bar); }
+      .run[data-s='1'] { color: var(--syn-comment); font-style: italic; }
+      .run[data-s='2'] { color: var(--syn-string); }
+      .run[data-s='3'] { color: var(--syn-keyword); }
+      .run[data-s='4'], .run[data-s='5'], .run[data-s='16'] { color: var(--syn-number); }
+      .run[data-s='6'], .run[data-s='8'], .run[data-s='13'], .run[data-s='24'] { color: var(--syn-type); }
+      .run[data-s='7'] { color: var(--syn-function); }
+      .run[data-s='9'], .run[data-s='21'], .run[data-s='23'] { color: var(--syn-attribute); }
+      .run[data-s='11'] { color: var(--syn-operator); }
+      .run[data-s='12'] { color: var(--syn-punct); }
+      .run[data-s='13'], .run[data-s='14'] { font-weight: 600; }
+      .run[data-s='15'] { font-style: italic; }
+      .run[data-s='17'] { color: var(--syn-link); text-decoration: underline; }
+      .run[data-s='18'], .run[data-s='20'], .run[data-s='22'] { color: var(--syn-invalid); }
+      .run[data-s='19'] { color: var(--syn-inserted); }
+      .run[data-s='25'] { color: var(--syn-comment); }
+      footer { padding: 0 16px 16px; color: var(--muted); font-size: 13px; }
+      footer a { color: var(--accent); }
+      body:not(.ready) #editor { opacity: 0.4; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a class="home" href="../">← editlicious</a>
+      <button type="button" id="sample">Example</button>
+      <button type="button" id="big">1,000,000 lines</button>
+      <button type="button" id="long">One 5,000,000-character line</button>
+      <label class="check"><input type="checkbox" id="wrap"> Wrap <kbd>Alt Z</kbd></label>
+      <label>Language <select id="lang"><option value="">Plain text</option></select></label>
+      <input type="search" id="find" placeholder="Find (Enter: next)" aria-label="Find">
+      <span class="spacer"></span>
+      <span id="loaded" aria-live="polite"></span>
+    </header>
+    <main>
+      <div id="editor">
+        <span id="measure" aria-hidden="true">MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM</span>
+        <div id="gutter" aria-hidden="true"></div>
+        <div id="text" aria-hidden="true"></div>
+        <div id="vbar" hidden><div id="thumb"></div></div>
+        <textarea id="input" aria-label="Text editor" autocapitalize="off" autocomplete="off" spellcheck="false" wrap="off"></textarea>
+      </div>
+      <div id="status" role="status"></div>
+    </main>
+    <footer>
+      The same Rust engine as the desktop app, compiled to WebAssembly – it runs only in this tab, nothing is
+      uploaded. The app adds files, search &amp; replace, sorting, colour schemes and much more:
+      <a href="../#download">get editlicious</a>.
+    </footer>
+    <script type="module" src="demo.js"></script>
+  </body>
+</html>

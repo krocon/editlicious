@@ -762,6 +762,7 @@ dependencies = [
  "tempfile",
  "unicode-segmentation",
  "unicode-width",
+ "web-time",
 ]
 
 [[package]]

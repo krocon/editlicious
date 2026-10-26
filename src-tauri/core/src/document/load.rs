@@ -9,7 +9,8 @@ use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, SystemTime};
+use web_time::Instant;
 
 /// Size of a read block.
 pub const CHUNK: usize = 4 << 20;

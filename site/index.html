@@ -1,0 +1,421 @@
+<!doctype html>
+<!--
+  editlicious – single page for https://krocon.de/products/editlicious/ (prompt 011).
+  One static file: CSS inline, no JavaScript, no web fonts, no trackers, no external requests.
+  Light and dark follow the system. Wordmark inline (= public/logo.svg, Yellowtail paths, OFL), favicon.svg = app icon.
+  Pictures: img/<name>.png next to this file (window shots 1100 × 760 from the app, see site/README.md).
+  The live demo lives in demo/ (WebAssembly build of the engine, pkg/ from `pnpm site:demo`).
+  IMG_BASE: img/
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>editlicious – the calm text editor for huge files, for macOS, Windows and Linux</title>
+    <meta name="description" content="editlicious opens files with millions of lines and lines with millions of characters in a blink – a quiet, keyboard-first text editor for macOS, Windows and Linux. Free and open source (MIT).">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#f6f3ec" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#111316" media="(prefers-color-scheme: dark)">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="editlicious – tastier than chocolate">
+    <meta property="og:description" content="The calm text editor for huge files. Millions of lines, lines with millions of characters, keyboard first. macOS, Windows, Linux – free and open source.">
+    <meta property="og:url" content="https://krocon.de/products/editlicious/">
+    <meta property="og:image" content="https://krocon.de/products/editlicious/img/main.png">
+    <meta property="og:image:width" content="1100">
+    <meta property="og:image:height" content="760">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <style>
+      :root {
+        --accent: #e00034; /* the red of the 2013 site */
+        --accent-soft: rgb(224 0 52 / 10%);
+        --gold: #c99a2e;
+        --bg: #f6f3ec;
+        --bg-2: #efebe1;
+        --surface: #fbfaf7;
+        --line: #e2ddd0;
+        --text: #24272d;
+        --muted: #62666f;
+        --sans: system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Noto Sans', sans-serif;
+        --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, 'Cascadia Mono', Consolas, 'DejaVu Sans Mono', monospace;
+        --measure: 64ch;
+        --gutter: clamp(16px, 4vw, 40px);
+        --shadow: 0 18px 50px rgb(40 30 10 / 16%), 0 2px 6px rgb(40 30 10 / 10%);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --accent: #ff4d6d;
+          --accent-soft: rgb(255 77 109 / 12%);
+          --gold: #e2b85a;
+          --bg: #111316;
+          --bg-2: #15181c;
+          --surface: #1b1e23;
+          --line: #2b2f37;
+          --text: #e6e7ea;
+          --muted: #9ea3ad;
+          --shadow: 0 18px 50px rgb(0 0 0 / 50%), 0 2px 6px rgb(0 0 0 / 40%);
+        }
+      }
+
+      *, *::before, *::after { box-sizing: border-box; }
+      html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+      @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 17px/1.6 var(--sans);
+        -webkit-text-size-adjust: 100%;
+        overflow-x: hidden;
+      }
+      a { color: var(--accent); text-underline-offset: 3px; }
+      a:hover { text-decoration-thickness: 2px; }
+      :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+      img { max-width: 100%; height: auto; }
+      kbd {
+        display: inline-block;
+        min-width: 1.6em;
+        padding: 0 0.45em;
+        border: 1px solid var(--line);
+        border-bottom-width: 2px;
+        border-radius: 5px;
+        background: var(--surface);
+        font: 0.82em/1.7 var(--mono);
+        text-align: center;
+        white-space: nowrap;
+      }
+      code { font: 0.9em var(--mono); }
+      .wrap { width: min(1120px, 100% - 2 * var(--gutter)); margin-inline: auto; }
+      .skip { position: absolute; left: -999px; }
+      .skip:focus { left: 16px; top: 16px; z-index: 10; background: var(--surface); padding: 8px 12px; }
+
+      /* ---------------------------------------------------------------- hero */
+      .hero { padding: clamp(40px, 8vw, 96px) 0 0; text-align: center; }
+      .logo { width: min(560px, 86vw); height: auto; color: var(--text); }
+      .logo-wrap { position: relative; display: inline-block; }
+      .icon { width: 72px; height: 72px; position: absolute; right: -54px; top: -18px; transform: rotate(8deg); }
+      @media (max-width: 640px) { .icon { display: none; } }
+      .kicker {
+        margin: 8px 0 0;
+        color: var(--accent);
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        font-size: 14px;
+      }
+      h1 {
+        margin: 18px auto 0;
+        max-width: 22ch;
+        font-size: clamp(30px, 5vw, 50px);
+        line-height: 1.12;
+        letter-spacing: -0.02em;
+      }
+      .pitch { margin: 16px auto 0; max-width: 58ch; color: var(--muted); font-size: clamp(17px, 2vw, 20px); }
+      .actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 28px; }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 20px;
+        border-radius: 10px;
+        font-weight: 650;
+        text-decoration: none;
+        border: 2px solid var(--accent);
+      }
+      .btn-primary { background: var(--accent); color: #fff; }
+      .btn-primary:hover { filter: brightness(1.08); }
+      .btn-secondary { color: var(--accent); background: transparent; }
+      .btn-secondary:hover { background: var(--accent-soft); }
+      .note { margin: 14px auto 0; color: var(--muted); font-size: 14px; max-width: 60ch; }
+      .shot {
+        margin: 0;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        line-height: 0;
+      }
+      .hero-shot { margin: 48px auto 0; width: min(1100px, 100%); }
+
+      /* ---------------------------------------------------------------- numbers */
+      .numbers {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin: 72px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+      .numbers li {
+        padding: 20px;
+        border-radius: 12px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+      }
+      .numbers strong { display: block; font-size: 30px; line-height: 1.1; color: var(--accent); letter-spacing: -0.02em; }
+      .numbers span { color: var(--muted); font-size: 15px; }
+      .fine { color: var(--muted); font-size: 13px; margin-top: 10px; }
+
+      /* ---------------------------------------------------------------- sections */
+      section { padding: clamp(56px, 8vw, 96px) 0 0; }
+      h2 { font-size: clamp(26px, 3.4vw, 36px); line-height: 1.2; letter-spacing: -0.015em; margin: 0 0 12px; }
+      .lead { color: var(--muted); max-width: var(--measure); margin: 0 0 24px; font-size: 18px; }
+      .feature {
+        display: grid;
+        grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+        gap: clamp(24px, 4vw, 56px);
+        align-items: center;
+        margin-top: 56px;
+      }
+      .feature.flip { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+      .feature.flip .text { order: 2; }
+      @media (max-width: 860px) {
+        .feature, .feature.flip { grid-template-columns: 1fr; }
+        .feature.flip .text { order: 0; }
+      }
+      .feature h3 { font-size: 24px; margin: 0 0 8px; line-height: 1.25; }
+      .feature p { margin: 0 0 12px; }
+      .feature ul { margin: 0 0 12px; padding-left: 1.2em; }
+      .feature li { margin: 4px 0; }
+      .keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 14px 0 0; font-size: 15px; }
+      .keys dt { color: var(--muted); }
+      .keys dd { margin: 0; }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+        margin: 32px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+      .cards li { padding: 20px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+      .cards h3 { margin: 0 0 6px; font-size: 18px; }
+      .cards p { margin: 0; color: var(--muted); font-size: 15px; }
+
+      .demo {
+        margin-top: 8px;
+        padding: clamp(24px, 4vw, 40px);
+        border-radius: 16px;
+        background: linear-gradient(135deg, var(--accent-soft), transparent 70%), var(--surface);
+        border: 1px solid var(--line);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px 32px;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .demo p { margin: 0; max-width: 60ch; }
+
+      .cheat-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px 40px; }
+      .cheat { display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; margin: 0; }
+      .cheat dt { border-bottom: 1px dotted var(--line); }
+      .cheat dd { margin: 0; text-align: right; }
+      h3.cheat-title { font-size: 15px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 10px; }
+
+      .table-scroll { overflow-x: auto; }
+      table { border-collapse: collapse; width: 100%; min-width: 520px; }
+      th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+      th { font-size: 14px; color: var(--muted); font-weight: 600; }
+
+      details { border-bottom: 1px solid var(--line); padding: 14px 0; }
+      details:first-of-type { border-top: 1px solid var(--line); }
+      summary { cursor: pointer; font-weight: 650; }
+      details p { margin: 10px 0 0; max-width: var(--measure); color: var(--muted); }
+
+      footer { margin-top: clamp(64px, 9vw, 112px); padding: 32px 0 48px; border-top: 1px solid var(--line); color: var(--muted); font-size: 15px; }
+      footer .row { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; }
+      footer .mark { display: inline-flex; align-items: center; gap: 10px; color: var(--text); }
+      footer .mark svg { width: 120px; height: auto; }
+      footer nav a { margin-left: 16px; }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#features">Skip to the features</a>
+
+    <header class="hero">
+      <div class="wrap">
+        <div class="logo-wrap">
+          <svg class="logo" width="560" height="186" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 159 6766 2242" role="img" aria-label="editlicious"><path fill="currentColor" d="M750 1242Q750 1308 696.5 1358.0Q643 1408 575 1408Q553 1408 546.0 1397.5Q539 1387 539.0 1370.0Q539 1353 543 1337Q507 1349 463.0 1374.0Q419 1399 355.0 1448.0Q291 1497 291 1521Q291 1529 314.5 1529.0Q338 1529 387.0 1512.5Q436 1496 455.5 1496.0Q475 1496 481 1498Q494 1505 509.0 1528.5Q524 1552 524.0 1565.5Q524 1579 498.0 1601.0Q472 1623 439.0 1634.5Q406 1646 395 1652Q184 1770 184 1814Q184 1892 317 1892Q402 1892 488 1838Q561 1792 619.5 1744.5Q678 1697 693.5 1686.0Q709 1675 717 1675Q743 1675 743.0 1733.0Q743 1791 736.0 1809.5Q729 1828 696 1855Q482 2029 291 2029Q189 2029 128 2001Q16 1950 16 1845Q16 1707 207 1636Q169 1619 158.0 1592.5Q147 1566 147.0 1507.5Q147 1449 201.5 1383.5Q256 1318 335 1276Q511 1181 649 1181Q682 1181 716.0 1197.0Q750 1213 750 1242Z M1791 896Q1564 1265 1435.0 1520.0Q1306 1775 1306 1828V1836Q1306 1877 1336.0 1877.0Q1366 1877 1408.5 1849.0Q1451 1821 1483.0 1789.0Q1515 1757 1547.5 1722.5Q1580 1688 1587.0 1682.0Q1594 1676 1605 1676Q1622 1676 1627.0 1697.5Q1632 1719 1632.0 1757.5Q1632 1796 1626 1808Q1597 1864 1498.5 1944.5Q1400 2025 1312 2025Q1162 2025 1162 1898Q1162 1819 1222 1691Q1141 1796 1057 1870Q901 2006 786 2006Q722 2006 691.5 1961.0Q661 1916 661.0 1831.5Q661 1747 727.0 1629.0Q793 1511 891.5 1416.5Q990 1322 1110.0 1258.5Q1230 1195 1331 1195Q1363 1195 1406 1234Q1435 1188 1513 1050Q1758 637 1837 546Q1879 491 1968 491Q1987 491 1998.0 503.0Q2009 515 2009.0 527.5Q2009 540 1989.5 573.5Q1970 607 1900.0 719.5Q1830 832 1791 896ZM1345 1328Q1201 1360 1077.0 1462.0Q953 1564 891.0 1675.5Q829 1787 829.0 1820.0Q829 1853 843 1853Q903 1853 1140 1585Q1258 1453 1345 1328Z M2206 892Q2206 949 2153.0 1006.5Q2100 1064 2042.5 1064.0Q1985 1064 1985.0 1004.0Q1985 944 2035.5 889.5Q2086 835 2147 835Q2174 835 2190.0 850.0Q2206 865 2206 892ZM2044 1765Q2044 1795 2038 1808Q1989 1908 1882.0 1969.5Q1775 2031 1696.0 2031.0Q1617 2031 1560.0 1978.0Q1503 1925 1503.0 1870.0Q1503 1815 1558.0 1710.0Q1613 1605 1668.0 1516.0Q1723 1427 1723.0 1419.5Q1723 1412 1702.5 1390.0Q1682 1368 1682.0 1357.5Q1682 1347 1723.5 1302.5Q1765 1258 1824.5 1214.5Q1884 1171 1915.5 1171.0Q1947 1171 1972.0 1199.0Q1997 1227 1997.0 1250.0Q1997 1273 1759 1683Q1756 1689 1742.5 1709.5Q1729 1730 1721.5 1743.5Q1714 1757 1704 1776Q1684 1816 1684 1843Q1684 1877 1730.0 1877.0Q1776 1877 1825.5 1845.5Q1875 1814 1911 1776Q2005 1675 2018 1675Q2044 1675 2044 1765Z M2658 702 2699 712Q2708 712 2715.0 721.0Q2722 730 2722.0 738.0Q2722 746 2701.0 781.0Q2680 816 2651.5 860.5Q2623 905 2621 909Q2699 903 2731.5 903.0Q2764 903 2776.0 907.5Q2788 912 2803.5 932.5Q2819 953 2832.0 963.5Q2845 974 2845.0 995.0Q2845 1016 2819.5 1030.5Q2794 1045 2765 1048Q2533 1071 2509 1072Q2428 1196 2282.5 1458.5Q2137 1721 2128 1787Q2124 1817 2124 1836Q2124 1875 2165.0 1875.0Q2206 1875 2256.0 1843.5Q2306 1812 2348 1775Q2460 1675 2468 1675Q2494 1675 2494 1765Q2494 1814 2449 1853Q2348 1940 2279.0 1984.0Q2210 2028 2141 2028Q2126 2028 2113 2025Q2033 2010 1995.5 1966.5Q1958 1923 1958.5 1849.0Q1959 1775 2002.5 1669.5Q2046 1564 2112 1445Q2220 1251 2328 1081L2290 1086Q2174 1099 2155 1099H2146Q2117 1099 2090.0 1087.5Q2063 1076 2063.0 1059.0Q2063 1042 2077.5 1026.0Q2092 1010 2095 1001Q2102 979 2147.5 952.0Q2193 925 2216.0 923.5Q2239 922 2260.5 921.0Q2282 920 2308.5 919.0Q2335 918 2349 917L2439 913Q2523 787 2554.5 751.0Q2586 715 2591.0 711.5Q2596 708 2611 708Z M2952 1286Q2778 1508 2618 1685Q2617 1697 2609.5 1729.5Q2602 1762 2602.0 1795.0Q2602 1828 2632.5 1854.5Q2663 1881 2708.0 1881.0Q2753 1881 2804.5 1849.0Q2856 1817 2894 1778Q2994 1675 3018.0 1675.0Q3042 1675 3042 1748V1768Q3042 1807 3028 1825Q2944 1928 2839.0 1978.5Q2734 2029 2640.0 2029.0Q2546 2029 2497.0 1971.5Q2448 1914 2448 1814Q2448 1619 2552.5 1355.5Q2657 1092 2788 907Q3083 489 3239 489Q3287 489 3323.5 517.5Q3360 546 3360.0 602.0Q3360 658 3298.0 777.5Q3236 897 3149.0 1021.5Q3062 1146 2952 1286ZM3194 655Q3194 640 3184 640Q3149 640 3000.0 840.0Q2851 1040 2784.5 1159.0Q2718 1278 2659 1458Q2777 1318 2985.5 1021.5Q3194 725 3194 655Z M3589 892Q3589 949 3536.0 1006.5Q3483 1064 3425.5 1064.0Q3368 1064 3368.0 1004.0Q3368 944 3418.5 889.5Q3469 835 3530 835Q3557 835 3573.0 850.0Q3589 865 3589 892ZM3427 1765Q3427 1795 3421 1808Q3372 1908 3265.0 1969.5Q3158 2031 3079.0 2031.0Q3000 2031 2943.0 1978.0Q2886 1925 2886.0 1870.0Q2886 1815 2941.0 1710.0Q2996 1605 3051.0 1516.0Q3106 1427 3106.0 1419.5Q3106 1412 3085.5 1390.0Q3065 1368 3065.0 1357.5Q3065 1347 3106.5 1302.5Q3148 1258 3207.5 1214.5Q3267 1171 3298.5 1171.0Q3330 1171 3355.0 1199.0Q3380 1227 3380.0 1250.0Q3380 1273 3142 1683Q3139 1689 3125.5 1709.5Q3112 1730 3104.5 1743.5Q3097 1757 3087 1776Q3067 1816 3067 1843Q3067 1877 3113.0 1877.0Q3159 1877 3208.5 1845.5Q3258 1814 3294 1776Q3388 1675 3401 1675Q3427 1675 3427 1765Z M4138 1676Q4158 1676 4158.0 1721.5Q4158 1767 4113.5 1819.5Q4069 1872 4003.0 1908.5Q3937 1945 3862 1972Q3713 2027 3608.5 2027.0Q3504 2027 3420.0 1958.5Q3336 1890 3336.0 1779.5Q3336 1669 3391.0 1558.5Q3446 1448 3532.5 1364.5Q3619 1281 3733.5 1229.0Q3848 1177 3960 1177Q4014 1177 4057.0 1208.0Q4100 1239 4100.0 1293.0Q4100 1347 4046.5 1422.5Q3993 1498 3938 1498Q3874 1498 3874 1437Q3874 1421 3904.0 1380.0Q3934 1339 3934.0 1324.5Q3934 1310 3923 1310Q3868 1310 3805.0 1348.0Q3742 1386 3690.5 1428.0Q3639 1470 3593 1522Q3493 1635 3493 1757Q3493 1806 3524.5 1841.5Q3556 1877 3630.5 1877.0Q3705 1877 3780.0 1859.5Q3855 1842 3903.5 1821.5Q3952 1801 4003.5 1768.0Q4055 1735 4070.0 1722.5Q4085 1710 4105.0 1693.0Q4125 1676 4138 1676Z M4751 892Q4751 949 4698.0 1006.5Q4645 1064 4587.5 1064.0Q4530 1064 4530.0 1004.0Q4530 944 4580.5 889.5Q4631 835 4692 835Q4719 835 4735.0 850.0Q4751 865 4751 892ZM4589 1765Q4589 1795 4583 1808Q4534 1908 4427.0 1969.5Q4320 2031 4241.0 2031.0Q4162 2031 4105.0 1978.0Q4048 1925 4048.0 1870.0Q4048 1815 4103.0 1710.0Q4158 1605 4213.0 1516.0Q4268 1427 4268.0 1419.5Q4268 1412 4247.5 1390.0Q4227 1368 4227.0 1357.5Q4227 1347 4268.5 1302.5Q4310 1258 4369.5 1214.5Q4429 1171 4460.5 1171.0Q4492 1171 4517.0 1199.0Q4542 1227 4542.0 1250.0Q4542 1273 4304 1683Q4301 1689 4287.5 1709.5Q4274 1730 4266.5 1743.5Q4259 1757 4249 1776Q4229 1816 4229 1843Q4229 1877 4275.0 1877.0Q4321 1877 4370.5 1845.5Q4420 1814 4456 1776Q4550 1675 4563 1675Q4589 1675 4589 1765Z M4771 1312Q4934 1181 5057 1181Q5112 1181 5140 1208Q5150 1217 5150 1224V1230Q5164 1228 5194.0 1228.0Q5224 1228 5255.5 1255.0Q5287 1282 5287.0 1337.5Q5287 1393 5248.0 1481.5Q5209 1570 5141.0 1661.5Q5073 1753 4991.5 1833.5Q4910 1914 4815.5 1965.5Q4721 2017 4644.0 2017.0Q4567 2017 4520.5 1968.5Q4474 1920 4474.0 1833.5Q4474 1747 4516.5 1642.0Q4559 1537 4626.0 1456.5Q4693 1376 4771 1312ZM5093 1361H5086Q5051 1361 5051 1310Q4978 1334 4898.0 1394.0Q4818 1454 4755 1536Q4627 1700 4625 1813Q4625 1869 4666.0 1869.0Q4707 1869 4788.0 1815.0Q4869 1761 4948.5 1661.0Q5028 1561 5067.5 1487.5Q5107 1414 5107.0 1387.5Q5107 1361 5093 1361Z M6112 1676Q6131 1676 6135.0 1705.0Q6139 1734 6139.0 1765.0Q6139 1796 6133 1808Q6104 1864 6006.0 1944.5Q5908 2025 5820 2025Q5766 2025 5720.0 1992.5Q5674 1960 5674.0 1879.0Q5674 1798 5717 1720Q5469 2031 5328 2031Q5272 2031 5237.5 1991.0Q5203 1951 5203.0 1908.5Q5203 1866 5215.0 1820.5Q5227 1775 5240.5 1739.0Q5254 1703 5280.5 1650.0Q5307 1597 5320.0 1573.0Q5333 1549 5361.5 1500.5Q5390 1452 5436.5 1370.0Q5483 1288 5513.5 1248.5Q5544 1209 5573.0 1208.5Q5602 1208 5624.0 1232.0Q5646 1256 5646.0 1271.0Q5646 1286 5579 1406Q5381 1764 5381 1823Q5381 1838 5392 1838Q5440 1838 5631.0 1630.0Q5822 1422 5852.0 1363.5Q5882 1305 5910.5 1265.0Q5939 1225 5953 1216Q5996 1188 6064 1186Q6075 1186 6081.0 1187.0Q6087 1188 6095.0 1204.0Q6103 1220 6103 1229Q6094 1257 6023.5 1378.0Q5953 1499 5945 1515Q5827 1759 5827 1833Q5827 1875 5859 1875Q5917 1867 5999 1782Q6029 1751 6058.5 1719.0Q6088 1687 6095.0 1681.5Q6102 1676 6112 1676Z M6185 1790 6184 1806Q6184 1831 6203.0 1849.0Q6222 1867 6238 1867Q6358 1867 6450.5 1831.0Q6543 1795 6543 1759Q6543 1742 6509.5 1729.5Q6476 1717 6396.5 1698.5Q6317 1680 6281.0 1669.5Q6245 1659 6224.0 1650.0Q6203 1641 6181 1625Q6134 1592 6134.0 1526.5Q6134 1461 6182.5 1396.5Q6231 1332 6304.0 1286.0Q6377 1240 6461 1205Q6627 1136 6740 1136Q6851 1136 6877 1184Q6885 1201 6885 1222V1229Q6885 1282 6862.5 1312.0Q6840 1342 6791.5 1366.0Q6743 1390 6714.5 1390.0Q6686 1390 6678.5 1386.0Q6671 1382 6666.0 1375.5Q6661 1369 6653.5 1366.0Q6646 1363 6646.0 1351.0Q6646 1339 6656.0 1326.5Q6666 1314 6670 1300Q6604 1303 6532.0 1330.5Q6460 1358 6408.5 1392.0Q6357 1426 6323.0 1457.0Q6289 1488 6289.0 1502.5Q6289 1517 6335 1526Q6542 1567 6607.0 1597.0Q6672 1627 6697.0 1665.0Q6722 1703 6722 1734Q6722 1798 6671.0 1855.0Q6620 1912 6545 1948Q6384 2027 6264.5 2027.0Q6145 2027 6099.5 1990.5Q6054 1954 6054.0 1904.0Q6054 1854 6079.5 1811.5Q6105 1769 6145.0 1769.0Q6185 1769 6185 1790Z"/></svg>
+          <img class="icon" src="favicon.svg" width="72" height="72" alt="">
+        </div>
+        <p class="kicker">Text editor · macOS · Windows · Linux</p>
+        <h1>The calm editor for huge files.</h1>
+        <p class="pitch">Millions of lines, lines with millions of characters – editlicious opens them in a blink and stays quiet while you work. Almost nothing on screen but your text; everything else is one keystroke away. Still tastier than chocolate.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://github.com/krocon/editlicious/releases">Download on GitHub</a>
+          <a class="btn btn-secondary" href="demo/">Try it in your browser</a>
+        </div>
+        <p class="note">Free and open source (MIT). Early days: the first public release is in the works – today you can <a href="https://github.com/krocon/editlicious#readme">build it from source</a>.</p>
+        <figure class="shot hero-shot"><img src="img/main.png" width="1100" height="760" alt="editlicious with a Rust file: syntax colours, indentation guides, the find bar with “6 of 20” matches, marks for every match in the scroll bar and a quiet status bar with line, column, language, encoding and line ending"></figure>
+
+        <ul class="numbers" aria-label="Measured speed">
+          <li><strong>0.2 s</strong><span>to open a 100 MB file with 1.3 million lines</span></li>
+          <li><strong>0.07 ms</strong><span>to draw the view at the end of that file</span></li>
+          <li><strong>10,000,000</strong><span>characters in one line – still smooth to scroll and type in</span></li>
+          <li><strong>30 ms</strong><span>to find a match at the end of 100 MB</span></li>
+        </ul>
+        <p class="fine">Measured on a development machine with release builds of the engine (see <a href="https://github.com/krocon/editlicious/blob/main/docs/architecture.md">docs/architecture.md</a>). Files up to 4 GB.</p>
+      </div>
+    </header>
+
+    <main id="features">
+      <section aria-labelledby="big-title">
+        <div class="wrap">
+          <h2 id="big-title">Big files are the normal case</h2>
+          <p class="lead">Log files, data dumps, minified JSON: editlicious never loads more onto the screen than you can see. The text lives in a rope inside a Rust engine; the window only gets the visible lines.</p>
+
+          <article class="feature">
+            <div class="text">
+              <h3>A million lines? Just open it.</h3>
+              <p>The file streams in with a progress bar you can cancel, the encoding is detected on the way (UTF-8, UTF-16 with BOM, the legacy code pages), and you can start reading while big files are still being indexed for colours.</p>
+              <ul>
+                <li>Go to any line instantly – <kbd>Ctrl/⌘ G</kbd> / <kbd>⌘ L</kbd></li>
+                <li>Search runs over blocks of lines; counting a million matches happens in the background</li>
+                <li>Copying, sorting and replacing never send the whole file through the user interface</li>
+              </ul>
+              <dl class="keys"><dt>Find</dt><dd><kbd>Ctrl/⌘ F</kbd> <kbd>F3</kbd></dd><dt>Replace</dt><dd><kbd>Ctrl H</kbd> / <kbd>⌘ ⌥ F</kbd></dd></dl>
+            </div>
+            <figure class="shot"><img src="img/big-log.png" width="1100" height="760" loading="lazy" decoding="async" alt="A log file of 1,000,001 lines and 69.2 MB in a dark colour scheme, scrolled to line 500,000, with log levels INFO, WARN, ERROR and DEBUG in their own colours"></figure>
+          </article>
+
+          <article class="feature flip">
+            <div class="text">
+              <h3>Endless lines, wrapped or not</h3>
+              <p>A line with ten million characters is shown as a window of what fits – scrolling sideways costs microseconds. Turn on soft wrap with <kbd>Alt Z</kbd> and normal lines break at word boundaries; the arrow keys, Page Up/Down and the mouse then move through rows.</p>
+              <p>Lines longer than 10,000 characters stay unwrapped on purpose, so a minified file never turns into a wall of rows.</p>
+            </div>
+            <figure class="shot"><img src="img/wrap.png" width="1100" height="760" loading="lazy" decoding="async" alt="Soft wrap in the warm “sand” colour scheme: long lines of text break at word boundaries, the line numbers stay with the first row, the status bar says “Wrap”"></figure>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="calm-title">
+        <div class="wrap">
+          <h2 id="calm-title">Quiet on screen, quick on the keys</h2>
+          <p class="lead">No toolbars, no side panels. The menu bar shows up when you press <kbd>Alt</kbd>, the tabs when you open a second file, and <kbd>F1</kbd> hides everything but the text.</p>
+
+          <article class="feature">
+            <div class="text">
+              <h3>Every function is a command</h3>
+              <p>The command palette (<kbd>Ctrl/⌘ ⇧ P</kbd>) finds any of them by name and shows its shortcut. <kbd>Ctrl/⌘ ⇧ K</kbd> lists all shortcuts; a small <code>keymap.json</code> changes them.</p>
+              <ul>
+                <li>Several carets: <kbd>Ctrl/⌘ D</kbd> adds the next occurrence, <kbd>Alt</kbd>-click adds a caret</li>
+                <li>Column selection with <kbd>Alt</kbd>-drag or <kbd>Alt ⇧</kbd> + arrows (<kbd>⌘ ⌥ ⇧</kbd> on the Mac)</li>
+                <li>Sort, remove duplicates, change case, move, join and duplicate lines</li>
+                <li>Mark up to ten words in ten colours – the marks show up in the scroll bar too</li>
+              </ul>
+            </div>
+            <figure class="shot"><img src="img/palette.png" width="1100" height="760" loading="lazy" decoding="async" alt="The command palette over a Rust file: typing “line” lists commands such as Delete lines, Duplicate lines, Go to line, Join lines, Line endings, Move lines and Sort lines, each with its shortcut"></figure>
+          </article>
+
+          <article class="feature flip">
+            <div class="text">
+              <h3>Your font, your colours, your language</h3>
+              <p>Pick any monospaced font and size (<kbd>Ctrl/⌘ +</kbd> / <kbd>−</kbd> / <kbd>0</kbd>), tabs or spaces, absolute or relative line numbers, indentation guides. Five colour schemes – paper, ink, sand, night or the system’s – switch with <kbd>F12</kbd>.</p>
+              <p>The whole interface speaks English and German and follows your system. Settings apply at once; there is no “OK” button to forget.</p>
+            </div>
+            <figure class="shot"><img src="img/settings.png" width="1100" height="760" loading="lazy" decoding="async" alt="The settings dialog: language, line ending of new files, reopen last session, font, font size, tab width, indent with, line numbers, indentation guides, current line, tabs as arrows, wrap and scroll bar marks"></figure>
+          </article>
+
+          <ul class="cards">
+            <li><h3>Syntax colours</h3><p>The Sublime/TextMate grammars for more than 70 languages, log files and INI included – computed for the visible part only.</p></li>
+            <li><h3>Encodings &amp; line endings</h3><p>Shown in the status bar; one click reads a file again in another encoding, converts it, or turns every line break into LF, CRLF or CR.</p></li>
+            <li><h3>Saving is sacred</h3><p>Atomic writes, permissions and symlinks kept, nothing half written. Encoding, BOM and line endings stay as they were.</p></li>
+            <li><h3>Copy as HTML</h3><p>Paste code with its colours into mails and slides – with or without line numbers.</p></li>
+            <li><h3>Changed on disk?</h3><p>editlicious notices and reloads – or asks first when you have unsaved changes.</p></li>
+            <li><h3>Picks up where you left</h3><p>Open files, caret and scroll position come back on the next start.</p></li>
+          </ul>
+        </div>
+      </section>
+
+      <section aria-labelledby="demo-title">
+        <div class="wrap">
+          <h2 id="demo-title">Try the engine right here</h2>
+          <div class="demo">
+            <p>The editing engine is written in Rust without any user-interface code – so it also runs in the browser as WebAssembly. Type, select, add carets, or load a million lines or a single five-million-character line, all inside this tab.</p>
+            <a class="btn btn-primary" href="demo/">Open the live demo</a>
+          </div>
+        </div>
+      </section>
+
+      <section id="keys" aria-labelledby="keys-title">
+        <div class="wrap">
+          <h2 id="keys-title">Hands on the keyboard</h2>
+          <p class="lead"><kbd>Ctrl</kbd> on Windows and Linux is <kbd>⌘</kbd> on the Mac.</p>
+          <div class="cheat-cols">
+            <div>
+              <h3 class="cheat-title">Files &amp; view</h3>
+              <dl class="cheat">
+                <dt>Open, save, save as</dt><dd><kbd>Ctrl O</kbd> <kbd>Ctrl S</kbd> <kbd>Ctrl ⇧ S</kbd></dd>
+                <dt>Next / previous file</dt><dd><kbd>Ctrl Tab</kbd> <kbd>F10</kbd></dd>
+                <dt>Command palette</dt><dd><kbd>Ctrl ⇧ P</kbd></dd>
+                <dt>Everything but the text off</dt><dd><kbd>F1</kbd></dd>
+                <dt>Next colour scheme</dt><dd><kbd>F12</kbd></dd>
+                <dt>Wrap long lines</dt><dd><kbd>Alt Z</kbd></dd>
+                <dt>Status bar</dt><dd><kbd>Ctrl F5</kbd></dd>
+                <dt>Settings</dt><dd><kbd>Ctrl ,</kbd></dd>
+              </dl>
+            </div>
+            <div>
+              <h3 class="cheat-title">Editing</h3>
+              <dl class="cheat">
+                <dt>Find, next, previous</dt><dd><kbd>Ctrl F</kbd> <kbd>F3</kbd> <kbd>⇧ F3</kbd></dd>
+                <dt>Next occurrence as caret</dt><dd><kbd>Ctrl D</kbd></dd>
+                <dt>Move lines</dt><dd><kbd>Alt ↑</kbd> <kbd>Alt ↓</kbd></dd>
+                <dt>Duplicate lines</dt><dd><kbd>Ctrl ⇧ D</kbd></dd>
+                <dt>Sort lines ascending</dt><dd><kbd>Ctrl ⇧ Alt A</kbd></dd>
+                <dt>Upper / lower case</dt><dd><kbd>Ctrl U</kbd></dd>
+                <dt>Mark word in colour</dt><dd><kbd>Ctrl ⇧ F7</kbd></dd>
+                <dt>Copy as HTML</dt><dd><kbd>Ctrl ⇧ C</kbd></dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="download" aria-labelledby="download-title">
+        <div class="wrap">
+          <h2 id="download-title">Download</h2>
+          <p class="lead">Builds for all three systems will be published on <a href="https://github.com/krocon/editlicious/releases">GitHub Releases</a>. Until then: clone the repository and run <code>pnpm install</code> and <code>pnpm tauri build</code>.</p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">System</th><th scope="col">Package (planned)</th><th scope="col">Notes</th></tr></thead>
+              <tbody>
+                <tr><td>macOS 11+</td><td><code>.dmg</code> (Apple silicon and Intel)</td><td>Opens text files from Finder (“Open with”).</td></tr>
+                <tr><td>Windows 10/11</td><td><code>.msi</code>, setup <code>.exe</code></td><td>Uses the WebView2 that ships with Windows.</td></tr>
+                <tr><td>Linux</td><td><code>.deb</code>, <code>.rpm</code>, AppImage</td><td>Needs WebKitGTK 4.1 (present on current distributions).</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" aria-labelledby="faq-title">
+        <div class="wrap">
+          <h2 id="faq-title">Questions</h2>
+          <details><summary>How big can a file be?</summary><p>Up to 4 GB. The text is kept in memory as a rope, so you need roughly the file’s size in RAM; everything else – drawing, searching, colouring – only looks at what is needed.</p></details>
+          <details><summary>Is it an IDE?</summary><p>No. There is no project view, no language server, no plugin store. editlicious is for reading and editing text quickly – logs, data, configuration, notes and code.</p></details>
+          <details><summary>Why “editlicious”?</summary><p><em>Editor</em> plus <em>delicious</em>. The first editlicious was a Java editor from 2013 that promised to be “tastier than chocolate”. This is its rewrite with Rust and Tauri, built around big files.</p></details>
+          <details><summary>Does it send anything anywhere?</summary><p>No. No telemetry, no accounts, no update pings. The live demo on this site runs entirely in your browser as well.</p></details>
+          <details><summary>Can I change the shortcuts?</summary><p>Yes – put a <code>keymap.json</code> next to the settings. The shortcut list (<kbd>Ctrl/⌘ ⇧ K</kbd>) shows what is active.</p></details>
+          <details><summary>Which licence?</summary><p>MIT. The source is on <a href="https://github.com/krocon/editlicious">GitHub</a>; issues and ideas are welcome.</p></details>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <div class="row">
+          <span class="mark"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 159 6766 2242" ><path fill="currentColor" d="M750 1242Q750 1308 696.5 1358.0Q643 1408 575 1408Q553 1408 546.0 1397.5Q539 1387 539.0 1370.0Q539 1353 543 1337Q507 1349 463.0 1374.0Q419 1399 355.0 1448.0Q291 1497 291 1521Q291 1529 314.5 1529.0Q338 1529 387.0 1512.5Q436 1496 455.5 1496.0Q475 1496 481 1498Q494 1505 509.0 1528.5Q524 1552 524.0 1565.5Q524 1579 498.0 1601.0Q472 1623 439.0 1634.5Q406 1646 395 1652Q184 1770 184 1814Q184 1892 317 1892Q402 1892 488 1838Q561 1792 619.5 1744.5Q678 1697 693.5 1686.0Q709 1675 717 1675Q743 1675 743.0 1733.0Q743 1791 736.0 1809.5Q729 1828 696 1855Q482 2029 291 2029Q189 2029 128 2001Q16 1950 16 1845Q16 1707 207 1636Q169 1619 158.0 1592.5Q147 1566 147.0 1507.5Q147 1449 201.5 1383.5Q256 1318 335 1276Q511 1181 649 1181Q682 1181 716.0 1197.0Q750 1213 750 1242Z M1791 896Q1564 1265 1435.0 1520.0Q1306 1775 1306 1828V1836Q1306 1877 1336.0 1877.0Q1366 1877 1408.5 1849.0Q1451 1821 1483.0 1789.0Q1515 1757 1547.5 1722.5Q1580 1688 1587.0 1682.0Q1594 1676 1605 1676Q1622 1676 1627.0 1697.5Q1632 1719 1632.0 1757.5Q1632 1796 1626 1808Q1597 1864 1498.5 1944.5Q1400 2025 1312 2025Q1162 2025 1162 1898Q1162 1819 1222 1691Q1141 1796 1057 1870Q901 2006 786 2006Q722 2006 691.5 1961.0Q661 1916 661.0 1831.5Q661 1747 727.0 1629.0Q793 1511 891.5 1416.5Q990 1322 1110.0 1258.5Q1230 1195 1331 1195Q1363 1195 1406 1234Q1435 1188 1513 1050Q1758 637 1837 546Q1879 491 1968 491Q1987 491 1998.0 503.0Q2009 515 2009.0 527.5Q2009 540 1989.5 573.5Q1970 607 1900.0 719.5Q1830 832 1791 896ZM1345 1328Q1201 1360 1077.0 1462.0Q953 1564 891.0 1675.5Q829 1787 829.0 1820.0Q829 1853 843 1853Q903 1853 1140 1585Q1258 1453 1345 1328Z M2206 892Q2206 949 2153.0 1006.5Q2100 1064 2042.5 1064.0Q1985 1064 1985.0 1004.0Q1985 944 2035.5 889.5Q2086 835 2147 835Q2174 835 2190.0 850.0Q2206 865 2206 892ZM2044 1765Q2044 1795 2038 1808Q1989 1908 1882.0 1969.5Q1775 2031 1696.0 2031.0Q1617 2031 1560.0 1978.0Q1503 1925 1503.0 1870.0Q1503 1815 1558.0 1710.0Q1613 1605 1668.0 1516.0Q1723 1427 1723.0 1419.5Q1723 1412 1702.5 1390.0Q1682 1368 1682.0 1357.5Q1682 1347 1723.5 1302.5Q1765 1258 1824.5 1214.5Q1884 1171 1915.5 1171.0Q1947 1171 1972.0 1199.0Q1997 1227 1997.0 1250.0Q1997 1273 1759 1683Q1756 1689 1742.5 1709.5Q1729 1730 1721.5 1743.5Q1714 1757 1704 1776Q1684 1816 1684 1843Q1684 1877 1730.0 1877.0Q1776 1877 1825.5 1845.5Q1875 1814 1911 1776Q2005 1675 2018 1675Q2044 1675 2044 1765Z M2658 702 2699 712Q2708 712 2715.0 721.0Q2722 730 2722.0 738.0Q2722 746 2701.0 781.0Q2680 816 2651.5 860.5Q2623 905 2621 909Q2699 903 2731.5 903.0Q2764 903 2776.0 907.5Q2788 912 2803.5 932.5Q2819 953 2832.0 963.5Q2845 974 2845.0 995.0Q2845 1016 2819.5 1030.5Q2794 1045 2765 1048Q2533 1071 2509 1072Q2428 1196 2282.5 1458.5Q2137 1721 2128 1787Q2124 1817 2124 1836Q2124 1875 2165.0 1875.0Q2206 1875 2256.0 1843.5Q2306 1812 2348 1775Q2460 1675 2468 1675Q2494 1675 2494 1765Q2494 1814 2449 1853Q2348 1940 2279.0 1984.0Q2210 2028 2141 2028Q2126 2028 2113 2025Q2033 2010 1995.5 1966.5Q1958 1923 1958.5 1849.0Q1959 1775 2002.5 1669.5Q2046 1564 2112 1445Q2220 1251 2328 1081L2290 1086Q2174 1099 2155 1099H2146Q2117 1099 2090.0 1087.5Q2063 1076 2063.0 1059.0Q2063 1042 2077.5 1026.0Q2092 1010 2095 1001Q2102 979 2147.5 952.0Q2193 925 2216.0 923.5Q2239 922 2260.5 921.0Q2282 920 2308.5 919.0Q2335 918 2349 917L2439 913Q2523 787 2554.5 751.0Q2586 715 2591.0 711.5Q2596 708 2611 708Z M2952 1286Q2778 1508 2618 1685Q2617 1697 2609.5 1729.5Q2602 1762 2602.0 1795.0Q2602 1828 2632.5 1854.5Q2663 1881 2708.0 1881.0Q2753 1881 2804.5 1849.0Q2856 1817 2894 1778Q2994 1675 3018.0 1675.0Q3042 1675 3042 1748V1768Q3042 1807 3028 1825Q2944 1928 2839.0 1978.5Q2734 2029 2640.0 2029.0Q2546 2029 2497.0 1971.5Q2448 1914 2448 1814Q2448 1619 2552.5 1355.5Q2657 1092 2788 907Q3083 489 3239 489Q3287 489 3323.5 517.5Q3360 546 3360.0 602.0Q3360 658 3298.0 777.5Q3236 897 3149.0 1021.5Q3062 1146 2952 1286ZM3194 655Q3194 640 3184 640Q3149 640 3000.0 840.0Q2851 1040 2784.5 1159.0Q2718 1278 2659 1458Q2777 1318 2985.5 1021.5Q3194 725 3194 655Z M3589 892Q3589 949 3536.0 1006.5Q3483 1064 3425.5 1064.0Q3368 1064 3368.0 1004.0Q3368 944 3418.5 889.5Q3469 835 3530 835Q3557 835 3573.0 850.0Q3589 865 3589 892ZM3427 1765Q3427 1795 3421 1808Q3372 1908 3265.0 1969.5Q3158 2031 3079.0 2031.0Q3000 2031 2943.0 1978.0Q2886 1925 2886.0 1870.0Q2886 1815 2941.0 1710.0Q2996 1605 3051.0 1516.0Q3106 1427 3106.0 1419.5Q3106 1412 3085.5 1390.0Q3065 1368 3065.0 1357.5Q3065 1347 3106.5 1302.5Q3148 1258 3207.5 1214.5Q3267 1171 3298.5 1171.0Q3330 1171 3355.0 1199.0Q3380 1227 3380.0 1250.0Q3380 1273 3142 1683Q3139 1689 3125.5 1709.5Q3112 1730 3104.5 1743.5Q3097 1757 3087 1776Q3067 1816 3067 1843Q3067 1877 3113.0 1877.0Q3159 1877 3208.5 1845.5Q3258 1814 3294 1776Q3388 1675 3401 1675Q3427 1675 3427 1765Z M4138 1676Q4158 1676 4158.0 1721.5Q4158 1767 4113.5 1819.5Q4069 1872 4003.0 1908.5Q3937 1945 3862 1972Q3713 2027 3608.5 2027.0Q3504 2027 3420.0 1958.5Q3336 1890 3336.0 1779.5Q3336 1669 3391.0 1558.5Q3446 1448 3532.5 1364.5Q3619 1281 3733.5 1229.0Q3848 1177 3960 1177Q4014 1177 4057.0 1208.0Q4100 1239 4100.0 1293.0Q4100 1347 4046.5 1422.5Q3993 1498 3938 1498Q3874 1498 3874 1437Q3874 1421 3904.0 1380.0Q3934 1339 3934.0 1324.5Q3934 1310 3923 1310Q3868 1310 3805.0 1348.0Q3742 1386 3690.5 1428.0Q3639 1470 3593 1522Q3493 1635 3493 1757Q3493 1806 3524.5 1841.5Q3556 1877 3630.5 1877.0Q3705 1877 3780.0 1859.5Q3855 1842 3903.5 1821.5Q3952 1801 4003.5 1768.0Q4055 1735 4070.0 1722.5Q4085 1710 4105.0 1693.0Q4125 1676 4138 1676Z M4751 892Q4751 949 4698.0 1006.5Q4645 1064 4587.5 1064.0Q4530 1064 4530.0 1004.0Q4530 944 4580.5 889.5Q4631 835 4692 835Q4719 835 4735.0 850.0Q4751 865 4751 892ZM4589 1765Q4589 1795 4583 1808Q4534 1908 4427.0 1969.5Q4320 2031 4241.0 2031.0Q4162 2031 4105.0 1978.0Q4048 1925 4048.0 1870.0Q4048 1815 4103.0 1710.0Q4158 1605 4213.0 1516.0Q4268 1427 4268.0 1419.5Q4268 1412 4247.5 1390.0Q4227 1368 4227.0 1357.5Q4227 1347 4268.5 1302.5Q4310 1258 4369.5 1214.5Q4429 1171 4460.5 1171.0Q4492 1171 4517.0 1199.0Q4542 1227 4542.0 1250.0Q4542 1273 4304 1683Q4301 1689 4287.5 1709.5Q4274 1730 4266.5 1743.5Q4259 1757 4249 1776Q4229 1816 4229 1843Q4229 1877 4275.0 1877.0Q4321 1877 4370.5 1845.5Q4420 1814 4456 1776Q4550 1675 4563 1675Q4589 1675 4589 1765Z M4771 1312Q4934 1181 5057 1181Q5112 1181 5140 1208Q5150 1217 5150 1224V1230Q5164 1228 5194.0 1228.0Q5224 1228 5255.5 1255.0Q5287 1282 5287.0 1337.5Q5287 1393 5248.0 1481.5Q5209 1570 5141.0 1661.5Q5073 1753 4991.5 1833.5Q4910 1914 4815.5 1965.5Q4721 2017 4644.0 2017.0Q4567 2017 4520.5 1968.5Q4474 1920 4474.0 1833.5Q4474 1747 4516.5 1642.0Q4559 1537 4626.0 1456.5Q4693 1376 4771 1312ZM5093 1361H5086Q5051 1361 5051 1310Q4978 1334 4898.0 1394.0Q4818 1454 4755 1536Q4627 1700 4625 1813Q4625 1869 4666.0 1869.0Q4707 1869 4788.0 1815.0Q4869 1761 4948.5 1661.0Q5028 1561 5067.5 1487.5Q5107 1414 5107.0 1387.5Q5107 1361 5093 1361Z M6112 1676Q6131 1676 6135.0 1705.0Q6139 1734 6139.0 1765.0Q6139 1796 6133 1808Q6104 1864 6006.0 1944.5Q5908 2025 5820 2025Q5766 2025 5720.0 1992.5Q5674 1960 5674.0 1879.0Q5674 1798 5717 1720Q5469 2031 5328 2031Q5272 2031 5237.5 1991.0Q5203 1951 5203.0 1908.5Q5203 1866 5215.0 1820.5Q5227 1775 5240.5 1739.0Q5254 1703 5280.5 1650.0Q5307 1597 5320.0 1573.0Q5333 1549 5361.5 1500.5Q5390 1452 5436.5 1370.0Q5483 1288 5513.5 1248.5Q5544 1209 5573.0 1208.5Q5602 1208 5624.0 1232.0Q5646 1256 5646.0 1271.0Q5646 1286 5579 1406Q5381 1764 5381 1823Q5381 1838 5392 1838Q5440 1838 5631.0 1630.0Q5822 1422 5852.0 1363.5Q5882 1305 5910.5 1265.0Q5939 1225 5953 1216Q5996 1188 6064 1186Q6075 1186 6081.0 1187.0Q6087 1188 6095.0 1204.0Q6103 1220 6103 1229Q6094 1257 6023.5 1378.0Q5953 1499 5945 1515Q5827 1759 5827 1833Q5827 1875 5859 1875Q5917 1867 5999 1782Q6029 1751 6058.5 1719.0Q6088 1687 6095.0 1681.5Q6102 1676 6112 1676Z M6185 1790 6184 1806Q6184 1831 6203.0 1849.0Q6222 1867 6238 1867Q6358 1867 6450.5 1831.0Q6543 1795 6543 1759Q6543 1742 6509.5 1729.5Q6476 1717 6396.5 1698.5Q6317 1680 6281.0 1669.5Q6245 1659 6224.0 1650.0Q6203 1641 6181 1625Q6134 1592 6134.0 1526.5Q6134 1461 6182.5 1396.5Q6231 1332 6304.0 1286.0Q6377 1240 6461 1205Q6627 1136 6740 1136Q6851 1136 6877 1184Q6885 1201 6885 1222V1229Q6885 1282 6862.5 1312.0Q6840 1342 6791.5 1366.0Q6743 1390 6714.5 1390.0Q6686 1390 6678.5 1386.0Q6671 1382 6666.0 1375.5Q6661 1369 6653.5 1366.0Q6646 1363 6646.0 1351.0Q6646 1339 6656.0 1326.5Q6666 1314 6670 1300Q6604 1303 6532.0 1330.5Q6460 1358 6408.5 1392.0Q6357 1426 6323.0 1457.0Q6289 1488 6289.0 1502.5Q6289 1517 6335 1526Q6542 1567 6607.0 1597.0Q6672 1627 6697.0 1665.0Q6722 1703 6722 1734Q6722 1798 6671.0 1855.0Q6620 1912 6545 1948Q6384 2027 6264.5 2027.0Q6145 2027 6099.5 1990.5Q6054 1954 6054.0 1904.0Q6054 1854 6079.5 1811.5Q6105 1769 6145.0 1769.0Q6185 1769 6185 1790Z"/></svg> by Marc Kronberg</span>
+          <nav aria-label="More">
+            <a href="https://github.com/krocon/editlicious">Source</a>
+            <a href="demo/">Live demo</a>
+            <a href="https://krocon.de">Imprint &amp; privacy</a>
+          </nav>
+        </div>
+        <p class="fine">This page sets no cookies, loads nothing from other servers and has no JavaScript. The wordmark uses the Yellowtail typeface (SIL Open Font License).</p>
+      </div>
+    </footer>
+  </body>
+</html>

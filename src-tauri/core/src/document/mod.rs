@@ -19,7 +19,8 @@ use model::{
 };
 use ropey::Rope;
 use std::path::{Path, PathBuf};
-use std::time::{Instant, SystemTime};
+use std::time::SystemTime;
+use web_time::Instant;
 
 /// Lines up to this many characters are sent whole; longer ones only as a window (design 002 E3).
 pub const FULL_LINE_LIMIT: usize = 10_000;

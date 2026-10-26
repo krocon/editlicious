@@ -32,3 +32,6 @@ Thumbs.db
 /.tmp-bundle
 # generated large test files (scripts/gen-big-files.mjs)
 /testfiles
+
+# WebAssembly demo build (prompt 011): the crate's own target dir
+/src-tauri/wasm/target

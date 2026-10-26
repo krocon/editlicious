@@ -3,7 +3,8 @@
 
 use super::model::{EditKind, Sel};
 use std::collections::VecDeque;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use web_time::Instant;
 
 /// A change in character offsets of the rope.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -17,6 +17,8 @@ ropey = { version = "1.6.1", default-features = false, features = ["simd", "cr_l
 encoding_rs = "0.8.35"
 chardetng = "1.0.0"
 memchr = "2"
+# Instant that also works in the browser (WebAssembly demo); std on native targets
+web-time = "1"
 # design 003 E2: cells of characters (wide, combining) and grapheme boundaries
 unicode-width = "0.2"
 unicode-segmentation = "1.12"
