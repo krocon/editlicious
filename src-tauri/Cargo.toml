@@ -6,7 +6,7 @@ exclude = ["wasm"]
 
 [package]
 name = "editlicious"
-version = "0.1.0"
+version = "1.0.0"
 description = "A calm text editor for huge files (Tauri 2 + Angular)"
 authors = ["krocon"]
 license = "MIT"

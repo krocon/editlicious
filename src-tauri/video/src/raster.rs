@@ -42,8 +42,8 @@ impl Canvas {
     }
 
     pub fn fill(&mut self, c: Rgba) {
-        for px in self.pixels.chunks_exact_mut(4) {
-            px.copy_from_slice(&[c.0, c.1, c.2, 255]);
+        for px in self.pixels.as_chunks_mut::<4>().0 {
+            *px = [c.0, c.1, c.2, 255];
         }
     }
 

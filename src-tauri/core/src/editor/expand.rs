@@ -190,8 +190,8 @@ fn pairs(line: &[char], w: &Weights) -> Vec<Span> {
             })
             .map(|(i, _)| i)
             .collect();
-        for p in idx.chunks_exact(2) {
-            out.push((p[0], p[1]));
+        for &[a, b] in idx.as_chunks::<2>().0 {
+            out.push((a, b));
         }
     }
     out
