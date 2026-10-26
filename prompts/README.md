@@ -19,6 +19,7 @@ Herkunft: fachliche Vorlage ist der alte Java/Swing-Editor `java-k-editor/Editor
 
 Kritischer Pfad zum ersten nutzbaren Editor: **001 → 002 → 003 → 004**. Danach 005–010 in dieser Reihenfolge,
 011 (Webseite) und 012 (Release) dürfen jederzeit danach kommen, 013 schließt ab.
+018 (Farbfelder), 019 (Marker/HTML) und 020 (Rechnen, Tooltips, Vorschläge) sind unabhängig. Aufzeichnen/KI/Video: 015 → 016 → 017 (017 braucht 016 nicht).
 
 | Nr. | Prompt | Inhalt | Braucht | Umfang | Status |
 |---|---|---|---|---|---|
@@ -37,10 +38,17 @@ Kritischer Pfad zum ersten nutzbaren Editor: **001 → 002 → 003 → 004**. Da
 | 012 | [012-release-distribution.md](done/012-release-distribution.md) | Version, Release-Notes, Lizenzhinweise, Pakete je OS, CI- und Release-Workflows | 001 | M | ✅ 26.10.2026 |
 | 013 | [013-performance-haertung.md](done/013-performance-haertung.md) | Messungen mit 1 GB / 10 Mio. Zeilen / 100-MB-Zeile, Engpässe beheben, Review durch separaten Agenten, Feature-Parität gegen legacy | 002–010 | M | ✅ 26.10.2026 |
 | 014 | [014-release-pipeline.md](done/014-release-pipeline.md) | Release-Pipeline wie Comic Commander / Files and Folders: Probelauf ohne Release, Vorabprüfung, automatische Release Notes, Paketprüfung, Prüfsummen, Lizenzbericht | 012 | M | ✅ 26.10.2026 |
+| 015 | [015-aufzeichnen-abspielen.md](015-aufzeichnen-abspielen.md) | Befehle mit Zeitstempeln aufzeichnen, abspielen (Original/Faktor/menschlich mit Seed), Tipp-Skripte `*.edscript` für Videos, Export Aufnahme → Skript, Makro wiederholen | 005, 007, 013 | M–L | offen |
+| 016 | [016-mcp-server.md](016-mcp-server.md) | MCP-Server (Sidecar `editlicious-mcp`, stdio ↔ lokaler Socket): KI öffnet, liest bereichsweise, tippt im Video-Tempo, führt Aktionen aus, nimmt auf; standardmäßig aus, Token, Revisionen | 015 | M–L | offen |
+| 017 | [017-video-export.md](017-video-export.md) | Aufzeichnung/Skript ohne Bildschirmaufnahme als Video rendern (virtuelle Uhr, PNG-Sequenz, MP4 über externes ffmpeg), CLI `editlicious render` für die Video-Pipeline | 015 | L | offen |
+| 018 | [018-farbfelder-im-rand.md](018-farbfelder-im-rand.md) | Farbwerte (CSS `#…`/`rgb()`/`hsl()`, `0xAARRGGBB`, `"ffRRGGBB"`) als Farbfelder im linken Rand (legacy), Erkennung in Rust nur für den Frame, Farbwert umrechnen | 008, 009, 010 | S–M | offen |
+| 019 | [019-marker-ausbau-html.md](019-marker-ausbau-html.md) | Wort-Marker im „Als HTML kopieren“ (deckende Farben für E-Mail), Auswahl markieren, feste Farbe 1…0, nächstes/voriges Vorkommen, Anzahl in der Statusleiste, Marker in der Sitzung | 007, 010 | S–M | offen |
+| 020 | [020-rechnen-tooltips-autocomplete.md](020-rechnen-tooltips-autocomplete.md) | Math-Parser in Rust (Vorlage `java-k-editor/MathParser`), Ergebnis als Hinweis am Caret und als Vorschlag (`255/8=` → `31.875`); allgemeine Bausteine Tooltip- und Vorschlags-Anbieter | 005, 009, 010 | M–L | offen |
 
 ## Folge-Ideen (noch ohne Prompt)
 
-- Mehrere Cursor, Code-Faltung (legacy: Fold Selection / Unfold All), Zen Coding / Emmet, Autovervollständigung.
+- Mehrere Cursor, Code-Faltung (legacy: Fold Selection / Unfold All), Zen Coding / Emmet, Autovervollständigung (Wörter; Grundlage aus 020).
 - Log-Modus (legacy `Todos.java`): Filter nach Level, Auto-Reload, „nur zeigen/ignorieren“ mit Regex.
 - Textvergleich (Diff) zweier Dateien.
 - Hex-Ansicht für Binärdateien.
+- Numerische Integration aus der MathParser-Vorlage (`algo/numerical`), Farbwähler für Farbfelder (018).
