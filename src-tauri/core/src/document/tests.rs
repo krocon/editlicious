@@ -446,7 +446,13 @@ fn save_rejects_bad_targets() {
     );
     assert_eq!(
         d.save(&SaveRequest {
-            path: Some("/tmp/x.txt".into()),
+            // absolute on every OS
+            path: Some(
+                std::env::temp_dir()
+                    .join("x.txt")
+                    .to_string_lossy()
+                    .into_owned()
+            ),
             encoding: Some("no-such-encoding".into()),
             ..Default::default()
         })

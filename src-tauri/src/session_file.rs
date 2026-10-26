@@ -111,10 +111,12 @@ mod tests {
     fn round_trip_and_sanitize() {
         let dir = tempfile::tempdir().unwrap();
         assert_eq!(load(dir.path()).value, SessionFile::default());
+        // absolute on every OS (`/a` is not on Windows)
+        let abs = |p: &str| dir.path().join(p).to_string_lossy().into_owned();
         let s = SessionFile {
             files: vec![
                 SessionEntry {
-                    path: "/a/ä b.txt".into(),
+                    path: abs("ä b.txt"),
                     line: 3,
                     ch: 1,
                     top: 2.5,
@@ -125,16 +127,16 @@ mod tests {
                 },
             ],
             active: 9,
-            recent: vec!["/x".into(), "/x".into(), "".into()],
+            recent: vec![abs("x"), abs("x"), "".into()],
             tabs: "weird".into(),
             ..Default::default()
         };
         save(dir.path(), s).unwrap();
         let back = load(dir.path()).value;
         assert_eq!(back.files.len(), 1);
-        assert_eq!(back.files[0].path, "/a/ä b.txt");
+        assert_eq!(back.files[0].path, abs("ä b.txt"));
         assert_eq!(back.active, 0);
-        assert_eq!(back.recent, vec!["/x".to_string()]);
+        assert_eq!(back.recent, vec![abs("x")]);
         assert_eq!(back.tabs, "auto");
     }
 
