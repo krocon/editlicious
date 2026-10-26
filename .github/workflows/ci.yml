@@ -41,28 +41,40 @@ jobs:
       - run: pnpm build
 
   rust:
-    name: Rust (${{ matrix.os }})
+    name: Rust (${{ matrix.label }})
     strategy:
       fail-fast: false # see every platform's errors, not only the first
       matrix:
-        # Linux pinned to 24.04: `ubuntu-latest` is moving to Ubuntu 26 (Oct 2026) and its apt step
-        # hung for ~28 min twice on 26.10.2026
-        os: [ubuntu-24.04, macos-latest, windows-latest]
+        include:
+          # the whole workspace, app included
+          - { label: macos, os: macos-latest, scope: --workspace, apt: false, optional: false }
+          - { label: windows, os: windows-latest, scope: --workspace, apt: false, optional: false }
+          # Linux, required: the engine crates need no GTK/WebKit – no apt, cannot hang on a mirror
+          - label: linux engine
+            os: ubuntu-24.04
+            scope: -p ed-core -p ed-video -p ed-mcp
+            apt: false
+            optional: false
+          # Linux, optional: the app with GTK/WebKit from apt. GitHub's Linux runners downloaded
+          # packages extremely slowly on 26.10.2026 (28 min and more); this job may fail without
+          # turning CI red. The release workflow builds the Linux app in full anyway.
+          - { label: linux app, os: ubuntu-24.04, scope: --workspace, apt: true, optional: true }
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.optional }}
     timeout-minutes: 45 # a hanging runner fails instead of blocking for 6 h
     steps:
       - uses: actions/checkout@v5
       # Downloaded .debs are kept in the GitHub cache: the Azure mirror is sometimes very slow
       # (28 min on 26.10.2026). Only what the build needs – no recommended extras (GStreamer …).
       - name: Cache of Linux packages
-        if: runner.os == 'Linux'
+        if: matrix.apt
         uses: actions/cache@v4
         with:
           path: ~/apt-cache
-          key: apt-${{ matrix.os }}-${{ hashFiles('.github/workflows/*.yml') }}
+          key: apt-${{ matrix.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
           restore-keys: apt-${{ matrix.os }}-
       - name: Linux system dependencies
-        if: runner.os == 'Linux'
+        if: matrix.apt
         timeout-minutes: 15 # normally ~1 min; a stuck mirror fails instead of hanging ("Re-run failed jobs")
         run: |
           mkdir -p ~/apt-cache/partial
@@ -81,14 +93,14 @@ jobs:
           workspaces: src-tauri
       # Debug builds compile in Tauri's dev mode (devUrl), so no frontend build is needed here.
       - run: cargo fmt --manifest-path src-tauri/Cargo.toml --all --check
-      - run: cargo clippy --manifest-path src-tauri/Cargo.toml --workspace --all-targets --locked -- -D warnings
+      - run: cargo clippy --manifest-path src-tauri/Cargo.toml ${{ matrix.scope }} --all-targets --locked -- -D warnings
       # Failing tests also become one error annotation (the "failures:" block of the log), so
       # they show up in the PR without opening the job log.
       - name: cargo test
         shell: bash
         run: |
           set -o pipefail
-          if ! cargo test --manifest-path src-tauri/Cargo.toml --workspace --locked --no-fail-fast 2>&1 | tee "$RUNNER_TEMP/test.log"; then
+          if ! cargo test --manifest-path src-tauri/Cargo.toml ${{ matrix.scope }} --locked --no-fail-fast 2>&1 | tee "$RUNNER_TEMP/test.log"; then
             log="$RUNNER_TEMP/test.log"
             # names first (the last "failures:" list), then the details, cut to fit an annotation
             names=$(awk '/^failures:$/{n=""} /^    [^ ]/{n=n $0 "\n"} END{printf "%s", n}' "$log")
@@ -96,6 +108,6 @@ jobs:
             msg=$(printf 'Failed tests:\n%b\n%s' "$names" "$details")
             [ -z "$details" ] && msg=$(tail -n 60 "$log")
             msg="${msg//'%'/'%25'}"; msg="${msg//$'\r'/}"; msg="${msg//$'\n'/'%0A'}"
-            echo "::error title=cargo test (${{ runner.os }})::$msg"
+            echo "::error title=cargo test (${{ matrix.label }})::$msg"
             exit 1
           fi
