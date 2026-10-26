@@ -29,6 +29,9 @@ pub struct Step {
     /// "Convert line endings" (design 013 E3): instead of millions of changes, the kind of
     /// every break before (1 byte each); `forward`/`inverse` stay empty.
     pub breaks: Option<Breaks>,
+    /// A group of steps undone and redone together (a playback, design 015 E8); `forward` and
+    /// `inverse` stay empty.
+    pub group: Option<Vec<Step>>,
 }
 
 /// The line breaks before a conversion to `after`.
@@ -50,6 +53,10 @@ impl Step {
             + self.inverse.iter().map(|c| c.text.len()).sum::<usize>()
             + (self.forward.len() + self.inverse.len()) * CHANGE_OVERHEAD
             + self.breaks.as_ref().map_or(0, |b| b.before.len())
+            + self
+                .group
+                .as_ref()
+                .map_or(0, |g| g.iter().map(Step::bytes).sum())
             + 64
     }
 }
@@ -68,6 +75,8 @@ pub struct History {
     bytes: usize,
     /// No merging into the last step (after a save or an undo/redo).
     sealed: bool,
+    /// Length of the undo stack when a group began (design 015 E8).
+    group_mark: Option<usize>,
 }
 
 impl History {
@@ -82,6 +91,43 @@ impl History {
     /// The next keystroke starts a new step.
     pub fn seal(&mut self) {
         self.sealed = true;
+    }
+
+    /// Starts a group: every step from here to [`History::end_group`] becomes one undo step.
+    pub fn begin_group(&mut self) {
+        self.sealed = true;
+        self.group_mark = Some(self.undo.len());
+    }
+
+    /// Ends the group: two or more steps since `begin_group` become one group step.
+    pub fn end_group(&mut self) {
+        let Some(mark) = self.group_mark.take() else {
+            return;
+        };
+        self.sealed = true;
+        let mark = mark.min(self.undo.len());
+        if self.undo.len() - mark < 2 {
+            return;
+        }
+        let children: Vec<Step> = self.undo.drain(mark..).collect();
+        let (first, last) = (&children[0], &children[children.len() - 1]);
+        let step = Step {
+            forward: Vec::new(),
+            inverse: Vec::new(),
+            sel_before: first.sel_before.clone(),
+            sel_after: last.sel_after.clone(),
+            kind: EditKind::Other,
+            at: last.at,
+            state_before: first.state_before,
+            state_after: last.state_after,
+            breaks: None,
+            group: Some(children),
+        };
+        self.undo.push_back(step);
+    }
+
+    pub fn in_group(&self) -> bool {
+        self.group_mark.is_some()
     }
 
     /// Records a new step (clears redo). Merges typing/deleting into the previous step.
@@ -104,6 +150,9 @@ impl History {
         while self.undo.len() > MAX_STEPS || (self.bytes > MAX_BYTES && self.undo.len() > 1) {
             if let Some(old) = self.undo.pop_front() {
                 self.bytes = self.bytes.saturating_sub(old.bytes());
+                if let Some(m) = self.group_mark.as_mut() {
+                    *m = m.saturating_sub(1);
+                }
             }
         }
     }
@@ -112,6 +161,10 @@ impl History {
         self.sealed = true;
         let s = self.undo.pop_back()?;
         self.bytes = self.bytes.saturating_sub(s.bytes());
+        let len = self.undo.len();
+        if let Some(m) = self.group_mark.as_mut() {
+            *m = (*m).min(len);
+        }
         Some(s)
     }
 
@@ -144,6 +197,7 @@ fn merge(last: &Step, next: &Step) -> Option<Step> {
         || next.kind == EditKind::Other
         || last.breaks.is_some()
         || next.breaks.is_some()
+        || last.group.is_some()
         || last.forward.len() != 1
         || next.forward.len() != 1
         || next.at.duration_since(last.at) > MERGE_WINDOW
@@ -222,5 +276,6 @@ fn merge(last: &Step, next: &Step) -> Option<Step> {
         state_before: last.state_before,
         state_after: next.state_after,
         breaks: None,
+        group: None,
     })
 }

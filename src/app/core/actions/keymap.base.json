@@ -32,7 +32,9 @@
     "Mod+Shift+l": "view.lineNumbers",
     "Mod+Alt+l": "view.indentGuides",
     "Mod+F5": "view.statusBar",
-    "Alt+z": "view.wordWrap"
+    "Alt+z": "view.wordWrap",
+    "Mod+Shift+r": "record.toggle",
+    "Mod+Alt+r": "record.replay"
   },
   "editor": {
     "ArrowLeft": "cursor.left",

@@ -22,6 +22,7 @@ import { ActionService } from '../../core/actions/action.service';
 import { ACTIONS } from '../../core/actions/action-catalog';
 import { EDITOR_TEXTS, noticeText } from './editor-texts';
 import { FindBar } from '../find/find-bar';
+import { RecordingStore, VIEW_ONLY_COMMANDS } from '../recording/recording.store';
 import { FindStore } from '../find/find.store';
 import { FIND_TEXTS } from '../find/find-texts';
 import { GotoBar } from '../find/goto-bar';
@@ -84,6 +85,7 @@ export class EditorView {
   private countTimer: ReturnType<typeof setTimeout> | null = null;
 
   private readonly api = inject(EditorApi);
+  private readonly rec = inject(RecordingStore);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly input = viewChild.required<ElementRef<HTMLTextAreaElement>>('input');
   private readonly measure = viewChild.required<ElementRef<HTMLElement>>('measure');
@@ -238,6 +240,13 @@ export class EditorView {
           }),
       );
     });
+    // a playback pushes its frames (design 015 E9)
+    effect(() => {
+      const f = this.rec.pushed();
+      untracked(() => {
+        if (f && f.info.id === this.docId()) this.show(f);
+      });
+    });
     this.destroyRef.onDestroy(() => this.stopDrag());
     // the editor actions run engine commands (design 004 E1)
     const actions = inject(ActionService);
@@ -260,11 +269,16 @@ export class EditorView {
         'find.prev': { run: () => this.findStep(true) },
         'edit.escape': {
           run: () => {
-            if (f.open() || this.gotoOpen() || this.frame()?.search) this.closeFind();
+            if (this.rec.isPlaying(this.docId())) void this.rec.stopPlayback();
+            else if (f.open() || this.gotoOpen() || this.frame()?.search) this.closeFind();
             else void this.send({ type: 'singleCursor' });
           },
           enabled: () =>
-            f.open() || this.gotoOpen() || !!this.frame()?.search || !!this.frame()?.multi,
+            this.rec.playback()?.docId === this.docId() ||
+            f.open() ||
+            this.gotoOpen() ||
+            !!this.frame()?.search ||
+            !!this.frame()?.multi,
         },
         'goto.line': { run: () => this.gotoOpen.set(true) },
         'view.language': { run: () => void this.chooseLanguage() },
@@ -548,20 +562,27 @@ export class EditorView {
 
   private send(cmd: Command): Promise<unknown> {
     const id = this.docId();
+    // a playback types here: only the view may change (design 015 E10)
+    if (this.rec.isPlaying(id) && !VIEW_ONLY_COMMANDS.has(cmd.type)) return this.chain;
     this.chain = this.chain.then(async () => {
       try {
         const f = await this.api.command(id, cmd);
-        if (id === this.docId()) {
-          this.frame.set(f);
-          this.frameChange.emit(f);
-          if (f.approxHighlight) this.refreshSoon();
-          if (f.notice) this.onNotice(f.notice);
-        }
+        if (id === this.docId()) this.show(f);
       } catch (e) {
         this.status.set(describeFsError(toFsError(e)));
       }
     });
     return this.chain;
+  }
+
+  /** Draws a frame – unless a newer one is already shown (playback and commands interleave). */
+  private show(f: Frame): void {
+    const cur = this.frame();
+    if (cur && cur.info.id === f.info.id && f.seq < cur.seq) return;
+    this.frame.set(f);
+    this.frameChange.emit(f);
+    if (f.approxHighlight) this.refreshSoon();
+    if (f.notice) this.onNotice(f.notice);
   }
 
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;

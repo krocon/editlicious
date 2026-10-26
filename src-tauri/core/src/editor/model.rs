@@ -2,7 +2,7 @@
 //! `src/app/core/editor/editor.models.ts`.
 
 pub use super::ops::{CaseChange, SortMode, SortOptions};
-use crate::document::model::{DocInfo, LineEnding};
+use crate::document::model::{DocInfo, LineEnding, Sel};
 use crate::search::Query;
 use serde::{Deserialize, Serialize};
 
@@ -157,6 +157,28 @@ pub enum Command {
     SetLanguage {
         name: Option<String>,
     },
+    /// Sets the selections – one cursor per entry, the last one primary (recordings, scripts,
+    /// design 015 E2).
+    Select {
+        sels: Vec<Sel>,
+    },
+}
+
+impl Command {
+    /// Only changes the view (size, scroll, settings, colours) – not recorded (design 015 E1),
+    /// allowed while a playback runs (E10).
+    pub fn is_view_only(&self) -> bool {
+        matches!(
+            self,
+            Command::Frame
+                | Command::Resize { .. }
+                | Command::Scroll { .. }
+                | Command::ScrollTo { .. }
+                | Command::Configure { .. }
+                | Command::CopyHtml { .. }
+                | Command::Copy
+        )
+    }
 }
 
 fn one() -> u8 {

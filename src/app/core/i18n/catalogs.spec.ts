@@ -9,6 +9,7 @@ import '../../features/documents/documents-texts';
 import '../../features/editor/editor-texts';
 import '../../features/find/find-texts';
 import '../../features/menus/menus-texts';
+import '../../features/recording/recording-texts';
 import '../../features/settings/settings-texts';
 
 /** Shape of a catalog: keys and value kinds (functions by arity). */
@@ -28,7 +29,7 @@ function shape(v: unknown): unknown {
 
 describe('catalogs (design 009)', () => {
   it('registers every catalog', () => {
-    for (const name of ['about', 'documents', 'editor', 'find', 'menus', 'settings']) {
+    for (const name of ['about', 'documents', 'editor', 'find', 'menus', 'recording', 'settings']) {
       expect([...CATALOGS.keys()].some((k) => k.startsWith(name))).toBe(true);
     }
   });

@@ -41,3 +41,9 @@
     outline-offset: 0;
   }
 }
+
+/* recording (design 015 E11): the one red thing on screen while it runs */
+.rec {
+  color: var(--color-error);
+  font-weight: 600;
+}

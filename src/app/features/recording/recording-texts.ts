@@ -1,0 +1,65 @@
+import { translatable } from '../../core/i18n/i18n';
+
+/** Texts of recording and playback (design 015; English = source, German below). */
+const EN = {
+  started: 'Recording – press Ctrl/⌘ ⇧ R again to stop.',
+  stopped: (steps: number, seconds: string) => `Recorded ${steps} steps in ${seconds} s.`,
+  nothing: 'Nothing was recorded.',
+  saved: 'Recording saved.',
+  playing: 'Playing – Escape stops.',
+  finished: 'Playback finished.',
+  stoppedPlayback: 'Playback stopped.',
+  otherTextTitle: 'Recorded on another text',
+  otherText:
+    'This recording was made on a different text. Played here, it may edit other places than intended.',
+  playAnyway: 'Play anyway',
+  cancel: 'Cancel',
+  tempo: 'Tempo',
+  tempoPlaceholder: 'How fast should it type?',
+  asRecorded: 'As recorded',
+  asScript: 'As the script says',
+  human: 'Like a person',
+  humanTypos: 'Like a person, with typos',
+  faster: 'Twice as fast',
+  slower: 'Half as fast',
+  even: 'Evenly (60 ms per step)',
+  instant: 'At once',
+  // status bar
+  rec: 'REC',
+  recTitle: 'Recording',
+  paused: 'paused',
+  progress: (pct: number) => `${pct} %`,
+  playTitle: 'Playback',
+};
+
+export const RECORDING_TEXTS = translatable('recording', EN, {
+  de: {
+    started: 'Aufnahme läuft – Strg/⌘ ⇧ R beendet sie.',
+    stopped: (steps: number, seconds: string) => `${steps} Schritte in ${seconds} s aufgenommen.`,
+    nothing: 'Es wurde nichts aufgenommen.',
+    saved: 'Aufnahme gespeichert.',
+    playing: 'Wiedergabe läuft – Esc beendet sie.',
+    finished: 'Wiedergabe beendet.',
+    stoppedPlayback: 'Wiedergabe abgebrochen.',
+    otherTextTitle: 'Auf einem anderen Text aufgenommen',
+    otherText:
+      'Diese Aufnahme entstand auf einem anderen Text. Hier abgespielt, ändert sie womöglich andere Stellen als gedacht.',
+    playAnyway: 'Trotzdem abspielen',
+    cancel: 'Abbrechen',
+    tempo: 'Tempo',
+    tempoPlaceholder: 'Wie schnell soll getippt werden?',
+    asRecorded: 'Wie aufgenommen',
+    asScript: 'Wie im Skript',
+    human: 'Wie ein Mensch',
+    humanTypos: 'Wie ein Mensch, mit Tippfehlern',
+    faster: 'Doppelt so schnell',
+    slower: 'Halb so schnell',
+    even: 'Gleichmäßig (60 ms je Schritt)',
+    instant: 'Sofort',
+    rec: 'REC',
+    recTitle: 'Aufnahme',
+    paused: 'angehalten',
+    progress: (pct: number) => `${pct} %`,
+    playTitle: 'Wiedergabe',
+  },
+});

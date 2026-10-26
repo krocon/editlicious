@@ -8,6 +8,12 @@ export interface Pos {
   ch: number;
 }
 
+/** A selection; `anchor` = `head` is a caret (Rust `Sel`). */
+export interface Sel {
+  anchor: Pos;
+  head: Pos;
+}
+
 export type LineEnding = 'lf' | 'crlf' | 'cr';
 
 export interface DocInfo {
@@ -121,7 +127,9 @@ export type Command =
   | { type: 'singleCursor' }
   | { type: 'toggleMarker' }
   | { type: 'clearMarkers' }
-  | { type: 'setLanguage'; name: string | null };
+  | { type: 'setLanguage'; name: string | null }
+  /** One cursor per entry, the last one primary (design 015 E2). */
+  | { type: 'select'; sels: Sel[] };
 
 /** A search (`ed_core::search::Query`, design 006). */
 export interface Query {

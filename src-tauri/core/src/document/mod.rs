@@ -386,6 +386,7 @@ impl Document {
                 line_ending_before,
                 mixed_before,
             }),
+            group: None,
         });
         sels
     }
@@ -510,6 +511,7 @@ impl Document {
             state_before,
             state_after: self.state,
             breaks: None,
+            group: None,
         });
         sel_after
     }
@@ -575,7 +577,20 @@ impl Document {
     /// Undoes the last step; returns the selections before it.
     pub fn undo(&mut self) -> Option<Vec<Sel>> {
         let step = self.history.pop_undo()?;
-        if let Some(br) = &step.breaks {
+        self.revert(&step);
+        self.state = step.state_before;
+        let sel = step.sel_before.clone();
+        self.history.push_redo(step);
+        Some(sel)
+    }
+
+    /// Takes a step back (a group: its steps in reverse order).
+    fn revert(&mut self, step: &history::Step) {
+        if let Some(children) = &step.group {
+            for c in children.iter().rev() {
+                self.revert(c);
+            }
+        } else if let Some(br) = &step.breaks {
             self.rewrite_breaks(|i| code_break(br.before.get(i).copied().unwrap_or(0)));
             self.line_ending = br.line_ending_before;
             self.mixed_line_endings = br.mixed_before;
@@ -584,16 +599,15 @@ impl Document {
             inv.sort_by_key(|c| (c.from, c.to));
             self.apply_raw(&inv);
         }
-        self.state = step.state_before;
-        let sel = step.sel_before.clone();
-        self.history.push_redo(step);
-        Some(sel)
     }
 
-    /// Redoes the last undone step; returns the selections after it.
-    pub fn redo(&mut self) -> Option<Vec<Sel>> {
-        let step = self.history.pop_redo()?;
-        if let Some(br) = &step.breaks {
+    /// Does a step again (a group: its steps in order).
+    fn reapply(&mut self, step: &history::Step) {
+        if let Some(children) = &step.group {
+            for c in children {
+                self.reapply(c);
+            }
+        } else if let Some(br) = &step.breaks {
             let le = br.after;
             self.rewrite_breaks(|_| le);
             self.line_ending = le;
@@ -603,10 +617,37 @@ impl Document {
             fwd.sort_by_key(|c| (c.from, c.to));
             self.apply_raw(&fwd);
         }
+    }
+
+    /// Redoes the last undone step; returns the selections after it.
+    pub fn redo(&mut self) -> Option<Vec<Sel>> {
+        let step = self.history.pop_redo()?;
+        self.reapply(&step);
         self.state = step.state_after;
         let sel = step.sel_after.clone();
         self.history.push_undo_keep_redo(step);
         Some(sel)
+    }
+
+    /// Everything from here to [`Document::end_group`] is one undo step (design 015 E8).
+    pub fn begin_group(&mut self) {
+        self.history.begin_group();
+    }
+
+    pub fn end_group(&mut self) {
+        self.history.end_group();
+    }
+
+    /// FNV-1a 64 over the text (design 015 E4) – tells whether a recording starts on this text.
+    pub fn text_hash(&self) -> u64 {
+        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+        for chunk in self.rope.chunks() {
+            for b in chunk.bytes() {
+                h ^= u64::from(b);
+                h = h.wrapping_mul(0x0000_0100_0000_01b3);
+            }
+        }
+        h
     }
 
     /// After a successful save: the current state is the clean one; no merging across it.

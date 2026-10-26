@@ -1,3 +1,7 @@
+import { WorkspaceApi } from '../../core/workspace/workspace-api';
+import { FakeWorkspaceApi } from '../../../testing/fake-workspace-api';
+import { RecordingApi } from '../../core/recording/recording-api';
+import { FakeRecordingApi } from '../../../testing/fake-recording-api';
 import { SettingsApi } from '../../core/settings/settings-api';
 import { FakeSettingsApi } from '../../../testing/fake-settings-api';
 import { TestBed } from '@angular/core/testing';
@@ -21,6 +25,8 @@ async function setup(api = new FakeEditorApi()) {
     providers: [
       { provide: SettingsApi, useClass: FakeSettingsApi },
       { provide: EditorApi, useValue: api },
+      { provide: RecordingApi, useClass: FakeRecordingApi },
+      { provide: WorkspaceApi, useClass: FakeWorkspaceApi },
       { provide: OS, useValue: 'other' },
     ],
   });
@@ -315,5 +321,37 @@ describe('EditorView', () => {
     const m = el.querySelectorAll('.marker');
     expect(m.length).toBe(2);
     expect(m[1].getAttribute('data-colour')).toBe('3');
+  });
+});
+
+describe('EditorView during a playback (design 015 E10)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    cleanups.splice(0).forEach((f) => f());
+  });
+
+  it('draws pushed frames, ignores typing, and Escape stops the playback', async () => {
+    const { api, el, fixture } = await setup();
+    const { RecordingStore } = await import('../recording/recording.store');
+    const rec = TestBed.inject(RecordingStore);
+    const fake = TestBed.inject(RecordingApi) as FakeRecordingApi;
+    await rec.play({ kind: 'last' }, { mode: 'instant' }, 7);
+    const pushed = textFrame(['typed by the playback'], { seq: 999 });
+    pushed.info = { ...pushed.info, id: 7 };
+    fake.emit!({ kind: 'frame', frame: pushed });
+    await fixture.whenStable();
+    expect(el.querySelector('.row')?.textContent).toContain('typed by the playback');
+    const before = api.commands.length;
+    const input = el.querySelector('textarea')!;
+    input.value = 'x';
+    input.dispatchEvent(new Event('input'));
+    await flush();
+    expect(api.commands.slice(before).some((c) => c.cmd.type === 'type')).toBe(false);
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    );
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await flush();
+    expect(fake.calls).toContain('stop:7');
   });
 });

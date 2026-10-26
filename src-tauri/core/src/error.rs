@@ -45,6 +45,15 @@ pub enum FsErrorCode {
     ChangedOnDisk,
     /// The document was edited meanwhile – a reload that may only replace a clean one stops.
     DocumentEdited,
+    /// A recording or script that cannot be read; the message has the line (design 015).
+    RecordingInvalid,
+    /// A recording step that cannot be played back (an embedded clipboard text that was too
+    /// large to keep, design 015 E3).
+    RecordingUnsupported,
+    /// A playback runs in this document: edits wait until it ends (design 015 E10).
+    PlaybackRunning,
+    /// There is no recording to save or play (design 015).
+    NoRecording,
 }
 
 /// The one error type every command returns.

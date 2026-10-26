@@ -5,6 +5,9 @@
 pub mod layout;
 pub mod model;
 mod ops;
+pub mod playback;
+pub mod recording;
+pub mod script;
 mod words;
 
 #[cfg(test)]
@@ -126,6 +129,10 @@ pub struct Session {
     highlighter: Option<Highlighter>,
     /// Soft wrap at the view width (design 010 E4).
     wrap: bool,
+    /// The running recording (design 015) …
+    recorder: Option<recording::Recorder>,
+    /// … and the last finished one (save it, play it again as a macro).
+    last_recording: Option<recording::Recording>,
 }
 
 /// A place in the view: document line and row within the line (fraction = part of a row).
@@ -157,6 +164,8 @@ impl Session {
             block_origin: None,
             highlighter,
             wrap: false,
+            recorder: None,
+            last_recording: None,
         }
     }
 
@@ -204,8 +213,72 @@ impl Session {
         self.clamp_scroll();
     }
 
-    /// Runs one command and returns the frame to draw.
+    /// Runs one command and returns the frame to draw; a running recording keeps it
+    /// (design 015).
     pub fn run(&mut self, cmd: Command, clip: &mut dyn Clipboard) -> Result<Frame, FsError> {
+        if self.recorder.is_none() || cmd.is_view_only() {
+            return self.run_inner(cmd, clip);
+        }
+        let pasted = matches!(cmd, Command::Paste).then(|| clip.get()).flatten();
+        let kept = cmd.clone();
+        let frame = self.run_inner(cmd, clip)?;
+        let sels = self.sels_primary_last();
+        let wrap = self.wrap;
+        if let Some(r) = self.recorder.as_mut() {
+            r.keep(kept, pasted, sels, wrap);
+        }
+        Ok(frame)
+    }
+
+    /// The selections with the primary one last (as [`Command::Select`] wants them).
+    pub fn sels_primary_last(&self) -> Vec<Sel> {
+        let p = self.primary.min(self.cursors.len() - 1);
+        let mut out: Vec<Sel> = (0..self.cursors.len())
+            .filter(|&i| i != p)
+            .map(|i| self.cursors[i].sel())
+            .collect();
+        out.push(self.cursors[p].sel());
+        out
+    }
+
+    /// Starts recording the commands of this session (design 015); a running one starts over.
+    pub fn start_recording(&mut self, app: &str) {
+        let sels = self.sels_primary_last();
+        let header = recording::Header::new(
+            app,
+            &self.doc,
+            sels,
+            recording::Settings {
+                tab_width: self.tab,
+                insert_spaces: self.spaces,
+                wrap: self.wrap,
+            },
+        );
+        self.recorder = Some(recording::Recorder::new(header));
+    }
+
+    /// Stops the recording; it becomes the last one. `None` when none was running.
+    pub fn stop_recording(&mut self) -> Option<&recording::Recording> {
+        let r = self.recorder.take()?;
+        self.last_recording = Some(r.finish());
+        self.last_recording.as_ref()
+    }
+
+    pub fn is_recording(&self) -> bool {
+        self.recorder.is_some()
+    }
+
+    pub fn last_recording(&self) -> Option<&recording::Recording> {
+        self.last_recording.as_ref()
+    }
+
+    /// Settings of a recording before it plays (tab width, spaces, wrap stay as the view has
+    /// them – only indentation matters for the text).
+    pub fn indentation(&self) -> (usize, bool) {
+        (self.tab, self.spaces)
+    }
+
+    fn run_inner(&mut self, cmd: Command, clip: &mut dyn Clipboard) -> Result<Frame, FsError> {
         self.notice = None;
         let mut reveal = Reveal::Margin;
         let mut keep_block = false;
@@ -412,6 +485,21 @@ impl Session {
             Command::SetLanguage { name } => {
                 self.highlighter = name.as_deref().and_then(Highlighter::new);
                 reveal = Reveal::No;
+            }
+            Command::Select { sels } => {
+                if !sels.is_empty() {
+                    let n = sels.len();
+                    self.cursors = sels
+                        .into_iter()
+                        .map(|s| Cursor {
+                            anchor: self.doc.clamp(s.anchor),
+                            head: self.doc.clamp(s.head),
+                            goal: None,
+                        })
+                        .collect();
+                    self.primary = n - 1;
+                    self.normalize();
+                }
             }
         }
         if !keep_block && !matches!(reveal, Reveal::No) {

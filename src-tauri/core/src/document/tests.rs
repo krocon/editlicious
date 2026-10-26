@@ -675,3 +675,64 @@ fn saving_keeps_a_private_file_private() {
     let mode = fs::metadata(&p).unwrap().permissions().mode() & 0o777;
     assert_eq!(mode, 0o600);
 }
+
+fn insert_at(d: &mut Document, ch: usize, text: &str) {
+    d.apply(EditRequest {
+        changes: vec![Change {
+            from: Pos::new(0, ch),
+            to: Pos::new(0, ch),
+            text: text.into(),
+        }],
+        kind: EditKind::Other,
+        sel_before: vec![],
+        sel_after: None,
+    })
+    .unwrap();
+}
+
+/// Design 015 E8: a playback is one undo step – also with a line ending conversion inside,
+/// and a group of one step or none stays as it is.
+#[test]
+fn groups_undo_and_redo_as_one_step() {
+    let mut d = Document::from_text("x");
+    insert_at(&mut d, 1, "1");
+    d.begin_group();
+    insert_at(&mut d, 2, "a\n");
+    d.convert_line_endings(LineEnding::Crlf, vec![]);
+    insert_at(&mut d, 0, "b");
+    d.end_group();
+    assert_eq!(d.rope().to_string(), "bx1a\r\n");
+    d.undo().unwrap();
+    assert_eq!(d.rope().to_string(), "x1");
+    assert_eq!(d.line_ending, LineEnding::Lf);
+    d.redo().unwrap();
+    assert_eq!(d.rope().to_string(), "bx1a\r\n");
+    d.undo().unwrap();
+    d.undo().unwrap();
+    assert_eq!(d.rope().to_string(), "x");
+    assert!(!d.dirty());
+    // an empty group and a group of one
+    d.begin_group();
+    d.end_group();
+    d.begin_group();
+    insert_at(&mut d, 0, "z");
+    d.end_group();
+    d.undo().unwrap();
+    assert_eq!(d.rope().to_string(), "x");
+}
+
+#[test]
+fn undo_inside_a_group_does_not_reach_before_it() {
+    let mut d = Document::from_text("");
+    insert_at(&mut d, 0, "a");
+    d.begin_group();
+    insert_at(&mut d, 1, "b");
+    d.undo().unwrap();
+    d.undo().unwrap(); // the step before the group
+    insert_at(&mut d, 0, "c");
+    insert_at(&mut d, 1, "d");
+    d.end_group();
+    assert_eq!(d.rope().to_string(), "cd");
+    d.undo().unwrap();
+    assert_eq!(d.rope().to_string(), "");
+}

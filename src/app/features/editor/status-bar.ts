@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { ActionService } from '../../core/actions/action.service';
 import { Frame } from '../../core/editor/editor.models';
 import { locale } from '../../core/i18n/i18n';
+import { RecordingStore } from '../recording/recording.store';
+import { RECORDING_TEXTS } from '../recording/recording-texts';
 import { EDITOR_TEXTS } from './editor-texts';
 
 /**
@@ -19,6 +21,12 @@ import { EDITOR_TEXTS } from './editor-texts';
       }
       @if (f.overwrite) {
         <span class="item strong">{{ t.overwrite }}</span>
+      }
+      @if (recording()) {
+        <span class="item rec" [title]="rt.recTitle">● {{ rt.rec }}</span>
+      }
+      @if (playback(); as p) {
+        <span class="item strong" [title]="rt.playTitle">{{ p }}</span>
       }
       <span class="fill"></span>
       @if (f.wrap) {
@@ -61,7 +69,24 @@ import { EDITOR_TEXTS } from './editor-texts';
 export class StatusBar {
   readonly frame = input<Frame | null>(null);
   protected readonly t = EDITOR_TEXTS;
+  protected readonly rt = RECORDING_TEXTS;
   private readonly actions = inject(ActionService);
+  private readonly rec = inject(RecordingStore);
+
+  /** "● REC" while this document records (design 015 E11). */
+  protected readonly recording = computed(() => {
+    const f = this.frame();
+    return !!f && this.rec.recording().has(f.info.id);
+  });
+
+  /** "▶ 37 %" / "❚❚ 37 %" while a playback types here. */
+  protected readonly playback = computed(() => {
+    const f = this.frame();
+    const p = this.rec.playback();
+    if (!f || !p || p.docId !== f.info.id) return '';
+    const pct = p.total ? Math.floor((p.done * 100) / p.total) : 0;
+    return `${p.paused ? '❚❚' : '▶'} ${this.rt.progress(pct)}`;
+  });
 
   protected readonly position = computed(() => {
     const f = this.frame();

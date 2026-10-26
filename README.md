@@ -14,6 +14,8 @@ built with [Tauri 2](https://tauri.app), Angular 22 (zoneless, signals) and Rust
   vertically *and* horizontally.
 - **Distraction-free** – menu, tabs and status bar hide away; everything is reachable by shortcut and command palette.
 - **Your encodings, your line endings** – detected on load, kept on save.
+- **Record and play back** – macros, and typing scripts for screen videos with a human rhythm
+  ([`docs/scripts.md`](docs/scripts.md)).
 
 > Status: in development. Progress and plan: [`prompts/README.md`](prompts/README.md).
 

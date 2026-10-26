@@ -9,9 +9,11 @@ use crate::document::model::{DocInfo, LineEnding, LoadEvent, SaveRequest};
 use crate::document::registry::{Registry, lock_doc};
 use crate::document::{Document, load};
 use crate::editor::model::{Command, Frame};
+use crate::editor::playback::Tempo;
 use crate::editor::{Clipboard, Session};
 use crate::error::{FsError, FsErrorCode};
 use crate::model::AppInfo;
+use crate::playback::{self, PlaybackCheck, PlaybackEvent, RecordingInfo, Source};
 use crate::session_file::{self, SessionFile};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -37,9 +39,19 @@ pub struct AppState {
     /// Config files that could not be read (rights, locked): never written over with defaults
     /// in this run (design 013 review #10).
     keep: Mutex<std::collections::HashSet<&'static str>>,
+    /// Running playbacks by document (design 015 E9/E10).
+    playing: Arc<Mutex<std::collections::HashMap<u64, Arc<playback::Control>>>>,
 }
 
 impl AppState {
+    fn playback_of(&self, id: u64) -> Option<Arc<playback::Control>> {
+        self.playing
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(&id)
+            .cloned()
+    }
+
     fn set_keep(&self, file: &'static str, keep: bool) {
         let mut k = self.keep.lock().unwrap_or_else(|e| e.into_inner());
         if keep {
@@ -208,6 +220,9 @@ pub async fn new_document(
 
 #[tauri::command]
 pub async fn close_document(state: State<'_, AppState>, id: u64) -> Result<(), FsError> {
+    if let Some(c) = state.playback_of(id) {
+        c.stop();
+    }
     state.sessions.remove(id);
     Ok(())
 }
@@ -225,6 +240,14 @@ pub async fn editor_command(
     id: u64,
     cmd: Command,
 ) -> Result<Frame, FsError> {
+    // a playback runs: only the view may change (design 015 E10)
+    if !cmd.is_view_only() && state.playback_of(id).is_some() {
+        return Err(FsError::new(
+            FsErrorCode::PlaybackRunning,
+            "playback running",
+            None,
+        ));
+    }
     let handle = state.sessions.get(id)?;
     let clipboard = state.clipboard.clone();
     blocking(move || {
@@ -233,6 +256,150 @@ pub async fn editor_command(
         session.run(cmd, &mut *clip)
     })
     .await
+}
+
+// ---------------------------------------------------------------- recording (design 015)
+
+#[tauri::command]
+pub async fn start_recording(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: u64,
+) -> Result<(), FsError> {
+    let handle = state.sessions.get(id)?;
+    let version = app.package_info().version.to_string();
+    blocking(move || {
+        lock_doc(&handle).start_recording(&version);
+        Ok(())
+    })
+    .await
+}
+
+/// Stops the recording; `None` when none ran.
+#[tauri::command]
+pub async fn stop_recording(
+    state: State<'_, AppState>,
+    id: u64,
+) -> Result<Option<RecordingInfo>, FsError> {
+    let handle = state.sessions.get(id)?;
+    blocking(move || Ok(lock_doc(&handle).stop_recording().map(RecordingInfo::of))).await
+}
+
+/// Saves the last recording as `*.edrec.jsonl` or as a script.
+#[tauri::command]
+pub async fn save_recording(
+    state: State<'_, AppState>,
+    id: u64,
+    path: String,
+    script: bool,
+) -> Result<(), FsError> {
+    let path = file_path(&path)?;
+    let handle = state.sessions.get(id)?;
+    blocking(move || playback::save(&lock_doc(&handle), &path, script)).await
+}
+
+/// What would play: kind, steps, duration, recorded on another text?
+#[tauri::command]
+pub async fn check_playback(
+    state: State<'_, AppState>,
+    id: u64,
+    source: Source,
+) -> Result<PlaybackCheck, FsError> {
+    if let Source::Path { path } = &source {
+        file_path(path)?;
+    }
+    let handle = state.sessions.get(id)?;
+    blocking(move || {
+        let s = lock_doc(&handle);
+        let loaded = playback::load(&source, &s)?;
+        Ok(playback::check(&loaded, &s))
+    })
+    .await
+}
+
+/// Plays a recording or script into the document; frames and progress go to `on_event`
+/// until `done`. `tempo` `None` = as the source says.
+#[tauri::command]
+pub async fn play(
+    state: State<'_, AppState>,
+    id: u64,
+    source: Source,
+    tempo: Option<Tempo>,
+    on_event: Channel<PlaybackEvent>,
+) -> Result<(), FsError> {
+    if let Source::Path { path } = &source {
+        file_path(path)?;
+    }
+    let handle = state.sessions.get(id)?;
+    let control = Arc::new(playback::Control::default());
+    {
+        let mut playing = state.playing.lock().unwrap_or_else(|e| e.into_inner());
+        if playing.contains_key(&id) {
+            return Err(FsError::new(
+                FsErrorCode::PlaybackRunning,
+                "playback running",
+                None,
+            ));
+        }
+        playing.insert(id, control.clone());
+    }
+    let playing = state.playing.clone();
+    let release = move || {
+        playing
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&id);
+    };
+    let h = handle.clone();
+    let steps = blocking(move || {
+        let s = lock_doc(&h);
+        let loaded = playback::load(&source, &s)?;
+        Ok(crate::editor::playback::timeline(
+            &loaded.items,
+            tempo.unwrap_or(loaded.default_tempo),
+        ))
+    })
+    .await;
+    let steps = match steps {
+        Ok(s) => s,
+        Err(e) => {
+            release();
+            return Err(e);
+        }
+    };
+    std::thread::spawn(move || {
+        playback::run(handle, steps, control, |e| {
+            let _ = on_event.send(e);
+        });
+        release();
+    });
+    Ok(())
+}
+
+/// `pause`, `resume`, `stop` or `step` (one step while paused).
+#[tauri::command]
+pub async fn playback_control(
+    state: State<'_, AppState>,
+    id: u64,
+    action: String,
+) -> Result<(), FsError> {
+    let Some(c) = state.playback_of(id) else {
+        return Ok(());
+    };
+    match action.as_str() {
+        "pause" => c.pause(),
+        "resume" => c.resume(),
+        "stop" => c.stop(),
+        "step" => c.step(),
+        _ => {
+            return Err(FsError::new(
+                FsErrorCode::InvalidEdit,
+                "unknown action",
+                None,
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Counts the matches of a query on a snapshot of the text (O(1) clone) – typing goes on while

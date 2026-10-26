@@ -10,6 +10,7 @@
 //! - [`app_menu`]      native menu bar of macOS from the frontend's menu model (design 005)
 //! - [`keymap_file`]   the user's shortcut overrides `keymap.json` (design 005)
 //! - [`about`]         data for the About dialog (version, platform)
+//! - [`playback`]      recordings and scripts: read, save, play in real time (design 015)
 //! - [`commands`]      thin Tauri command layer (validate, `spawn_blocking`, never synchronous)
 
 pub mod about;
@@ -20,6 +21,7 @@ pub use ed_core::{document, editor, error, highlight, search};
 pub mod fs_atomic;
 pub mod keymap_file;
 pub mod model;
+pub mod playback;
 pub mod session_file;
 pub mod settings;
 
@@ -91,6 +93,12 @@ pub fn run() {
             commands::toggle_fullscreen,
             commands::set_app_menu,
             commands::load_keymap_overrides,
+            commands::start_recording,
+            commands::stop_recording,
+            commands::save_recording,
+            commands::check_playback,
+            commands::play,
+            commands::playback_control,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

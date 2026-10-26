@@ -20,6 +20,7 @@
 | A2 | Rust ist die Editor-Engine (Crate `ed-core`), die UI rendert nur Frames | Marc 26.10.2026; große Dateien: IPC-Last unabhängig von der Dateigröße; eine Quelle der Wahrheit, alles in Rust testbar (002 E13) |
 | A3 | Eigene Editor-Ansicht statt CodeMirror/Monaco | beide halten den ganzen Text im JS-Heap und kommen mit Zeilen von Millionen Zeichen nicht zurecht (Prompt 003) |
 | A5 | Angular 22 für die UI, Engine nativ – WebAssembly nur für die Webseiten-Demo | WASM im WebView müsste Dateien über die Brücke kopieren, 4-GB-Limit, keine Threads; Rust-UI-Frameworks verlören die Wiederverwendung aus den Schwesterprojekten (26.10.2026) |
+| A6 | Aufnahmen speichern Engine-Befehle (Klicks als Auswahl), Abspielen läuft in Rust auf einer deterministischen Zeitachse und schickt Frames über einen Channel | fensterunabhängig, wiederholbar (Seed), dieselbe Zeitachse für MCP (016) und Video (017); eine Abspielung = ein Undo-Schritt (015) |
 | A4 | Dev-Server-Port 1440 | comic-commander nutzt 1430, files-and-folders 1420 – alle drei parallel startbar |
 
 ## Commands
@@ -44,6 +45,8 @@
 | `set_app_menu(spec)`, Ereignis `menu-action` | natives Menü (macOS) | 005 |
 | `load_keymap_overrides` | `keymap.json` | 005 |
 | `load_settings` / `save_settings(settings)` | `settings.json` (nachsichtig laden, Werte begrenzen, atomar schreiben) | 009 |
+| `start_recording(id)` / `stop_recording(id)` / `save_recording(id, path, script)` | Befehle aufzeichnen, als `*.edrec.jsonl` oder `*.edscript` speichern | 015 |
+| `check_playback(id, source)` / `play(id, source, tempo, onEvent)` / `playback_control(id, action)` | Aufnahme oder Skript prüfen und abspielen (Frames/Fortschritt über Channel, anhalten, Schritt, Stopp); während der Wiedergabe lehnt `editor_command` Bearbeitungen ab (`playback_running`) | 015 |
 
 ## Abhängigkeiten
 

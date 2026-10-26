@@ -1,3 +1,5 @@
+import { RecordingApi } from './core/recording/recording-api';
+import { FakeRecordingApi } from '../testing/fake-recording-api';
 import { SettingsApi } from './core/settings/settings-api';
 import { FakeSettingsApi } from '../testing/fake-settings-api';
 import { TestBed } from '@angular/core/testing';
@@ -21,6 +23,7 @@ function setup(desktop: boolean, paths: string[] = []): FakeEditorApi {
       { provide: SettingsApi, useClass: FakeSettingsApi },
       { provide: AboutApi, useClass: FakeAboutApi },
       { provide: EditorApi, useValue: api },
+      { provide: RecordingApi, useClass: FakeRecordingApi },
       { provide: WorkspaceApi, useClass: FakeWorkspaceApi },
       { provide: DESKTOP, useValue: desktop },
       { provide: OS, useValue: 'other' },

@@ -61,6 +61,8 @@ src/                          Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/core/menu/              MenuApi (set_app_menu, menu-action), KeymapApi (keymap.json)
   app/features/menus/         menu-model (rein), MenuService (nativ/HTML), MenuBar (APG, versteckt bis Alt),
                               CommandPalette, ShortcutsDialog, ChromeStore (F1, Menüleiste, Vollbild)
+  app/core/recording/         RecordingApi (Aufnahme starten/stoppen/speichern, prüfen, abspielen, steuern)
+  app/features/recording/     RecordingStore (record.*-Aktionen, Wiedergabe-Zustand, gepushte Frames), Texte
   app/features/about/         About-Dialog
   app/core/i18n/              translatable(), Sprache (Signal), System-Sprache, catalogs.spec (Vollständigkeit)
   app/core/settings/          Settings-DTO (= Rust settings.rs), SettingsApi
@@ -75,6 +77,7 @@ src-tauri/                    Rust (Tauri 2), Crate `editlicious`, Lib `ed_lib`
   src/keymap_file.rs          keymap.json laden
   src/session_file.rs         session.json (offene Dateien, zuletzt benutzt, Tab-Modus)
   src/settings.rs             settings.json (Einstellungen, nachsichtig laden, Werte begrenzen)
+  src/playback.rs             Aufnahmen/Skripte lesen und speichern, Wiedergabe-Thread (Frames über Channel)
   src/model.rs                DTOs der App (serde camelCase); `document`, `error` kommen aus ed-core
   core/                       Crate `ed-core` (Workspace-Mitglied): Editor-Engine ohne Tauri
     src/error.rs              FsError { code, message, path }
@@ -82,13 +85,15 @@ src-tauri/                    Rust (Tauri 2), Crate `editlicious`, Lib `ed_lib`
     src/highlight.rs          Syntax-Hervorhebung (syntect, Checkpoints, Hintergrund-Aufholen, Stilklassen)
     src/search.rs             Suchen/Ersetzen in Zeilenblöcken (regex), Zählen auf Schnappschuss
     src/editor/               Sitzung (Cursor, Befehle, Scroll, Frames), layout (Zellen, Grapheme), words,
-                              ops (Sortieren, Groß/klein, Zeilen, Blockauswahl, mehrere Cursor, Marker)
+                              ops (Sortieren, Groß/klein, Zeilen, Blockauswahl, mehrere Cursor, Marker),
+                              recording (*.edrec.jsonl), script (*.edscript), playback (Zeitachse, Tempo)
     testdata/document.cases.json  datengetriebene Bearbeitungsfälle
   src/fs_atomic.rs, config_file.rs  atomar schreiben / Konfig laden (aus files-and-folders)
   icons/source/app-icon.svg   Quelle des App-Icons
   tauri.windows.conf.json, windows/open-with.nsh   Windows: „Öffnen mit“ per NSIS-Hook statt Standard-Zuordnung
   linux/editlicious.desktop   .desktop-Vorlage (Exec mit %F, MimeType text/plain)
-docs/                         architecture.md (Entscheidungen, Commands, Abhängigkeiten), legacy-analysis.md
+docs/                         architecture.md (Entscheidungen, Commands, Abhängigkeiten), legacy-analysis.md,
+                              scripts.md (Aufnahmen und Tipp-Skripte für Nutzer)
 prompts/                      Feature-Prompts (Index README.md), done/
 site/                         Werbe-Webseite (index.html ohne JS) + demo/ (Engine als WebAssembly, pkg/ vom Workflow)
   src-tauri/wasm/             Crate `ed-wasm` (wasm-bindgen-Bindung von ed-core, außerhalb des Workspaces)

@@ -24,6 +24,10 @@ export type FsErrorCode =
   | 'not_a_file'
   | 'changed_on_disk'
   | 'document_edited'
+  | 'recording_invalid'
+  | 'recording_unsupported'
+  | 'playback_running'
+  | 'no_recording'
   /** Frontend only: no Tauri backend (e.g. `pnpm start` in a browser). */
   | 'backend_unavailable'
   /** Frontend only: something that is no `FsError` was thrown. */
@@ -55,6 +59,10 @@ const KNOWN: readonly FsErrorCode[] = [
   'not_a_file',
   'changed_on_disk',
   'document_edited',
+  'recording_invalid',
+  'recording_unsupported',
+  'playback_running',
+  'no_recording',
   'backend_unavailable',
   'unknown',
 ];
@@ -94,6 +102,10 @@ const EN: Record<FsErrorCode, string> = {
   not_a_file: 'This is a device or pipe, not a file.',
   changed_on_disk: 'The file was changed by another program.',
   document_edited: 'The file was edited meanwhile.',
+  recording_invalid: 'This recording or script cannot be read.',
+  recording_unsupported: 'This recording contains a step that cannot be played back.',
+  playback_running: 'A playback is running – press Escape to stop it.',
+  no_recording: 'There is no recording yet.',
   backend_unavailable: 'The desktop backend is not available (running in a browser?).',
   unknown: 'Something went wrong.',
 };
@@ -119,6 +131,10 @@ const TEXTS = translatable('fsErrors', EN, {
     not_a_file: 'Das ist ein Gerät oder eine Pipe, keine Datei.',
     changed_on_disk: 'Die Datei wurde von einem anderen Programm geändert.',
     document_edited: 'Die Datei wurde inzwischen bearbeitet.',
+    recording_invalid: 'Diese Aufnahme oder dieses Skript lässt sich nicht lesen.',
+    recording_unsupported: 'Diese Aufnahme enthält einen Schritt, der sich nicht abspielen lässt.',
+    playback_running: 'Eine Wiedergabe läuft – Esc beendet sie.',
+    no_recording: 'Es gibt noch keine Aufnahme.',
     backend_unavailable: 'Das Desktop-Backend ist nicht verfügbar (läuft im Browser?).',
     unknown: 'Etwas ist schiefgegangen.',
   },

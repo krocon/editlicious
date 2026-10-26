@@ -107,6 +107,14 @@ export const ACTIONS: readonly ActionDef[] = [
   { id: 'file.lineEnding', label: 'Line endings…', context: 'editor' },
   { id: 'edit.copyHtml', label: 'Copy as HTML', context: 'editor' },
   { id: 'edit.copyHtmlNumbers', label: 'Copy as HTML with line numbers', context: 'editor' },
+  // recording and playback (design 015)
+  G('record.toggle', 'Start/stop recording'),
+  G('record.replay', 'Play the last recording again'),
+  G('record.play', 'Play a recording or script…'),
+  G('record.pause', 'Pause/resume playback'),
+  G('record.stop', 'Stop playback'),
+  G('record.save', 'Save the last recording…'),
+  G('record.saveScript', 'Save the last recording as a script…'),
   // editing – the engine does it
   E('edit.undo', 'Undo', { type: 'undo' }, { repeat: true }),
   E('edit.redo', 'Redo', { type: 'redo' }, { repeat: true }),

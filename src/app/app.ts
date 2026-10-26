@@ -32,6 +32,7 @@ import { AskDialog } from './shared/ask/ask-dialog';
 import { DialogService } from './shared/dialog/dialog.service';
 import { SettingsDialog } from './features/settings/settings-dialog';
 import { SettingsStore } from './features/settings/settings.store';
+import { RecordingStore } from './features/recording/recording.store';
 
 /**
  * Root: (hidden) menu bar, tabs only when wanted, the editor surface of the active file –
@@ -148,6 +149,7 @@ export class App {
       else root.removeAttribute('data-scheme');
     });
     this.registerActions();
+    inject(RecordingStore).registerActions(this.actions, this.destroyRef);
     void this.actions.loadOverrides();
     inject(MenuService).start();
     if (this.desktop) void this.start();
