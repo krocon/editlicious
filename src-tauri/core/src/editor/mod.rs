@@ -3,6 +3,7 @@
 //! renders (Marc, 26.10.2026; design 002 E13).
 
 pub mod colors;
+pub mod expand;
 pub mod layout;
 pub mod model;
 mod ops;
@@ -130,6 +131,10 @@ pub struct Session {
     highlighter: Option<Highlighter>,
     /// Soft wrap at the view width (design 010 E4).
     wrap: bool,
+    /// Repeated double clicks (prompt 018a): the steps at the last double click, where the
+    /// selection is, at which text revision.
+    expansion: Option<Expansion>,
+    weights: expand::Weights,
     /// Colour swatches on (design 018) and whether one ever showed (the gutter column stays).
     colors: bool,
     color_column: bool,
@@ -137,6 +142,14 @@ pub struct Session {
     recorder: Option<recording::Recorder>,
     /// … and the last finished one (save it, play it again as a macro).
     last_recording: Option<recording::Recording>,
+}
+
+/// The steps of a progressive selection and the current one (prompt 018a).
+#[derive(Debug, Clone)]
+struct Expansion {
+    steps: Vec<(Pos, Pos)>,
+    at: usize,
+    revision: u64,
 }
 
 /// A place in the view: document line and row within the line (fraction = part of a row).
@@ -170,6 +183,8 @@ impl Session {
             wrap: false,
             colors: true,
             color_column: false,
+            expansion: None,
+            weights: expand::Weights::default(),
             recorder: None,
             last_recording: None,
         }
@@ -288,6 +303,7 @@ impl Session {
         self.notice = None;
         let mut reveal = Reveal::Margin;
         let mut keep_block = false;
+        let mut keep_expansion = cmd.is_view_only();
         match cmd {
             Command::Frame => reveal = Reveal::No,
             Command::Resize { lines, cols } => {
@@ -302,7 +318,11 @@ impl Session {
                 detect,
                 wrap,
                 colors,
+                expand_weights,
             } => {
+                if let Some(w) = expand_weights {
+                    self.weights = expand::Weights::with(&w);
+                }
                 if let Some(c) = colors {
                     self.colors = c;
                     if !c {
@@ -382,7 +402,29 @@ impl Session {
                 count,
                 extend,
                 add,
+            } if count == 2 && !extend && !add => {
+                let p = self.pos_at(line, cell);
+                self.double_click(p);
+                self.block_origin = Some((p.line, cell.max(0.0).round() as usize));
+                keep_expansion = true;
+                reveal = Reveal::Exact;
+            }
+            Command::Click {
+                line,
+                cell,
+                count,
+                extend,
+                add,
             } => {
+                // a single click inside the expanded selection keeps the sequence: the second
+                // click of the next double click lands here first
+                if count == 1 && !extend && !add {
+                    let p = self.pos_at(line, cell);
+                    keep_expansion = self.expansion.as_ref().is_some_and(|e| {
+                        let (a, b) = e.steps[e.at];
+                        e.revision == self.doc.revision() && a <= p && p <= b
+                    });
+                }
                 if add && count <= 1 && !extend {
                     let p = self.pos_at(line, cell);
                     self.add_cursor(p);
@@ -518,6 +560,10 @@ impl Session {
         }
         if !keep_block && !matches!(reveal, Reveal::No) {
             self.block = None;
+        }
+        if !keep_expansion {
+            // moved, typed, dragged …: the next double click starts with the word again
+            self.expansion = None;
         }
         self.clamp_scroll();
         match reveal {
@@ -895,6 +941,38 @@ impl Session {
             from,
             to,
         });
+    }
+
+    /// A double click (prompt 018a): the word, or – again inside the selection of the last one,
+    /// on the same text – the next larger step; after the largest the word again.
+    fn double_click(&mut self, p: Pos) {
+        let rev = self.doc.revision();
+        let again = self.expansion.as_ref().is_some_and(|e| {
+            let (a, b) = e.steps[e.at];
+            e.revision == rev && a <= p && p <= b
+        });
+        if again {
+            if let Some(e) = self.expansion.as_mut() {
+                e.at = (e.at + 1) % e.steps.len();
+            }
+        } else {
+            let steps = expand::steps(&self.doc, p, &self.weights);
+            self.expansion = Some(Expansion {
+                steps,
+                at: 0,
+                revision: rev,
+            });
+        }
+        let Some((from, to)) = self.expansion.as_ref().map(|e| e.steps[e.at]) else {
+            return;
+        };
+        self.cursors = vec![Cursor {
+            anchor: from,
+            head: to,
+            goal: None,
+        }];
+        self.primary = 0;
+        self.drag = Some(DragOrigin { count: 2, from, to });
     }
 
     fn drag_to(&mut self, line: f64, cell: f64) {

@@ -79,6 +79,7 @@ export type Command =
       detect?: boolean;
       wrap?: boolean;
       colors?: boolean;
+      expandWeights?: Record<string, number>;
     }
   | { type: 'setLineEnding'; lineEnding: LineEnding }
   | { type: 'copyHtml'; lineNumbers: boolean; styles: string[]; base: string; gutter: string }

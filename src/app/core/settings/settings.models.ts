@@ -19,6 +19,8 @@ export interface Settings {
   overview: boolean;
   /** Colour values as swatches in the gutter (design 018). */
   colorSwatches: boolean;
+  /** Word boundaries of repeated double clicks (prompt 018a); empty = built-in. */
+  expandWeights: Record<string, number>;
   /** An AI may drive the editor over MCP (design 016 E9). */
   mcp: boolean;
   /** ffmpeg for the video export (design 017); empty = the one on the PATH. */
@@ -44,6 +46,7 @@ export const DEFAULT_SETTINGS: Settings = {
   wordWrap: false,
   overview: true,
   colorSwatches: true,
+  expandWeights: {},
   mcp: false,
   ffmpegPath: '',
 };

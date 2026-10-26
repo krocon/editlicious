@@ -45,6 +45,9 @@ pub struct Settings {
     pub overview: bool,
     /// Colour values as swatches in the gutter (design 018).
     pub color_swatches: bool,
+    /// Word boundaries of repeated double clicks (prompt 018a): `"_": 1`, `"space": 4` …;
+    /// empty = the built-in table. Only in settings.json.
+    pub expand_weights: std::collections::BTreeMap<String, f64>,
     /// An AI may drive the editor over MCP (design 016 E9) – off unless the user turns it on.
     #[serde(default)]
     pub mcp: bool,
@@ -74,6 +77,7 @@ impl Default for Settings {
             word_wrap: false,
             overview: true,
             color_swatches: true,
+            expand_weights: Default::default(),
             mcp: false,
             ffmpeg_path: String::new(),
         }
@@ -117,6 +121,14 @@ pub fn sanitize(mut s: Settings) -> Settings {
     if s.font_family.len() > 200 || s.font_family.contains(['"', ';', '{', '}', '\\', '<', '>']) {
         s.font_family = String::new();
     }
+    s.expand_weights.retain(|k, v| {
+        let ok_key =
+            matches!(k.as_str(), "space" | "tab" | "punctuation") || k.chars().count() == 1;
+        ok_key && v.is_finite() && (0.1..=9.0).contains(v)
+    });
+    while s.expand_weights.len() > 64 {
+        s.expand_weights.pop_last();
+    }
     if s.ffmpeg_path.len() > 1000 || s.ffmpeg_path.contains('\0') {
         s.ffmpeg_path = String::new();
     }
@@ -158,6 +170,12 @@ mod tests {
         assert_eq!(saved.tab_width, 1);
         assert_eq!(saved.scheme, "auto");
         assert_eq!(saved.font_family, "");
+        let mut w = Settings::default();
+        w.expand_weights.insert("_".into(), 1.0);
+        w.expand_weights.insert("word".into(), 2.0);
+        w.expand_weights.insert(".".into(), 99.0);
+        let w = sanitize(w);
+        assert_eq!(w.expand_weights.keys().collect::<Vec<_>>(), ["_"]);
         assert_eq!(load(dir.path()).value, saved);
     }
 

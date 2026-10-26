@@ -44,6 +44,16 @@ interface Metrics {
 }
 
 /**
+ * Clicks in a row → what the engine does: 1 caret, 2 word (repeated double clicks grow the
+ * selection, prompt 018a), 3 line; going on fast (4, 5 …) counts as further double clicks.
+ */
+export function clickCount(detail: number): number {
+  if (detail <= 1) return 1;
+  if (detail === 3) return 3;
+  return 2;
+}
+
+/**
  * The editor surface (design 003). It only renders frames of the Rust engine and turns
  * keyboard, mouse and wheel input into commands – no text logic here (design 002 E13).
  * Both directions are virtual: the frame holds the visible lines and only the visible cells.
@@ -275,6 +285,7 @@ export class EditorView {
             detect: s.indentWith === 'auto',
             wrap: s.wordWrap,
             colors: s.colorSwatches,
+            expandWeights: s.expandWeights,
           }),
       );
     });
@@ -740,7 +751,7 @@ export class EditorView {
     e.preventDefault();
     this.focus();
     const p = this.pointAt(e.clientX, e.clientY);
-    const count = gutter ? 3 : Math.min(3, Math.max(1, e.detail));
+    const count = gutter ? 3 : clickCount(e.detail);
     void this.send({
       type: 'click',
       line: p.line,

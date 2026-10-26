@@ -34,6 +34,10 @@ pub enum Command {
         /// Colour swatches in the gutter (design 018); `None` = unchanged.
         #[serde(default)]
         colors: Option<bool>,
+        /// Weights of the word boundaries for repeated double clicks (prompt 018a): a character
+        /// or `space`/`tab`/`punctuation` → 1–9; `None` = unchanged, empty = the defaults.
+        #[serde(default)]
+        expand_weights: Option<std::collections::HashMap<String, f64>>,
     },
     Scroll {
         lines: f64,

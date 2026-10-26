@@ -93,7 +93,7 @@ src-tauri/                    Rust (Tauri 2), Crate `editlicious`, Lib `ed_lib`
     src/editor/               Sitzung (Cursor, Befehle, Scroll, Frames), layout (Zellen, Grapheme), words,
                               ops (Sortieren, Groß/klein, Zeilen, Blockauswahl, mehrere Cursor, Marker),
                               recording (*.edrec.jsonl), script (*.edscript), playback (Zeitachse, Tempo),
-                              colors (Farbwerte erkennen/umrechnen)
+                              colors (Farbwerte erkennen/umrechnen), expand (Doppelklick-Auswahl wächst)
     testdata/document.cases.json  datengetriebene Bearbeitungsfälle
   mcp/                        Crate `ed-mcp` (Workspace): MCP-Sidecar `editlicious-mcp` (stdio), Tools, Brücke
   video/                      Crate `ed-video` (Workspace): Video-Export (Zeitachse, Rasterizer, Farben aus

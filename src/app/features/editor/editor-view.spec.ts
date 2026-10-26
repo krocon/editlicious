@@ -81,6 +81,7 @@ describe('EditorView', () => {
       detect: true,
       wrap: false,
       colors: true,
+      expandWeights: {},
     });
     // one guide per indent step, none at the left edge
     expect(el.querySelectorAll('.row')[2].querySelectorAll('.guide').length).toBe(1);
@@ -98,6 +99,7 @@ describe('EditorView', () => {
       detect: false,
       wrap: false,
       colors: true,
+      expandWeights: {},
     });
     settings.update({ lineNumbers: 'off', indentGuides: false });
     await fixture.whenStable();
@@ -387,5 +389,12 @@ describe('EditorView colour swatches (design 018)', () => {
       sels: [{ anchor: { line: 1, ch: 4 }, head: { line: 1, ch: 12 } }],
     });
     expect(api.sent('configure').at(-1)).toMatchObject({ colors: true });
+  });
+});
+
+describe('clickCount (prompt 018a)', () => {
+  it('maps the browser click count to caret, word (again and again) and line', async () => {
+    const { clickCount } = await import('./editor-view');
+    expect([0, 1, 2, 3, 4, 5, 6].map(clickCount)).toEqual([1, 1, 2, 3, 2, 2, 2]);
   });
 });

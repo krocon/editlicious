@@ -250,6 +250,7 @@ fn backspace_removes_a_soft_tab() {
             detect: false,
             wrap: None,
             colors: None,
+            expand_weights: None,
         },
     );
     put(&mut s, 0, 0);
@@ -284,6 +285,7 @@ fn indent_and_outdent_lines() {
             detect: false,
             wrap: None,
             colors: None,
+            expand_weights: None,
         },
     );
     s.set_cursors(vec![Cursor {
@@ -762,6 +764,7 @@ fn whitespace_commands() {
             detect: false,
             wrap: None,
             colors: None,
+            expand_weights: None,
         },
     );
     run(&mut s, Command::ConvertIndentation { spaces: true });
@@ -973,6 +976,7 @@ fn configure_detect_follows_the_file() {
             detect: true,
             wrap: None,
             colors: None,
+            expand_weights: None,
         },
     );
     assert!(f.insert_spaces);
@@ -987,6 +991,7 @@ fn configure_detect_follows_the_file() {
             detect: true,
             wrap: None,
             colors: None,
+            expand_weights: None,
         },
     );
     assert!(!f.insert_spaces);
@@ -1001,6 +1006,7 @@ fn configure_detect_follows_the_file() {
             detect: true,
             wrap: None,
             colors: None,
+            expand_weights: None,
         },
     );
     assert!(!f.insert_spaces);
@@ -1018,6 +1024,7 @@ fn frame_lines_carry_their_indentation() {
             detect: false,
             wrap: None,
             colors: None,
+            expand_weights: None,
         },
     );
     let f = run(&mut s, Command::Frame);
@@ -1039,6 +1046,7 @@ fn wrapped(text: &str, lines: f64, cols: f64) -> Session {
             detect: false,
             wrap: Some(true),
             colors: None,
+            expand_weights: None,
         },
     );
     s
@@ -1155,6 +1163,7 @@ fn wrap_scrolls_and_clicks_by_rows() {
             detect: false,
             wrap: Some(false),
             colors: None,
+            expand_weights: None,
         },
     );
     let f = run(&mut s, Command::Frame);
@@ -1298,6 +1307,7 @@ fn measure_wrap_and_line_endings() {
             detect: false,
             wrap: Some(true),
             colors: None,
+            expand_weights: None,
         },
     );
     let t = Instant::now();
@@ -1348,6 +1358,7 @@ fn wrap_width_follows_the_view() {
             detect: false,
             wrap: Some(true),
             colors: None,
+            expand_weights: None,
         },
         &mut clip,
     )
@@ -1480,6 +1491,7 @@ fn colour_swatches_and_converting() {
             detect: false,
             wrap: None,
             colors: Some(false),
+            expand_weights: None,
         },
     );
     assert!(f.lines.iter().all(|l| l.colors.is_empty()));
@@ -1521,6 +1533,7 @@ fn measure_colours_per_frame() {
             detect: false,
             wrap: None,
             colors: Some(false),
+            expand_weights: None,
         },
     );
     run(
@@ -1545,4 +1558,147 @@ fn measure_colours_per_frame() {
         "frame of 100 lines with 300 colours: {per:?} (without colours {:?})",
         t.elapsed() / 100
     );
+}
+
+// ---------------------------------------------------------------- progressive double click (018a)
+
+/// A double click like the browser sends it: a click (detail 1), then detail 2.
+fn dbl(s: &mut Session, line: usize, cell: usize) -> String {
+    for count in [1, 2] {
+        run(
+            s,
+            Command::Click {
+                line: line as f64,
+                cell: cell as f64 + 0.2,
+                count,
+                extend: false,
+                add: false,
+            },
+        );
+    }
+    sel_text(s)
+}
+
+fn sel_text(s: &Session) -> String {
+    let c = s.primary();
+    s.doc.text(c.start(), c.end()).unwrap()
+}
+
+#[test]
+fn repeated_double_clicks_grow_step_by_step_and_start_over() {
+    let mut s = session("let x = user_profile_name;\nnext");
+    // every step, then the line, then the paragraph, then the word again
+    let got: Vec<String> = (0..7).map(|_| dbl(&mut s, 0, 15)).collect();
+    assert_eq!(
+        got,
+        [
+            "profile",
+            "user_profile",
+            "user_profile_name",
+            "user_profile_name;",
+            "= user_profile_name;",
+            "x = user_profile_name;",
+            "let x = user_profile_name;",
+        ]
+    );
+    assert_eq!(dbl(&mut s, 0, 15), "let x = user_profile_name;\nnext");
+    assert_eq!(
+        dbl(&mut s, 0, 15),
+        "profile",
+        "after the largest: the word again"
+    );
+}
+
+#[test]
+fn start_middle_and_end_of_a_token_and_slow_repeats() {
+    for cell in [4, 7, 10] {
+        let mut s = session("com.example.service");
+        assert_eq!(dbl(&mut s, 0, cell), "example");
+        // slow: a click between the double clicks keeps the sequence as long as it is inside
+        run(
+            &mut s,
+            Command::Click {
+                line: 0.0,
+                cell: 9.0,
+                count: 1,
+                extend: false,
+                add: false,
+            },
+        );
+        assert_eq!(dbl(&mut s, 0, cell), "com.example", "cell {cell}");
+        assert_eq!(dbl(&mut s, 0, cell), "com.example.service");
+    }
+}
+
+#[test]
+fn another_place_or_any_other_action_starts_with_the_word() {
+    let mut s = session("my-component-name other_thing");
+    assert_eq!(dbl(&mut s, 0, 4), "component");
+    assert_eq!(dbl(&mut s, 0, 4), "my-component");
+    // another place
+    assert_eq!(dbl(&mut s, 0, 26), "thing");
+    // a cursor move in between
+    assert_eq!(dbl(&mut s, 0, 26), "other_thing");
+    mv(&mut s, Motion::Left);
+    assert_eq!(dbl(&mut s, 0, 26), "thing");
+    // typing (a text change) in between
+    assert_eq!(dbl(&mut s, 0, 4), "component");
+    run(
+        &mut s,
+        Command::Move {
+            to: Motion::DocEnd,
+            select: false,
+        },
+    );
+    typ(&mut s, "!");
+    assert_eq!(dbl(&mut s, 0, 4), "component");
+    // a change of the text by undo also starts over
+    assert_eq!(dbl(&mut s, 0, 4), "my-component");
+    run(&mut s, Command::Undo);
+    assert_eq!(dbl(&mut s, 0, 4), "component");
+    // a triple click still takes the line
+    run(
+        &mut s,
+        Command::Click {
+            line: 0.0,
+            cell: 4.0,
+            count: 3,
+            extend: false,
+            add: false,
+        },
+    );
+    assert_eq!(sel_text(&s), "my-component-name other_thing");
+}
+
+#[test]
+fn double_clicks_with_umlauts_emoji_and_wide_characters() {
+    let mut s = session("Straße: Königs_straße 🙂中文_x");
+    // cells: wide characters take two
+    assert_eq!(dbl(&mut s, 0, 10), "Königs");
+    assert_eq!(dbl(&mut s, 0, 10), "Königs_straße");
+    let mut s = session("Straße: Königs_straße 🙂中文_x");
+    assert_eq!(dbl(&mut s, 0, 24), "🙂中文");
+    assert_eq!(dbl(&mut s, 0, 24), "🙂中文_x");
+}
+
+#[test]
+fn custom_weights_from_the_settings() {
+    let mut s = session("a.b_c");
+    let mut w = std::collections::HashMap::new();
+    w.insert(".".to_string(), 1.0);
+    w.insert("_".to_string(), 3.5);
+    run(
+        &mut s,
+        Command::Configure {
+            tab_width: None,
+            insert_spaces: None,
+            detect: false,
+            wrap: None,
+            colors: None,
+            expand_weights: Some(w),
+        },
+    );
+    assert_eq!(dbl(&mut s, 0, 0), "a");
+    assert_eq!(dbl(&mut s, 0, 0), "a.b");
+    assert_eq!(dbl(&mut s, 0, 0), "a.b_c");
 }

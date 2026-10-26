@@ -14,6 +14,8 @@ built with [Tauri 2](https://tauri.app), Angular 22 (zoneless, signals) and Rust
   vertically *and* horizontally.
 - **Distraction-free** – menu, tabs and status bar hide away; everything is reachable by shortcut and command palette.
 - **Your encodings, your line endings** – detected on load, kept on save.
+- **Selections that grow** with every double click – word, `snake_case` part, path segment, brackets, line,
+  paragraph ([`docs/selection.md`](docs/selection.md)).
 - **Colour values as swatches** in the gutter (`#hex`, `rgb()`, `hsl()`, `0xAARRGGBB`, `"ffRRGGBB"`), converted
   with one action.
 - **Record and play back** – macros, and typing scripts with a human rhythm, rendered straight to video at any
