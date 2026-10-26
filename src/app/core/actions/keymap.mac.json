@@ -21,6 +21,10 @@
     "Mod+Alt+f": "find.replace",
     "Mod+g": "find.next",
     "Mod+Shift+g": "find.prev",
-    "Mod+l": "goto.line"
+    "Mod+l": "goto.line",
+    "Mod+Alt+Shift+ArrowLeft": "block.left",
+    "Mod+Alt+Shift+ArrowRight": "block.right",
+    "Mod+Alt+Shift+ArrowUp": "block.up",
+    "Mod+Alt+Shift+ArrowDown": "block.down"
   }
 }

@@ -38,6 +38,18 @@
   --ed-scrollbar: rgb(0 0 0 / 22%);
   --ed-scrollbar-hover: rgb(0 0 0 / 38%);
 
+  /* word markers (design 007 E6): translucent, readable on light and dark – the same in both */
+  --ed-marker-0: rgb(255 99 132 / 30%);
+  --ed-marker-1: rgb(54 162 235 / 30%);
+  --ed-marker-2: rgb(75 192 92 / 32%);
+  --ed-marker-3: rgb(255 159 64 / 34%);
+  --ed-marker-4: rgb(153 102 255 / 30%);
+  --ed-marker-5: rgb(0 200 200 / 30%);
+  --ed-marker-6: rgb(230 200 0 / 34%);
+  --ed-marker-7: rgb(255 0 200 / 26%);
+  --ed-marker-8: rgb(120 120 120 / 30%);
+  --ed-marker-9: rgb(160 82 45 / 32%);
+
   --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, sans-serif;
   --font-editor:
     ui-monospace, 'SF Mono', Menlo, 'Cascadia Mono', Consolas, 'JetBrains Mono', 'DejaVu Sans Mono',

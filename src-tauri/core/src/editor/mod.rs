@@ -4,6 +4,7 @@
 
 pub mod layout;
 pub mod model;
+mod ops;
 mod words;
 
 #[cfg(test)]
@@ -105,6 +106,14 @@ pub struct Session {
     drag: Option<DragOrigin>,
     notice: Option<String>,
     search: Option<(Query, Regex)>,
+    /// Index of the primary cursor in `cursors` (design 007 E5).
+    primary: usize,
+    /// Column (block) selection: anchor and head as line + cell (design 007 E4).
+    block: Option<ops::Block>,
+    /// Marked words, up to ten colours (legacy „Mark Text“, design 007 E6).
+    markers: Vec<Option<(String, Regex)>>,
+    /// Line and cell of the last click – the corner of an Alt-drag block.
+    block_origin: Option<(usize, usize)>,
 }
 
 impl Session {
@@ -126,11 +135,20 @@ impl Session {
             drag: None,
             notice: None,
             search: None,
+            primary: 0,
+            block: None,
+            markers: Vec::new(),
+            block_origin: None,
         }
     }
 
     pub fn cursors(&self) -> &[Cursor] {
         &self.cursors
+    }
+
+    /// The cursor that scrolls into view and feeds the status bar (the one added last).
+    pub fn primary(&self) -> Cursor {
+        self.cursors[self.primary.min(self.cursors.len() - 1)]
     }
 
     pub fn set_cursors(&mut self, cursors: Vec<Cursor>) {
@@ -156,6 +174,7 @@ impl Session {
     pub fn run(&mut self, cmd: Command, clip: &mut dyn Clipboard) -> Result<Frame, FsError> {
         self.notice = None;
         let mut reveal = Reveal::Margin;
+        let mut keep_block = false;
         match cmd {
             Command::Frame => reveal = Reveal::No,
             Command::Resize { lines, cols } => {
@@ -201,7 +220,7 @@ impl Session {
             }
             Command::GoTo { line, ch, select } => {
                 let p = self.doc.clamp(Pos::new(line, ch));
-                let anchor = if select { self.cursors[0].anchor } else { p };
+                let anchor = if select { self.primary().anchor } else { p };
                 self.cursors = vec![Cursor {
                     anchor,
                     head: p,
@@ -213,12 +232,30 @@ impl Session {
                 cell,
                 count,
                 extend,
+                add,
             } => {
-                self.click(line, cell, count, extend);
+                if add && count <= 1 && !extend {
+                    let p = self.pos_at(line, cell);
+                    self.add_cursor(p);
+                    self.drag = Some(DragOrigin {
+                        count: 1,
+                        from: p,
+                        to: p,
+                    });
+                    self.block_origin = Some((p.line, cell.max(0.0).round() as usize));
+                } else {
+                    self.click(line, cell, count, extend);
+                    self.block_origin =
+                        Some((self.primary().head.line, cell.max(0.0).round() as usize));
+                }
                 reveal = Reveal::Exact;
             }
-            Command::Drag { line, cell } => {
-                self.drag_to(line, cell);
+            Command::Drag { line, cell, column } => {
+                match (column, self.block_origin) {
+                    (true, Some(o)) => self.block_drag(o, line, cell),
+                    _ => self.drag_to(line, cell),
+                }
+                keep_block = column;
                 reveal = Reveal::Exact;
             }
             Command::Type { text } => self.type_text(&text)?,
@@ -250,7 +287,11 @@ impl Session {
             }
             Command::Cut => self.copy(clip, true)?,
             Command::Paste => match clip.get() {
-                Some(text) => self.insert(&text, EditKind::Other)?,
+                Some(text) => {
+                    if !self.paste_distributed(&text)? {
+                        self.insert(&text, EditKind::Other)?;
+                    }
+                }
                 None => self.notice = Some("clipboard_empty".into()),
             },
             Command::Find {
@@ -270,6 +311,34 @@ impl Session {
                 reveal = Reveal::Center;
             }
             Command::ReplaceAll { query, replacement } => self.replace_all(query, &replacement)?,
+            Command::SortLines { options } => self.sort(options)?,
+            Command::ChangeCase { to } => self.change_case(to)?,
+            Command::DuplicateLines => self.duplicate_lines()?,
+            Command::DeleteLines => self.delete_lines()?,
+            Command::MoveLines { up } => self.move_lines(up)?,
+            Command::JoinLines => self.join_lines()?,
+            Command::TrimTrailingWhitespace => {
+                let n = self.trim_trailing()?;
+                self.notice = Some(format!("trimmed:{n}"));
+            }
+            Command::ConvertIndentation { spaces } => self.convert_indent(spaces)?,
+            Command::BlockMove { dx, dy } => {
+                self.block_move(dx, dy);
+                keep_block = true;
+            }
+            Command::AddNextOccurrence => self.add_next_occurrence(),
+            Command::SingleCursor => self.single_cursor(),
+            Command::ToggleMarker => {
+                self.toggle_marker();
+                reveal = Reveal::No;
+            }
+            Command::ClearMarkers => {
+                self.clear_markers();
+                reveal = Reveal::No;
+            }
+        }
+        if !keep_block && !matches!(reveal, Reveal::No) {
+            self.block = None;
         }
         self.clamp_scroll();
         match reveal {
@@ -277,7 +346,7 @@ impl Session {
             Reveal::Margin => self.reveal(H_MARGIN),
             Reveal::Exact => self.reveal(0.0),
             Reveal::Center => {
-                let line = self.cursors[0].head.line as f64;
+                let line = self.primary().head.line as f64;
                 let rows = self.view_lines.floor().max(1.0);
                 if line < self.top || line + 1.0 > self.top + rows {
                     self.top = (line - (rows / 2.0).floor()).max(0.0);
@@ -533,7 +602,7 @@ impl Session {
             _ => (p, p),
         };
         if extend && count <= 1 {
-            let anchor = self.cursors[0].anchor;
+            let anchor = self.primary().anchor;
             self.cursors = vec![Cursor {
                 anchor,
                 head: p,
@@ -562,8 +631,8 @@ impl Session {
         let p = self.pos_at(line, cell);
         let origin = self.drag.unwrap_or(DragOrigin {
             count: 1,
-            from: self.cursors[0].anchor,
-            to: self.cursors[0].anchor,
+            from: self.primary().anchor,
+            to: self.primary().anchor,
         });
         let (from, to) = match origin.count {
             2 => self.word_at(p),
@@ -947,7 +1016,7 @@ impl Session {
 
     /// The primary selection as characters.
     fn primary_chars(&self) -> (usize, usize) {
-        let c = self.cursors[0];
+        let c = self.primary();
         (
             self.doc.pos_to_char(c.start()),
             self.doc.pos_to_char(c.end()),
@@ -1018,7 +1087,7 @@ impl Session {
                 text,
             })
             .collect();
-        let first = self.cursors[0];
+        let first = self.primary();
         self.doc.apply(EditRequest {
             changes,
             kind: EditKind::Other,
@@ -1046,8 +1115,10 @@ impl Session {
             c.head = self.doc.clamp(c.head);
         }
         if self.cursors.len() < 2 {
+            self.primary = 0;
             return;
         }
+        let key = self.primary().head;
         let mut cs = self.cursors.clone();
         cs.sort_by_key(|c| c.start());
         let mut out: Vec<Cursor> = Vec::with_capacity(cs.len());
@@ -1074,6 +1145,10 @@ impl Session {
             }
             out.push(c);
         }
+        self.primary = out
+            .iter()
+            .position(|c| c.start() <= key && key <= c.end())
+            .unwrap_or(0);
         self.cursors = out;
     }
 
@@ -1082,13 +1157,13 @@ impl Session {
         self.top = self.top.clamp(0.0, max_top);
         let max_left = (self.max_width as f64 - self.view_cols + 2.0).max(0.0);
         // the caret may sit right of everything seen so far (end of a long line)
-        let caret = self.cell_of(self.cursors[0].head) as f64;
+        let caret = self.cell_of(self.primary().head) as f64;
         self.left = self.left.clamp(0.0, max_left.max(caret));
     }
 
     /// Scrolls so the primary caret is visible.
     fn reveal(&mut self, margin: f64) {
-        let head = self.cursors[0].head;
+        let head = self.primary().head;
         let line = head.line as f64;
         let rows = self.view_lines.floor().max(1.0);
         if line < self.top {
@@ -1125,7 +1200,7 @@ impl Session {
             self.max_width = self.max_width.max(fl.width);
             lines.push(fl);
         }
-        let primary = self.cursors[0];
+        let primary = self.primary();
         let carets = self
             .cursors
             .iter()
@@ -1162,13 +1237,14 @@ impl Session {
             insert_spaces: self.spaces,
             notice: self.notice.clone(),
             search: self.search.is_some(),
+            multi: self.cursors.len() > 1,
             selection_text: self.selection_text(),
         }
     }
 
     /// Short single-line selections go to the UI (find field).
     fn selection_text(&self) -> Option<String> {
-        let c = self.cursors[0];
+        let c = self.primary();
         if c.is_empty() || c.start().line != c.end().line || c.end().ch - c.start().ch > 1_000 {
             return None;
         }
@@ -1179,9 +1255,13 @@ impl Session {
         let len = self.doc.line_len(line);
         let long = self.doc.is_long(line);
         let mut found: Vec<(usize, usize)> = Vec::new();
+        let mut marked: Vec<(usize, usize, usize)> = Vec::new();
         let (runs, width, cell_of): (Vec<Run>, usize, CellOf) = if long {
             let from = wa.min(len);
             let text = self.doc.line_slice(line, from, wb);
+            if !self.markers.is_empty() {
+                marked = self.markers_in(&text, from);
+            }
             if let Some((_, re)) = &self.search {
                 found = search::matches_in(&text, re)
                     .into_iter()
@@ -1197,6 +1277,9 @@ impl Session {
             let line_text = self.doc.line_string(line);
             if let Some((_, re)) = &self.search {
                 found = search::matches_in(&line_text, re);
+            }
+            if !self.markers.is_empty() {
+                marked = self.markers_in(&line_text, 0);
             }
             let lay = LineLayout::new(&line_text, self.tab);
             let width = lay.width();
@@ -1231,7 +1314,7 @@ impl Session {
                 sel_eol = true;
             }
         }
-        let primary = self.cursors[0];
+        let primary = self.primary();
         let marks = found
             .into_iter()
             .map(|(a, b)| {
@@ -1239,6 +1322,10 @@ impl Session {
                     primary.start() == Pos::new(line, a) && primary.end() == Pos::new(line, b);
                 [cell_of(a), cell_of(b), usize::from(current)]
             })
+            .collect();
+        let markers = marked
+            .into_iter()
+            .map(|(a, b, c)| [cell_of(a), cell_of(b), c])
             .collect();
         FrameLine {
             line,
@@ -1248,6 +1335,7 @@ impl Session {
             width,
             long,
             marks,
+            markers,
         }
     }
 }

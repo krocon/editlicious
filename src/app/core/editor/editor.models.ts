@@ -70,8 +70,15 @@ export type Command =
   | { type: 'move'; to: Motion; select?: boolean }
   | { type: 'selectAll' }
   | { type: 'goTo'; line: number; ch: number; select?: boolean }
-  | { type: 'click'; line: number; cell: number; count?: number; extend?: boolean }
-  | { type: 'drag'; line: number; cell: number }
+  | {
+      type: 'click';
+      line: number;
+      cell: number;
+      count?: number;
+      extend?: boolean;
+      add?: boolean;
+    }
+  | { type: 'drag'; line: number; cell: number; column?: boolean }
   | { type: 'type'; text: string }
   | { type: 'insert'; text: string }
   | { type: 'newline' }
@@ -90,7 +97,20 @@ export type Command =
   | { type: 'find'; query: Query; backwards?: boolean; incremental?: boolean }
   | { type: 'clearSearch' }
   | { type: 'replace'; query: Query; replacement: string }
-  | { type: 'replaceAll'; query: Query; replacement: string };
+  | { type: 'replaceAll'; query: Query; replacement: string }
+  | { type: 'sortLines'; options: SortOptions }
+  | { type: 'changeCase'; to: CaseChange }
+  | { type: 'duplicateLines' }
+  | { type: 'deleteLines' }
+  | { type: 'moveLines'; up: boolean }
+  | { type: 'joinLines' }
+  | { type: 'trimTrailingWhitespace' }
+  | { type: 'convertIndentation'; spaces: boolean }
+  | { type: 'blockMove'; dx: number; dy: number }
+  | { type: 'addNextOccurrence' }
+  | { type: 'singleCursor' }
+  | { type: 'toggleMarker' }
+  | { type: 'clearMarkers' };
 
 /** A search (`ed_core::search::Query`, design 006). */
 export interface Query {
@@ -105,6 +125,15 @@ export interface MatchCount {
   total: number;
   current: number;
 }
+
+export interface SortOptions {
+  descending?: boolean;
+  mode?: 'natural' | 'text' | 'numeric';
+  ignoreCase?: boolean;
+  unique?: boolean;
+}
+
+export type CaseChange = 'upper' | 'lower' | 'title' | 'toggle';
 
 export type RunKind = 'text' | 'wide' | 'tab' | 'ctrl';
 
@@ -126,6 +155,8 @@ export interface FrameLine {
   long: boolean;
   /** Search matches `[from, to, kind]` in cells; kind 1 = the selected one. */
   marks: [number, number, number][];
+  /** Marked words `[from, to, colour 0…9]` in cells. */
+  markers: [number, number, number][];
 }
 
 export interface CaretPos {
@@ -151,5 +182,7 @@ export interface Frame {
   insertSpaces: boolean;
   notice: string | null;
   search: boolean;
+  /** More than one cursor. */
+  multi: boolean;
   selectionText: string | null;
 }

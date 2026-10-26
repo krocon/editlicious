@@ -44,6 +44,7 @@ export function textFrame(lines: string[], over: Partial<Frame> = {}): Frame {
     width: text.length,
     long: false,
     marks: [],
+    markers: [],
   }));
   return {
     seq: 1,
@@ -63,6 +64,7 @@ export function textFrame(lines: string[], over: Partial<Frame> = {}): Frame {
     insertSpaces: true,
     notice: null,
     search: false,
+    multi: false,
     selectionText: null,
     ...over,
   };

@@ -63,6 +63,17 @@
     "Mod+f": "find.open",
     "F3": "find.next",
     "Shift+F3": "find.prev",
-    "Escape": "find.close"
+    "Escape": "edit.escape",
+    "Mod+Shift+Alt+a": "edit.sortAsc",
+    "Mod+Shift+Alt+d": "edit.sortDesc",
+    "Mod+u": "edit.toggleCase",
+    "Mod+Shift+d": "edit.duplicateLines",
+    "Mod+Shift+Backspace": "edit.deleteLines",
+    "Alt+ArrowUp": "edit.moveLinesUp",
+    "Alt+ArrowDown": "edit.moveLinesDown",
+    "Mod+j": "edit.joinLines",
+    "Mod+d": "edit.addNextOccurrence",
+    "Mod+Shift+F7": "edit.toggleMarker",
+    "Mod+Shift+F8": "edit.clearMarkers"
   }
 }

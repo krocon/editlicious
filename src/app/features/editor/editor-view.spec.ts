@@ -159,4 +159,40 @@ describe('EditorView', () => {
     expect(el.querySelectorAll('.mark').length).toBe(2);
     expect(el.querySelectorAll('.mark.current').length).toBe(1);
   });
+
+  it('Alt-click adds a cursor, Alt-drag selects a column, Escape goes back to one', async () => {
+    const api = new FakeEditorApi();
+    api.nextFrame = textFrame(['abc', 'def'], { multi: true });
+    const { el, fixture } = await setup(api);
+    const text = el.querySelector('.text')!;
+    text.dispatchEvent(new MouseEvent('mousedown', { clientX: 100, clientY: 5, altKey: true }));
+    document.dispatchEvent(
+      new MouseEvent('mousemove', { clientX: 140, clientY: 30, altKey: true }),
+    );
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    await flush();
+    document.dispatchEvent(new MouseEvent('mouseup'));
+    expect(api.sent('click')[0]).toMatchObject({ add: true });
+    expect(api.sent('drag')[0]).toMatchObject({ column: true });
+    el.querySelector('textarea')!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    );
+    await flush();
+    await fixture.whenStable();
+    expect(api.sent('singleCursor').length).toBe(1);
+  });
+
+  it('draws word markers in their colour', async () => {
+    const api = new FakeEditorApi();
+    const f = textFrame(['let x = x']);
+    f.lines[0].markers = [
+      [4, 5, 0],
+      [8, 9, 3],
+    ];
+    api.nextFrame = f;
+    const { el } = await setup(api);
+    const m = el.querySelectorAll('.marker');
+    expect(m.length).toBe(2);
+    expect(m[1].getAttribute('data-colour')).toBe('3');
+  });
 });

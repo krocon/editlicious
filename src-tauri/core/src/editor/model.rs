@@ -1,6 +1,7 @@
 //! Commands and frames of the editor session (design 003). Mirror:
 //! `src/app/core/editor/editor.models.ts`.
 
+pub use super::ops::{CaseChange, SortMode, SortOptions};
 use crate::document::model::DocInfo;
 use crate::search::Query;
 use serde::{Deserialize, Serialize};
@@ -54,10 +55,16 @@ pub enum Command {
         /// Shift-click: extend the selection.
         #[serde(default)]
         extend: bool,
+        /// Alt-click: one more caret (design 007 E5).
+        #[serde(default)]
+        add: bool,
     },
     Drag {
         line: f64,
         cell: f64,
+        /// Alt-drag: column selection from the click (design 007 E4).
+        #[serde(default)]
+        column: bool,
     },
     /// Typed text (one keystroke or a finished IME composition).
     Type {
@@ -101,6 +108,32 @@ pub enum Command {
         query: Query,
         replacement: String,
     },
+    // ---- design 007
+    SortLines {
+        options: SortOptions,
+    },
+    ChangeCase {
+        to: CaseChange,
+    },
+    DuplicateLines,
+    DeleteLines,
+    MoveLines {
+        up: bool,
+    },
+    JoinLines,
+    TrimTrailingWhitespace,
+    ConvertIndentation {
+        spaces: bool,
+    },
+    /// Alt+Shift+arrows: grow a column selection by cells/lines.
+    BlockMove {
+        dx: isize,
+        dy: isize,
+    },
+    AddNextOccurrence,
+    SingleCursor,
+    ToggleMarker,
+    ClearMarkers,
 }
 
 fn one() -> u8 {
@@ -163,6 +196,8 @@ pub struct FrameLine {
     pub long: bool,
     /// Search matches `[from, to, kind]` in cells; kind 1 = the selected one (design 006).
     pub marks: Vec<[usize; 3]>,
+    /// Marked words `[from, to, colour 0…9]` in cells (design 007 E6).
+    pub markers: Vec<[usize; 3]>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -199,6 +234,8 @@ pub struct Frame {
     pub notice: Option<String>,
     /// A search is active (matches are highlighted).
     pub search: bool,
+    /// More than one cursor (Escape goes back to one).
+    pub multi: bool,
     /// The primary selection when it is short and on one line (to prefill the find field).
     pub selection_text: Option<String>,
 }

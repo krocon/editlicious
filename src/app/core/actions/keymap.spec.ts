@@ -22,7 +22,9 @@ describe('keymap', () => {
   });
 
   it('every editing and cursor action names an engine command', () => {
-    for (const a of ACTIONS.filter((x) => /^(edit|cursor|select)\./.test(x.id))) {
+    for (const a of ACTIONS.filter(
+      (x) => /^(edit|cursor|select|block)\./.test(x.id) && x.id !== 'edit.escape',
+    )) {
       expect(a.cmd, a.id).toBeDefined();
     }
   });

@@ -96,6 +96,42 @@
   }
 }
 
+.marker {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  border-radius: 2px;
+  background: var(--ed-marker-0);
+
+  &[data-colour='1'] {
+    background: var(--ed-marker-1);
+  }
+  &[data-colour='2'] {
+    background: var(--ed-marker-2);
+  }
+  &[data-colour='3'] {
+    background: var(--ed-marker-3);
+  }
+  &[data-colour='4'] {
+    background: var(--ed-marker-4);
+  }
+  &[data-colour='5'] {
+    background: var(--ed-marker-5);
+  }
+  &[data-colour='6'] {
+    background: var(--ed-marker-6);
+  }
+  &[data-colour='7'] {
+    background: var(--ed-marker-7);
+  }
+  &[data-colour='8'] {
+    background: var(--ed-marker-8);
+  }
+  &[data-colour='9'] {
+    background: var(--ed-marker-9);
+  }
+}
+
 .mark {
   position: absolute;
   top: 1px;

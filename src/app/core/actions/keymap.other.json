@@ -15,6 +15,10 @@
     "Mod+Delete": "edit.deleteWordRight",
     "Mod+y": "edit.redo",
     "Mod+h": "find.replace",
-    "Mod+g": "goto.line"
+    "Mod+g": "goto.line",
+    "Alt+Shift+ArrowLeft": "block.left",
+    "Alt+Shift+ArrowRight": "block.right",
+    "Alt+Shift+ArrowUp": "block.up",
+    "Alt+Shift+ArrowDown": "block.down"
   }
 }

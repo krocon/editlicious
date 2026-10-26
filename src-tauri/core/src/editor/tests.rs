@@ -1,7 +1,7 @@
 //! Tests of the editor session (design 003).
 
 use super::layout::{LineLayout, next_grapheme, prev_grapheme};
-use super::model::{Command, Motion, RunKind};
+use super::model::{CaseChange, Command, Motion, RunKind, SortMode, SortOptions};
 use super::*;
 
 fn session(text: &str) -> Session {
@@ -336,6 +336,7 @@ fn clicks_words_lines_and_drags() {
             cell: 7.2,
             count: 2,
             extend: false,
+            add: false,
         },
     );
     let c = s.cursors()[0];
@@ -345,6 +346,7 @@ fn clicks_words_lines_and_drags() {
         Command::Drag {
             line: 0.2,
             cell: 1.0,
+            column: false,
         },
     );
     let c = s.cursors()[0];
@@ -356,6 +358,7 @@ fn clicks_words_lines_and_drags() {
             cell: 2.0,
             count: 3,
             extend: false,
+            add: false,
         },
     );
     let c = s.cursors()[0];
@@ -367,6 +370,7 @@ fn clicks_words_lines_and_drags() {
             cell: 2.4,
             count: 1,
             extend: false,
+            add: false,
         },
     );
     run(
@@ -376,6 +380,7 @@ fn clicks_words_lines_and_drags() {
             cell: 99.0,
             count: 1,
             extend: true,
+            add: false,
         },
     );
     let f = run(&mut s, Command::Frame);
@@ -390,6 +395,7 @@ fn clicks_words_lines_and_drags() {
             cell: 0.0,
             count: 1,
             extend: false,
+            add: false,
         },
     );
     assert_eq!(caret(&s), (1, 5));
@@ -659,4 +665,210 @@ fn find_far_away_centres_the_match() {
     );
     assert_eq!(caret(&s), (200, 6));
     assert_eq!(f.top, 195.0, "middle of 10 rows");
+}
+
+// ---------------------------------------------------------------- design 007
+
+#[test]
+fn sort_selection_or_document() {
+    let mut s = session("b10\nb9\na\n");
+    let opts = SortOptions::default();
+    run(&mut s, Command::SortLines { options: opts });
+    assert_eq!(text(&s), "a\nb9\nb10\n", "final empty line stays last");
+    run(&mut s, Command::Undo);
+    assert_eq!(text(&s), "b10\nb9\na\n");
+    s.set_cursors(vec![Cursor {
+        anchor: Pos::new(0, 1),
+        head: Pos::new(1, 1),
+        goal: None,
+    }]);
+    run(
+        &mut s,
+        Command::SortLines {
+            options: SortOptions {
+                descending: true,
+                mode: SortMode::Text,
+                ..Default::default()
+            },
+        },
+    );
+    assert_eq!(text(&s), "b9\nb10\na\n");
+}
+
+#[test]
+fn case_of_selection_and_word() {
+    let mut s = session("hello world");
+    put(&mut s, 0, 2);
+    run(
+        &mut s,
+        Command::ChangeCase {
+            to: CaseChange::Toggle,
+        },
+    );
+    assert_eq!(text(&s), "HELLO world");
+    run(&mut s, Command::SelectAll);
+    run(
+        &mut s,
+        Command::ChangeCase {
+            to: CaseChange::Title,
+        },
+    );
+    assert_eq!(text(&s), "Hello World");
+}
+
+#[test]
+fn duplicate_move_delete_join_lines() {
+    let mut s = session("one\ntwo\nthree");
+    put(&mut s, 1, 1);
+    run(&mut s, Command::DuplicateLines);
+    assert_eq!(text(&s), "one\ntwo\ntwo\nthree");
+    assert_eq!(caret(&s), (2, 1));
+    run(&mut s, Command::MoveLines { up: true });
+    run(&mut s, Command::MoveLines { up: true });
+    assert_eq!(text(&s), "two\none\ntwo\nthree");
+    assert_eq!(caret(&s), (0, 1));
+    run(&mut s, Command::MoveLines { up: true });
+    assert_eq!(text(&s), "two\none\ntwo\nthree", "nothing above");
+    put(&mut s, 3, 0);
+    run(&mut s, Command::MoveLines { up: false });
+    assert_eq!(text(&s), "two\none\ntwo\nthree", "nothing below");
+    run(&mut s, Command::DeleteLines);
+    assert_eq!(text(&s), "two\none\ntwo");
+    put(&mut s, 0, 0);
+    run(&mut s, Command::DeleteLines);
+    assert_eq!(text(&s), "one\ntwo");
+    run(&mut s, Command::JoinLines);
+    assert_eq!(text(&s), "one two");
+    assert_eq!(caret(&s), (0, 3));
+}
+
+#[test]
+fn whitespace_commands() {
+    let mut s = session("a  \n\tb\t\n    c");
+    let f = run(&mut s, Command::TrimTrailingWhitespace);
+    assert_eq!(text(&s), "a\n\tb\n    c");
+    assert_eq!(f.notice.as_deref(), Some("trimmed:2"));
+    run(
+        &mut s,
+        Command::Configure {
+            tab_width: Some(4),
+            insert_spaces: None,
+        },
+    );
+    run(&mut s, Command::ConvertIndentation { spaces: true });
+    assert_eq!(text(&s), "a\n    b\n    c");
+    run(&mut s, Command::ConvertIndentation { spaces: false });
+    assert_eq!(text(&s), "a\n\tb\n\tc");
+}
+
+#[test]
+fn column_selection_types_on_every_line() {
+    let mut s = session("abcd\nab\nabcd");
+    put(&mut s, 0, 1);
+    run(&mut s, Command::BlockMove { dx: 0, dy: 2 });
+    let f = run(&mut s, Command::BlockMove { dx: 2, dy: 0 });
+    assert_eq!(f.carets.len(), 3);
+    assert_eq!(f.lines[1].sel, vec![[1, 2]], "short line: up to its end");
+    typ(&mut s, "X");
+    assert_eq!(text(&s), "aXd\naX\naXd");
+    // the cursors stay after typing; Escape goes back to one
+    let f = run(&mut s, Command::Frame);
+    assert!(f.multi);
+    run(&mut s, Command::SingleCursor);
+    assert_eq!(s.cursors().len(), 1);
+}
+
+#[test]
+fn alt_drag_and_alt_click() {
+    let mut s = session("aaaa\nbbbb\ncccc");
+    run(
+        &mut s,
+        Command::Click {
+            line: 0.2,
+            cell: 1.0,
+            count: 1,
+            extend: false,
+            add: false,
+        },
+    );
+    run(
+        &mut s,
+        Command::Drag {
+            line: 2.3,
+            cell: 3.0,
+            column: true,
+        },
+    );
+    assert_eq!(s.cursors().len(), 3);
+    assert_eq!(s.cursors()[2].head, Pos::new(2, 3));
+    run(
+        &mut s,
+        Command::Click {
+            line: 0.0,
+            cell: 0.0,
+            count: 1,
+            extend: false,
+            add: false,
+        },
+    );
+    run(
+        &mut s,
+        Command::Click {
+            line: 2.0,
+            cell: 4.0,
+            count: 1,
+            extend: false,
+            add: true,
+        },
+    );
+    typ(&mut s, "!");
+    assert_eq!(text(&s), "!aaaa\nbbbb\ncccc!");
+}
+
+#[test]
+fn next_occurrence_adds_cursors() {
+    let mut s = session("foo bar foo foo");
+    put(&mut s, 0, 1);
+    run(&mut s, Command::AddNextOccurrence);
+    assert_eq!(s.cursors()[0].end(), Pos::new(0, 3), "word selected first");
+    run(&mut s, Command::AddNextOccurrence);
+    run(&mut s, Command::AddNextOccurrence);
+    assert_eq!(s.cursors().len(), 3);
+    let f = run(&mut s, Command::AddNextOccurrence);
+    assert_eq!(f.notice.as_deref(), Some("no_more_matches"));
+    typ(&mut s, "baz");
+    assert_eq!(text(&s), "baz bar baz baz");
+}
+
+#[test]
+fn paste_one_line_per_cursor() {
+    let mut s = session("a\nb");
+    s.set_cursors(vec![
+        Cursor::caret(Pos::new(0, 1)),
+        Cursor::caret(Pos::new(1, 1)),
+    ]);
+    let mut clip = MemoryClipboard(Some("1\n2\n".into()));
+    s.run(Command::Paste, &mut clip).unwrap();
+    assert_eq!(text(&s), "a1\nb2");
+}
+
+#[test]
+fn markers_colour_words() {
+    let mut s = session("let x = x + xx;");
+    put(&mut s, 0, 4);
+    let f = run(&mut s, Command::ToggleMarker);
+    assert_eq!(
+        f.lines[0].markers,
+        vec![[4, 5, 0], [8, 9, 0]],
+        "whole words only"
+    );
+    put(&mut s, 0, 0);
+    let f = run(&mut s, Command::ToggleMarker);
+    assert_eq!(f.lines[0].markers.len(), 3);
+    assert_eq!(f.lines[0].markers[2], [0, 3, 1]);
+    put(&mut s, 0, 4);
+    let f = run(&mut s, Command::ToggleMarker);
+    assert_eq!(f.lines[0].markers, vec![[0, 3, 1]], "again = unmark");
+    let f = run(&mut s, Command::ClearMarkers);
+    assert!(f.lines[0].markers.is_empty());
 }

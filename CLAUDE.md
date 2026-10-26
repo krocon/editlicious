@@ -73,7 +73,8 @@ src-tauri/                    Rust (Tauri 2), Crate `editlicious`, Lib `ed_lib`
     src/error.rs              FsError { code, message, path }
     src/document/             Rope, load (Encoding/BOM/Zeilenenden), save (atomar), history (Undo), registry, model
     src/search.rs             Suchen/Ersetzen in Zeilenblöcken (regex), Zählen auf Schnappschuss
-    src/editor/               Sitzung (Cursor, Befehle, Scroll, Frames), layout (Zellen, Grapheme), words
+    src/editor/               Sitzung (Cursor, Befehle, Scroll, Frames), layout (Zellen, Grapheme), words,
+                              ops (Sortieren, Groß/klein, Zeilen, Blockauswahl, mehrere Cursor, Marker)
     testdata/document.cases.json  datengetriebene Bearbeitungsfälle
   src/fs_atomic.rs, config_file.rs  atomar schreiben / Konfig laden (aus files-and-folders)
   icons/source/app-icon.svg   Quelle des App-Icons

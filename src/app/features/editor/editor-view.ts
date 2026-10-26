@@ -82,10 +82,14 @@ export class EditorView {
 
   private chain: Promise<unknown> = Promise.resolve();
   private pendingScroll: { lines: number; cells: number } | null = null;
-  private pendingDrag: { line: number; cell: number } | null = null;
+  private pendingDrag: { line: number; cell: number; column: boolean } | null = null;
   private frameRequested = false;
-  private dragging: { autoscroll?: ReturnType<typeof setInterval>; x: number; y: number } | null =
-    null;
+  private dragging: {
+    autoscroll?: ReturnType<typeof setInterval>;
+    x: number;
+    y: number;
+    column: boolean;
+  } | null = null;
 
   // ---------------------------------------------------------------- geometry
 
@@ -178,9 +182,13 @@ export class EditorView {
         'find.replace': { run: () => this.openFind(true) },
         'find.next': { run: () => this.findStep(false) },
         'find.prev': { run: () => this.findStep(true) },
-        'find.close': {
-          run: () => this.closeFind(),
-          enabled: () => f.open() || this.gotoOpen() || !!this.frame()?.search,
+        'edit.escape': {
+          run: () => {
+            if (f.open() || this.gotoOpen() || this.frame()?.search) this.closeFind();
+            else void this.send({ type: 'singleCursor' });
+          },
+          enabled: () =>
+            f.open() || this.gotoOpen() || !!this.frame()?.search || !!this.frame()?.multi,
         },
         'goto.line': { run: () => this.gotoOpen.set(true) },
       },
@@ -332,6 +340,8 @@ export class EditorView {
     } else if (notice === 'no_match') {
       this.findCount.set(FIND_TEXTS.noMatch);
       this.status.set(FIND_TEXTS.noMatch);
+    } else if (notice.startsWith('trimmed:')) {
+      this.status.set(this.texts.trimmed(Number(notice.slice(8))));
     } else if (notice === 'invalid_search') {
       this.findInvalid.set(true);
       this.findCount.set(FIND_TEXTS.invalid);
@@ -354,7 +364,7 @@ export class EditorView {
       if (this.pendingDrag) {
         const d = this.pendingDrag;
         this.pendingDrag = null;
-        void this.send({ type: 'drag', line: d.line, cell: d.cell });
+        void this.send({ type: 'drag', line: d.line, cell: d.cell, column: d.column });
       }
     });
   }
@@ -428,17 +438,25 @@ export class EditorView {
     this.focus();
     const p = this.pointAt(e.clientX, e.clientY);
     const count = gutter ? 3 : Math.min(3, Math.max(1, e.detail));
-    void this.send({ type: 'click', line: p.line, cell: p.cell, count, extend: e.shiftKey });
+    void this.send({
+      type: 'click',
+      line: p.line,
+      cell: p.cell,
+      count,
+      extend: e.shiftKey,
+      add: e.altKey && !gutter,
+    });
     this.startDrag(e);
   }
 
   private startDrag(e: MouseEvent): void {
     this.stopDrag();
-    this.dragging = { x: e.clientX, y: e.clientY };
+    this.dragging = { x: e.clientX, y: e.clientY, column: e.altKey };
     const move = (ev: MouseEvent) => {
       if (!this.dragging) return;
       this.dragging.x = ev.clientX;
       this.dragging.y = ev.clientY;
+      this.dragging.column = ev.altKey;
       this.queueDrag();
     };
     const up = () => {
@@ -461,7 +479,10 @@ export class EditorView {
 
   private queueDrag(): void {
     if (!this.dragging) return;
-    this.pendingDrag = this.pointAt(this.dragging.x, this.dragging.y);
+    this.pendingDrag = {
+      ...this.pointAt(this.dragging.x, this.dragging.y),
+      column: this.dragging.column,
+    };
     this.schedule();
   }
 

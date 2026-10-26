@@ -34,6 +34,14 @@
         @for (s of line.sel; track $index) {
           <div class="sel" [style.left.px]="x(s[0])" [style.width.px]="x(s[1]) - x(s[0])"></div>
         }
+        @for (m of line.markers; track $index) {
+          <div
+            class="marker"
+            [attr.data-colour]="m[2]"
+            [style.left.px]="x(m[0])"
+            [style.width.px]="x(m[1]) - x(m[0])"
+          ></div>
+        }
         @for (m of line.marks; track $index) {
           <div
             class="mark"

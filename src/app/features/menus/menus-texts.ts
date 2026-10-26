@@ -8,6 +8,8 @@ export const MENUS_TEXTS = {
   recent: 'Open recent',
   switchTo: 'Switch to',
   tabs: 'Tabs',
+  lines: 'Lines',
+  case: 'Case',
   noRecent: 'No recent files',
   paletteTitle: 'Command palette',
   palettePlaceholder: 'Type a command…',
