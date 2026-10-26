@@ -385,3 +385,57 @@
     repeating-conic-gradient(#c8c8c8 0% 25%, #ffffff 0% 50%) 0 0 / 8px 8px;
   cursor: pointer;
 }
+
+/* arithmetic hint and suggestions (prompt 020): small, below the expression, never in the way */
+.hint,
+.completion {
+  position: absolute;
+  z-index: 5;
+  font: inherit;
+  font-size: 0.9em;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius, 4px);
+  box-shadow: var(--shadow-popup);
+  white-space: nowrap;
+}
+
+.hint {
+  padding: 2px 8px;
+  pointer-events: none;
+
+  .hex {
+    margin-left: 1em;
+    color: var(--color-text-muted);
+  }
+}
+
+.completion {
+  margin: 0;
+  padding: 2px;
+  list-style: none;
+  min-width: 12ch;
+
+  li {
+    display: flex;
+    gap: 2em;
+    justify-content: space-between;
+    padding: 1px 8px;
+    border-radius: var(--radius, 4px);
+    cursor: default;
+
+    &.active {
+      background: var(--color-accent);
+      color: var(--color-accent-text);
+
+      .kind {
+        color: inherit;
+      }
+    }
+  }
+
+  .kind {
+    color: var(--color-text-muted);
+  }
+}

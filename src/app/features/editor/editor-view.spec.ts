@@ -82,6 +82,7 @@ describe('EditorView', () => {
       wrap: false,
       colors: true,
       expandWeights: {},
+      math: { hints: true, suggest: true, decimals: null, comma: false },
     });
     // one guide per indent step, none at the left edge
     expect(el.querySelectorAll('.row')[2].querySelectorAll('.guide').length).toBe(1);
@@ -100,6 +101,7 @@ describe('EditorView', () => {
       wrap: false,
       colors: true,
       expandWeights: {},
+      math: { hints: true, suggest: true, decimals: null, comma: false },
     });
     settings.update({ lineNumbers: 'off', indentGuides: false });
     await fixture.whenStable();
@@ -412,5 +414,107 @@ describe('EditorView copy as HTML with markers (design 019)', () => {
     const cmd = api.sent('copyHtml').at(-1) as Extract<Command, { type: 'copyHtml' }>;
     expect(cmd.markers?.length).toBe(10);
     expect(typeof cmd.background).toBe('string');
+  });
+});
+
+describe('EditorView – arithmetic (prompt 020)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    cleanups.splice(0).forEach((f) => f());
+  });
+
+  it('configures the engine from the settings', async () => {
+    const { api } = await setup();
+    const c = api.sent('configure').at(-1) as Extract<Command, { type: 'configure' }>;
+    expect(c.math).toEqual({ hints: true, suggest: true, decimals: null, comma: false });
+  });
+
+  it('shows the hint below the expression while focused; Esc hides it', async () => {
+    const api = new FakeEditorApi();
+    api.nextFrame = textFrame(['255/8'], {
+      hint: { line: 0, cell: 0, expr: '255 / 8', result: '31.875', hex: null },
+    });
+    const { fixture, el } = await setup(api);
+    const input = el.querySelector('textarea')!;
+    input.blur();
+    await fixture.whenStable();
+    expect(el.querySelector('.hint')).toBeNull();
+    input.focus();
+    await fixture.whenStable();
+    const hint = el.querySelector('.hint')!;
+    expect(hint.getAttribute('role')).toBe('tooltip');
+    expect(hint.textContent?.trim()).toBe('255 / 8 = 31.875');
+    expect(input.getAttribute('aria-describedby')).toBe('math-hint');
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await fixture.whenStable();
+    expect(el.querySelector('.hint')).toBeNull();
+    expect(api.sent('singleCursor').length).toBe(0);
+  });
+
+  it('says “not defined” for results without a value', async () => {
+    const api = new FakeEditorApi();
+    api.nextFrame = textFrame(['1/0'], {
+      hint: { line: 0, cell: 0, expr: '1 / 0', result: null, hex: null },
+    });
+    const { fixture, el } = await setup(api);
+    el.querySelector('textarea')!.focus();
+    await fixture.whenStable();
+    expect(el.querySelector('.hint')?.textContent).toContain('1 / 0 = not defined');
+  });
+
+  it('the suggestion list follows the keys (APG listbox) and takes the chosen entry', async () => {
+    const api = new FakeEditorApi();
+    api.nextFrame = textFrame(['255/8='], {
+      completion: {
+        line: 0,
+        items: [
+          { kind: 'result', label: '31.875' },
+          { kind: 'replace', label: '31.875' },
+          { kind: 'rounded', label: '31.88' },
+        ],
+      },
+    });
+    const { fixture, el } = await setup(api);
+    TestBed.inject(KeyboardDispatcher).setContextProvider(() =>
+      el.hasAttribute('data-completion')
+        ? ['completion', 'editor', 'global']
+        : ['editor', 'global'],
+    );
+    expect(el.hasAttribute('data-completion')).toBe(true);
+    const list = el.querySelector('[role="listbox"]')!;
+    const options = list.querySelectorAll('[role="option"]');
+    expect(options.length).toBe(3);
+    expect(options[2].textContent).toContain('rounded');
+    const input = el.querySelector('textarea')!;
+    expect(input.getAttribute('aria-activedescendant')).toBe('completion-0');
+    const key = (k: string) =>
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
+    key('ArrowDown');
+    key('ArrowDown');
+    key('ArrowDown');
+    key('ArrowUp');
+    await fixture.whenStable();
+    expect(input.getAttribute('aria-activedescendant')).toBe('completion-2');
+    expect(api.sent('move').length).toBe(0);
+    key('Tab');
+    await flush();
+    expect(api.sent('applyCompletion').at(-1)).toEqual({ type: 'applyCompletion', index: 2 });
+    expect(api.sent('indent').length).toBe(0);
+    key('Escape');
+    await flush();
+    expect(api.sent('closeCompletion').length).toBe(1);
+  });
+
+  it('a click takes an entry', async () => {
+    const api = new FakeEditorApi();
+    api.nextFrame = textFrame(['1+1='], {
+      completion: { line: 0, items: [{ kind: 'result', label: '2' }] },
+    });
+    const { el } = await setup(api);
+    el.querySelector('[role="option"]')!.dispatchEvent(
+      new MouseEvent('mousedown', { bubbles: true }),
+    );
+    await flush();
+    expect(api.sent('applyCompletion')).toEqual([{ type: 'applyCompletion', index: 0 }]);
   });
 });

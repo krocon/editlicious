@@ -251,6 +251,7 @@ fn backspace_removes_a_soft_tab() {
             wrap: None,
             colors: None,
             expand_weights: None,
+            math: None,
         },
     );
     put(&mut s, 0, 0);
@@ -286,6 +287,7 @@ fn indent_and_outdent_lines() {
             wrap: None,
             colors: None,
             expand_weights: None,
+            math: None,
         },
     );
     s.set_cursors(vec![Cursor {
@@ -765,6 +767,7 @@ fn whitespace_commands() {
             wrap: None,
             colors: None,
             expand_weights: None,
+            math: None,
         },
     );
     run(&mut s, Command::ConvertIndentation { spaces: true });
@@ -977,6 +980,7 @@ fn configure_detect_follows_the_file() {
             wrap: None,
             colors: None,
             expand_weights: None,
+            math: None,
         },
     );
     assert!(f.insert_spaces);
@@ -992,6 +996,7 @@ fn configure_detect_follows_the_file() {
             wrap: None,
             colors: None,
             expand_weights: None,
+            math: None,
         },
     );
     assert!(!f.insert_spaces);
@@ -1007,6 +1012,7 @@ fn configure_detect_follows_the_file() {
             wrap: None,
             colors: None,
             expand_weights: None,
+            math: None,
         },
     );
     assert!(!f.insert_spaces);
@@ -1025,6 +1031,7 @@ fn frame_lines_carry_their_indentation() {
             wrap: None,
             colors: None,
             expand_weights: None,
+            math: None,
         },
     );
     let f = run(&mut s, Command::Frame);
@@ -1047,6 +1054,7 @@ fn wrapped(text: &str, lines: f64, cols: f64) -> Session {
             wrap: Some(true),
             colors: None,
             expand_weights: None,
+            math: None,
         },
     );
     s
@@ -1164,6 +1172,7 @@ fn wrap_scrolls_and_clicks_by_rows() {
             wrap: Some(false),
             colors: None,
             expand_weights: None,
+            math: None,
         },
     );
     let f = run(&mut s, Command::Frame);
@@ -1310,6 +1319,7 @@ fn measure_wrap_and_line_endings() {
             wrap: Some(true),
             colors: None,
             expand_weights: None,
+            math: None,
         },
     );
     let t = Instant::now();
@@ -1361,6 +1371,7 @@ fn wrap_width_follows_the_view() {
             wrap: Some(true),
             colors: None,
             expand_weights: None,
+            math: None,
         },
         &mut clip,
     )
@@ -1494,6 +1505,7 @@ fn colour_swatches_and_converting() {
             wrap: None,
             colors: Some(false),
             expand_weights: None,
+            math: None,
         },
     );
     assert!(f.lines.iter().all(|l| l.colors.is_empty()));
@@ -1536,6 +1548,7 @@ fn measure_colours_per_frame() {
             wrap: None,
             colors: Some(false),
             expand_weights: None,
+            math: None,
         },
     );
     run(
@@ -1698,6 +1711,7 @@ fn custom_weights_from_the_settings() {
             wrap: None,
             colors: None,
             expand_weights: Some(w),
+            math: None,
         },
     );
     assert_eq!(dbl(&mut s, 0, 0), "a");
@@ -1836,4 +1850,159 @@ fn whitespace_is_not_marked() {
     run(&mut s, Command::SetMarker { colour: 3 });
     let f = run(&mut s, Command::Frame);
     assert!(f.marker_words.iter().all(Option::is_none));
+}
+
+// ---------------------------------------------------------------- arithmetic (prompt 020)
+
+#[test]
+fn math_hint_at_the_caret() {
+    let mut s = session("x = 3\n");
+    put(&mut s, 1, 0);
+    typ(&mut s, "255/8");
+    let f = run(&mut s, Command::Frame);
+    let h = f.hint.expect("hint");
+    assert_eq!((h.line, h.cell, h.expr.as_str()), (1, 0, "255 / 8"));
+    assert_eq!(h.result.as_deref(), Some("31.875"));
+    assert!(f.completion.is_none());
+    // variables of the lines above
+    typ(&mut s, " + 2x");
+    let h = run(&mut s, Command::Frame).hint.unwrap();
+    assert_eq!(h.result.as_deref(), Some("37.875"));
+    // too large: ∞; division by zero: "not defined"
+    let mut z = session("");
+    typ(&mut z, "fac(171)+1");
+    assert_eq!(
+        run(&mut z, Command::Frame).hint.unwrap().result.as_deref(),
+        Some("∞")
+    );
+    let mut z = session("");
+    typ(&mut z, "1/0");
+    assert_eq!(run(&mut z, Command::Frame).hint.unwrap().result, None);
+    // no hint for data
+    let mut d = session("");
+    typ(&mut d, "2026-10-26");
+    assert!(run(&mut d, Command::Frame).hint.is_none());
+}
+
+#[test]
+fn equals_offers_the_result_and_taking_it_is_one_undo_step() {
+    let mut s = session("");
+    typ(&mut s, "(1+2)*3=");
+    let f = run(&mut s, Command::Frame);
+    let c = f.completion.expect("suggestions after =");
+    assert_eq!(c.items[0].label, "9");
+    assert!(f.hint.is_none(), "the list replaces the hint");
+    run(&mut s, Command::ApplyCompletion { index: 0 });
+    assert_eq!(text(&s), "(1+2)*3=9");
+    assert_eq!(caret(&s), (0, 9));
+    assert!(run(&mut s, Command::Frame).completion.is_none());
+    run(&mut s, Command::Undo);
+    assert_eq!(text(&s), "(1+2)*3=");
+    // 2^3^2 = 512; typing on closes the list
+    let mut s = session("");
+    typ(&mut s, "2^3^2=");
+    assert_eq!(
+        run(&mut s, Command::Frame).completion.unwrap().items[0].label,
+        "512"
+    );
+    typ(&mut s, " ");
+    assert!(run(&mut s, Command::Frame).completion.is_none());
+    // replace the expression by its result
+    let mut s = session("");
+    typ(&mut s, "255/8=");
+    let items = run(&mut s, Command::Frame).completion.unwrap().items;
+    let i = items.iter().position(|i| i.kind == "replace").unwrap();
+    run(&mut s, Command::ApplyCompletion { index: i });
+    assert_eq!(text(&s), "31.875");
+}
+
+#[test]
+fn complete_evaluate_and_copy_result() {
+    let mut s = session("a 255/8 b");
+    put(&mut s, 0, 7);
+    let f = run(&mut s, Command::Complete);
+    let labels: Vec<_> = f
+        .completion
+        .unwrap()
+        .items
+        .into_iter()
+        .map(|i| i.label)
+        .collect();
+    assert_eq!(labels, ["= 31.875", "31.875", "31.88"]);
+    run(&mut s, Command::CloseCompletion);
+    let mut clip = MemoryClipboard::default();
+    let f = s.run(Command::CopyResult, &mut clip).unwrap();
+    assert_eq!(f.notice.as_deref(), Some("result_copied"));
+    assert_eq!(clip.get().as_deref(), Some("31.875"));
+    run(&mut s, Command::Evaluate);
+    assert_eq!(text(&s), "a 31.875 b");
+    assert_eq!(caret(&s), (0, 8));
+    run(&mut s, Command::Undo);
+    assert_eq!(text(&s), "a 255/8 b");
+    // nothing there
+    put(&mut s, 0, 1);
+    assert_eq!(
+        run(&mut s, Command::Complete).notice.as_deref(),
+        Some("no_expression")
+    );
+    assert_eq!(
+        run(&mut s, Command::Evaluate).notice.as_deref(),
+        Some("no_expression")
+    );
+    // switched off: no hint, no list after "="
+    run(
+        &mut s,
+        Command::Configure {
+            tab_width: None,
+            insert_spaces: None,
+            detect: false,
+            wrap: None,
+            colors: None,
+            expand_weights: None,
+            math: Some(model::MathConfig {
+                hints: false,
+                suggest: false,
+                decimals: Some(1),
+                comma: true,
+            }),
+        },
+    );
+    put(&mut s, 0, 7);
+    assert!(run(&mut s, Command::Frame).hint.is_none());
+    typ(&mut s, "=");
+    assert!(run(&mut s, Command::Frame).completion.is_none());
+    // the settings shape the result
+    let f = run(&mut s, Command::Complete);
+    assert_eq!(f.completion.unwrap().items[0].label, "31,9");
+}
+
+#[test]
+fn completion_is_dropped_when_the_text_changed() {
+    let mut s = session("");
+    typ(&mut s, "1+1=");
+    run(&mut s, Command::Frame);
+    // an edit that does not close the list on its own way (undo) makes it stale
+    run(&mut s, Command::Undo);
+    assert!(
+        run(&mut s, Command::ApplyCompletion { index: 0 })
+            .completion
+            .is_none()
+    );
+    assert!(!text(&s).contains('2'));
+}
+
+#[test]
+fn arithmetic_is_recorded_as_the_edit_it_makes() {
+    let mut s = session("");
+    s.start_recording("test");
+    typ(&mut s, "(1+2)*3=");
+    run(&mut s, Command::ApplyCompletion { index: 0 });
+    run(&mut s, Command::Complete);
+    run(&mut s, Command::CloseCompletion);
+    let rec = s.stop_recording().unwrap();
+    let cmds: Vec<_> = rec.steps.iter().map(|s| &s.cmd).collect();
+    assert!(matches!(cmds[0], Command::Type { .. }));
+    assert!(matches!(cmds[1], Command::Select { .. }));
+    assert_eq!(cmds[2], &Command::Insert { text: "9".into() });
+    assert_eq!(cmds.len(), 3);
 }

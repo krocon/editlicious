@@ -55,6 +55,9 @@ export class SettingsDialog {
     return (e.target as HTMLInputElement).checked;
   }
 
+  /** Decimal places of results (prompt 020); -1 = as needed. */
+  protected readonly decimals = [-1, 0, 1, 2, 3, 4, 6, 8];
+
   protected number(e: Event, fallback: number): number {
     const n = Number((e.target as HTMLInputElement).value);
     return Number.isFinite(n) && n > 0 ? Math.round(n) : fallback;

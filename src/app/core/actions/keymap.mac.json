@@ -4,6 +4,7 @@
     "Mod+Ctrl+f": "view.fullscreen"
   },
   "editor": {
+    "Alt+Escape": "edit.complete",
     "Alt+ArrowLeft": "cursor.wordLeft",
     "Alt+ArrowRight": "cursor.wordRight",
     "Alt+Shift+ArrowLeft": "select.wordLeft",

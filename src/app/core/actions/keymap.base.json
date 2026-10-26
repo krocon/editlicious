@@ -88,6 +88,14 @@
     "Mod+Shift+F8": "edit.clearMarkers",
     "F7": "edit.markerNext",
     "Shift+F7": "edit.markerPrev",
-    "Mod+Shift+c": "edit.copyHtml"
+    "Mod+Shift+c": "edit.copyHtml",
+    "Ctrl+Space": "edit.complete"
+  },
+  "completion": {
+    "ArrowDown": "completion.next",
+    "ArrowUp": "completion.prev",
+    "Enter": "completion.accept",
+    "Tab": "completion.accept",
+    "Escape": "completion.close"
   }
 }

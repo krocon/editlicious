@@ -81,6 +81,8 @@ export function textFrame(lines: string[], over: Partial<Frame> = {}): Frame {
     caretColor: null,
     markerWords: [],
     caretMarker: null,
+    hint: null,
+    completion: null,
     ...over,
   };
 }

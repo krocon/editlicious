@@ -7,7 +7,8 @@ import { Command, Motion } from '../editor/editor.models';
  * the Rust engine does the work, the action only names it.
  * Texts here (English = source; German follows in prompt 009).
  */
-export type ActionContext = 'global' | 'editor';
+/** `completion`: the suggestion list of the editor is open (prompt 020) – before `editor`. */
+export type ActionContext = 'global' | 'editor' | 'completion';
 
 export interface ActionDef {
   id: string;
@@ -39,6 +40,14 @@ const E = (id: string, label: string, cmd: Command, extra: Partial<ActionDef> = 
   label,
   context: 'editor',
   cmd,
+  ...extra,
+});
+
+const C = (id: string, label: string, extra: Partial<ActionDef> = {}): ActionDef => ({
+  id,
+  label,
+  context: 'completion',
+  palette: false,
   ...extra,
 });
 
@@ -202,6 +211,14 @@ export const ACTIONS: readonly ActionDef[] = [
   ),
   E('edit.toggleMarker', 'Mark word', { type: 'toggleMarker' }),
   E('edit.convertColor', 'Convert colour value (#hex / rgb / hsl)', { type: 'convertColor' }),
+  // arithmetic (prompt 020)
+  E('edit.complete', 'Show suggestions', { type: 'complete' }),
+  E('edit.evaluate', 'Calculate and replace the expression', { type: 'evaluate' }),
+  E('edit.copyResult', 'Copy the result of the expression', { type: 'copyResult' }),
+  C('completion.next', 'Next suggestion', { repeat: true }),
+  C('completion.prev', 'Previous suggestion', { repeat: true }),
+  C('completion.accept', 'Take the suggestion'),
+  C('completion.close', 'Close the suggestions'),
   E('edit.clearMarkers', 'Clear all marks', { type: 'clearMarkers' }),
   // markers (design 019)
   E(

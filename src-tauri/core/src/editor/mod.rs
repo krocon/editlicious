@@ -4,6 +4,7 @@
 
 pub mod colors;
 pub mod expand;
+pub mod hints;
 pub mod layout;
 pub mod model;
 mod ops;
@@ -135,6 +136,9 @@ pub struct Session {
     /// selection is, at which text revision.
     expansion: Option<Expansion>,
     weights: expand::Weights,
+    /// Arithmetic hints and the open suggestion list (prompt 020).
+    math: hints::MathOptions,
+    completion: Option<OpenCompletion>,
     /// Colour swatches on (design 018) and whether one ever showed (the gutter column stays).
     colors: bool,
     color_column: bool,
@@ -142,6 +146,14 @@ pub struct Session {
     recorder: Option<recording::Recorder>,
     /// … and the last finished one (save it, play it again as a macro).
     last_recording: Option<recording::Recording>,
+}
+
+/// Suggestions shown for a line (prompt 020).
+#[derive(Debug, Clone)]
+struct OpenCompletion {
+    line: usize,
+    items: Vec<hints::Suggestion>,
+    revision: u64,
 }
 
 /// The steps of a progressive selection and the current one (prompt 018a).
@@ -185,6 +197,8 @@ impl Session {
             color_column: false,
             expansion: None,
             weights: expand::Weights::default(),
+            math: hints::MathOptions::default(),
+            completion: None,
             recorder: None,
             last_recording: None,
         }
@@ -241,14 +255,66 @@ impl Session {
             return self.run_inner(cmd, clip);
         }
         let pasted = matches!(cmd, Command::Paste).then(|| clip.get()).flatten();
+        // arithmetic depends on settings and the open list: kept as the edit it makes (prompt 020)
+        let math = matches!(
+            cmd,
+            Command::Complete
+                | Command::CloseCompletion
+                | Command::ApplyCompletion { .. }
+                | Command::Evaluate
+        );
+        let math_edit = if math {
+            self.planned_math_edit(&cmd)
+        } else {
+            None
+        };
         let kept = cmd.clone();
         let frame = self.run_inner(cmd, clip)?;
         let sels = self.sels_primary_last();
         let wrap = self.wrap;
         if let Some(r) = self.recorder.as_mut() {
-            r.keep(kept, pasted, sels, wrap);
+            if let Some((line, from, to, text)) = math_edit {
+                let range = vec![Sel {
+                    anchor: Pos::new(line, from),
+                    head: Pos::new(line, to),
+                }];
+                r.keep(
+                    Command::Select {
+                        sels: range.clone(),
+                    },
+                    None,
+                    range,
+                    wrap,
+                );
+                r.keep(Command::Insert { text }, None, sels, wrap);
+            } else if !math {
+                r.keep(kept, pasted, sels, wrap);
+            }
         }
         Ok(frame)
+    }
+
+    /// The change `ApplyCompletion`/`Evaluate` will make: line, characters `from..to`, text.
+    fn planned_math_edit(&self, cmd: &Command) -> Option<(usize, usize, usize, String)> {
+        match cmd {
+            Command::ApplyCompletion { index } => {
+                let c = self.completion.as_ref()?;
+                let s = c.items.get(*index)?;
+                (c.revision == self.doc.revision()).then(|| (c.line, s.from, s.to, s.text.clone()))
+            }
+            Command::Evaluate => {
+                let (line, f) = self.math_at_caret()?;
+                f.value.is_finite().then(|| {
+                    let to = if f.eq {
+                        self.primary().head.ch.max(f.to)
+                    } else {
+                        f.to
+                    };
+                    (line, f.from, to, hints::result_text(f.value, &self.math))
+                })
+            }
+            _ => None,
+        }
     }
 
     /// The selections with the primary one last (as [`Command::Select`] wants them).
@@ -304,6 +370,9 @@ impl Session {
         let mut reveal = Reveal::Margin;
         let mut keep_block = false;
         let mut keep_expansion = cmd.is_view_only();
+        let mut keep_completion =
+            cmd.is_view_only() || matches!(cmd, Command::Complete | Command::CloseCompletion);
+        let typed_eq = matches!(&cmd, Command::Type { text } if text.ends_with('='));
         match cmd {
             Command::Frame => reveal = Reveal::No,
             Command::Resize { lines, cols } => {
@@ -319,7 +388,16 @@ impl Session {
                 wrap,
                 colors,
                 expand_weights,
+                math,
             } => {
+                if let Some(m) = math {
+                    self.math = hints::MathOptions {
+                        hints: m.hints,
+                        suggest: m.suggest,
+                        decimals: m.decimals.map(|d| d.min(12)),
+                        comma: m.comma,
+                    };
+                }
                 if let Some(w) = expand_weights {
                     self.weights = expand::Weights::with(&w);
                 }
@@ -563,6 +641,40 @@ impl Session {
                 reveal = Reveal::No;
             }
             Command::ConvertColor => self.convert_color()?,
+            Command::Complete => {
+                self.open_completion(true);
+                reveal = Reveal::No;
+            }
+            Command::ApplyCompletion { index } => self.apply_completion(index)?,
+            Command::CloseCompletion => {
+                self.completion = None;
+                reveal = Reveal::No;
+            }
+            Command::Evaluate => {
+                if let Some((line, f)) = self.math_at_caret()
+                    && f.value.is_finite()
+                {
+                    let caret = self.primary().head.ch;
+                    let to = if f.eq { caret.max(f.to) } else { f.to };
+                    let text = hints::result_text(f.value, &self.math);
+                    self.replace_in_line(line, f.from, to, &text)?;
+                } else {
+                    self.notice = Some("no_expression".into());
+                }
+            }
+            Command::CopyResult => {
+                match self.math_at_caret().filter(|(_, f)| f.value.is_finite()) {
+                    Some((_, f)) => {
+                        if !clip.set(hints::result_text(f.value, &self.math)) {
+                            self.notice = Some("clipboard_failed".into());
+                        } else {
+                            self.notice = Some("result_copied".into());
+                        }
+                    }
+                    None => self.notice = Some("no_expression".into()),
+                }
+                reveal = Reveal::No;
+            }
             Command::Select { sels } => {
                 if !sels.is_empty() {
                     let n = sels.len();
@@ -585,6 +697,14 @@ impl Session {
         if !keep_expansion {
             // moved, typed, dragged …: the next double click starts with the word again
             self.expansion = None;
+        }
+        if typed_eq && self.math.suggest {
+            // "255/8 =" – the result is offered right away (prompt 020)
+            self.open_completion(false);
+            keep_completion = self.completion.is_some();
+        }
+        if !keep_completion {
+            self.completion = None;
         }
         self.clamp_scroll();
         match reveal {
@@ -1729,7 +1849,115 @@ impl Session {
                 .map(|m| m.as_ref().map(|(t, _)| t.clone()))
                 .collect(),
             caret_marker: self.marker_at_caret().map(|(i, _, _)| i),
+            hint: self.math_hint(),
+            completion: self.completion.as_ref().map(|c| model::Completion {
+                line: c.line,
+                items: c
+                    .items
+                    .iter()
+                    .map(|s| model::CompletionItem {
+                        kind: s.kind.into(),
+                        label: s.label.clone(),
+                    })
+                    .collect(),
+            }),
         }
+    }
+
+    /// The expression at the primary caret (one caret, no long line).
+    fn math_at_caret(&self) -> Option<(usize, hints::Found)> {
+        if self.cursors.len() != 1 {
+            return None;
+        }
+        let c = self.primary();
+        let line = c.head.line;
+        if self.doc.is_long(line) || (!c.is_empty() && c.start().line != c.end().line) {
+            return None;
+        }
+        let text = self.doc.line_string(line);
+        let sel = (!c.is_empty()).then(|| (c.start().ch, c.end().ch));
+        // variables: `name = …` in the lines above
+        let from = line.saturating_sub(200);
+        let above: Vec<String> = (from..line)
+            .map(|l| self.doc.line_slice(l, 0, 200))
+            .filter(|t| t.contains('='))
+            .collect();
+        let vars = hints::vars_of(above.iter().map(String::as_str));
+        hints::find(&text, c.head.ch, sel, &vars).map(|f| (line, f))
+    }
+
+    fn math_hint(&self) -> Option<model::MathHint> {
+        if !self.math.hints || self.completion.is_some() {
+            return None;
+        }
+        let (line, f) = self.math_at_caret()?;
+        Some(model::MathHint {
+            line,
+            cell: self.cell_of(Pos::new(line, f.from)),
+            expr: f.shown,
+            result: (!f.value.is_nan()).then(|| hints::result_text(f.value, &self.math)),
+            hex: hints::hex(f.value),
+        })
+    }
+
+    /// Opens the suggestions for the expression at the caret; `notice` when there is none.
+    fn open_completion(&mut self, notice: bool) {
+        let found = self.math_at_caret();
+        let items = found
+            .as_ref()
+            .map(|(_, f)| hints::suggestions(f, self.primary().head.ch, &self.math))
+            .unwrap_or_default();
+        match found {
+            Some((line, _)) if !items.is_empty() => {
+                self.completion = Some(OpenCompletion {
+                    line,
+                    items,
+                    revision: self.doc.revision(),
+                });
+            }
+            _ => {
+                self.completion = None;
+                if notice {
+                    self.notice = Some("no_expression".into());
+                }
+            }
+        }
+    }
+
+    fn apply_completion(&mut self, index: usize) -> Result<(), FsError> {
+        let Some(c) = self.completion.take() else {
+            return Ok(());
+        };
+        if c.revision != self.doc.revision() {
+            return Ok(());
+        }
+        let Some(s) = c.items.get(index) else {
+            return Ok(());
+        };
+        self.replace_in_line(c.line, s.from, s.to, &s.text.clone())
+    }
+
+    /// Replaces characters `from..to` of a line, caret behind the new text, one undo step.
+    fn replace_in_line(
+        &mut self,
+        line: usize,
+        from: usize,
+        to: usize,
+        text: &str,
+    ) -> Result<(), FsError> {
+        let end = Pos::new(line, from + text.chars().count());
+        let sels = self.doc.apply(EditRequest {
+            changes: vec![Change {
+                from: Pos::new(line, from),
+                to: Pos::new(line, to),
+                text: text.to_owned(),
+            }],
+            kind: EditKind::Other,
+            sel_before: self.sels(),
+            sel_after: Some(vec![Sel::caret(end)]),
+        })?;
+        self.cursors_from(sels);
+        Ok(())
     }
 
     /// The regex of the marked word at the primary caret and a snapshot of the text – counted

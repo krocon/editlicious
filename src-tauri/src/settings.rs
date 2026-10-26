@@ -54,6 +54,14 @@ pub struct Settings {
     /// ffmpeg for the video export (design 017); empty = the one on the PATH.
     #[serde(default)]
     pub ffmpeg_path: String,
+    /// Results of arithmetic as a hint below the expression (prompt 020).
+    pub math_hints: bool,
+    /// Results offered as suggestions (after `=` or Ctrl+Space).
+    pub math_suggest: bool,
+    /// Fixed decimal places of results; -1 = as needed.
+    pub math_decimals: i32,
+    /// Decimal separator of results: `auto` (by language), `point`, `comma`.
+    pub decimal_separator: String,
 }
 
 impl Default for Settings {
@@ -80,6 +88,10 @@ impl Default for Settings {
             expand_weights: Default::default(),
             mcp: false,
             ffmpeg_path: String::new(),
+            math_hints: true,
+            math_suggest: true,
+            math_decimals: -1,
+            decimal_separator: "auto".into(),
         }
     }
 }
@@ -129,6 +141,12 @@ pub fn sanitize(mut s: Settings) -> Settings {
     while s.expand_weights.len() > 64 {
         s.expand_weights.pop_last();
     }
+    s.math_decimals = s.math_decimals.clamp(-1, 12);
+    one_of(
+        &mut s.decimal_separator,
+        &["auto", "point", "comma"],
+        &d.decimal_separator,
+    );
     if s.ffmpeg_path.len() > 1000 || s.ffmpeg_path.contains('\0') {
         s.ffmpeg_path = String::new();
     }
@@ -176,6 +194,15 @@ mod tests {
         w.expand_weights.insert(".".into(), 99.0);
         let w = sanitize(w);
         assert_eq!(w.expand_weights.keys().collect::<Vec<_>>(), ["_"]);
+        let m = sanitize(Settings {
+            math_decimals: 40,
+            decimal_separator: "dot".into(),
+            ..Default::default()
+        });
+        assert_eq!(
+            (m.math_decimals, m.decimal_separator.as_str()),
+            (12, "auto")
+        );
         assert_eq!(load(dir.path()).value, saved);
     }
 

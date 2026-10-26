@@ -145,6 +145,54 @@
     </fieldset>
 
     <fieldset>
+      <legend>{{ t.math }}</legend>
+      <label class="check">
+        <input
+          type="checkbox"
+          [checked]="s.mathHints"
+          (change)="set('mathHints', checked($event))"
+        />
+        {{ t.mathHints }}
+      </label>
+      <label class="check">
+        <input
+          type="checkbox"
+          [checked]="s.mathSuggest"
+          (change)="set('mathSuggest', checked($event))"
+        />
+        {{ t.mathSuggest }}
+      </label>
+      <label class="row" for="set-decimals">
+        <span>{{ t.mathDecimals }}</span>
+        <select
+          id="set-decimals"
+          class="input"
+          [value]="'' + s.mathDecimals"
+          (change)="set('mathDecimals', +value($event))"
+        >
+          @for (n of decimals; track n) {
+            <option [value]="'' + n" [selected]="n === s.mathDecimals">
+              {{ n < 0 ? t.mathDecimalsAuto : n }}
+            </option>
+          }
+        </select>
+      </label>
+      <label class="row" for="set-separator">
+        <span>{{ t.decimalSeparator }}</span>
+        <select
+          id="set-separator"
+          class="input"
+          [value]="s.decimalSeparator"
+          (change)="set('decimalSeparator', $any(value($event)))"
+        >
+          <option value="auto">{{ t.separatorAuto }}</option>
+          <option value="point">{{ t.separatorPoint }}</option>
+          <option value="comma">{{ t.separatorComma }}</option>
+        </select>
+      </label>
+    </fieldset>
+
+    <fieldset>
       <legend>{{ t.appearance }}</legend>
       <label class="row" for="set-scheme">
         <span>{{ t.scheme }}</span>

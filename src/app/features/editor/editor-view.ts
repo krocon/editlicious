@@ -29,6 +29,7 @@ import { GotoBar } from '../find/goto-bar';
 import { PickService } from '../../shared/pick/pick.service';
 import { MENUS_TEXTS } from '../menus/menus-texts';
 import { SettingsStore } from '../settings/settings.store';
+import { language } from '../../core/i18n/i18n';
 
 /** Cells of padding left of the text. */
 const PAD_CELLS = 1;
@@ -70,6 +71,7 @@ export function clickCount(detail: number): number {
     '[class.no-current]': '!settings.settings().highlightCurrentLine',
     '[class.no-tabs]': '!settings.settings().showTabs',
     '(wheel)': 'onWheel($event)',
+    '[attr.data-completion]': 'completionBox() ? "" : null',
   },
 })
 export class EditorView {
@@ -215,6 +217,107 @@ export class EditorView {
     return this.caretPx(f.primary);
   });
 
+  // ---------------------------------------------------------------- arithmetic (prompt 020)
+
+  /** The hint key the user closed with Esc or by scrolling (it comes back when it changes). */
+  private readonly hiddenHint = signal('');
+  /** The chosen suggestion. */
+  protected readonly completionIndex = signal(0);
+
+  private hintKey(f: Frame | null): string {
+    const h = f?.hint;
+    return h ? `${f.info.id}/${h.line}/${h.cell}/${h.expr}` : '';
+  }
+
+  /** The arithmetic hint below its expression, `null` = none or not visible. */
+  protected readonly hintBox = computed(() => {
+    const f = this.frame();
+    const h = f?.hint;
+    if (!f || !h || !this.focused() || this.hiddenHint() === this.hintKey(f)) return null;
+    const pos = this.anchor(f, h.line, h.cell);
+    if (!pos) return null;
+    const result = h.result ?? this.texts.notDefined;
+    const text = `${h.expr} = ${result}`;
+    return { ...pos, text, hex: h.hex };
+  });
+
+  /** The suggestion list below the caret. */
+  protected readonly completionBox = computed(() => {
+    const f = this.frame();
+    const c = f?.completion;
+    if (!f || !c || c.items.length === 0) return null;
+    const xy = this.caretXY();
+    return {
+      x: this.textLeft() + xy.x,
+      y: xy.y + this.metrics().lh,
+      items: c.items,
+      active: Math.min(this.completionIndex(), c.items.length - 1),
+    };
+  });
+
+  /** Where something below cell `cell` of line `line` goes (the caret's row), `null` = not shown. */
+  private anchor(f: Frame, line: number, cell: number): { x: number; y: number } | null {
+    const l = f.lines.find((x) => x.line === line);
+    if (!l) return null;
+    const p = this.px(l, cell);
+    const caret = this.caretXY();
+    return {
+      x: this.textLeft() + Math.max(0, p.x),
+      y: (f.caretLine === line ? caret.y : this.lineY(l) + p.y) + this.metrics().lh,
+    };
+  }
+
+  protected kindLabel(kind: string): string {
+    switch (kind) {
+      case 'result':
+        return this.texts.insertResult;
+      case 'replace':
+        return this.texts.replaceExpression;
+      case 'rounded':
+        return this.texts.rounded;
+      default:
+        return this.texts.hexadecimal;
+    }
+  }
+
+  protected takeSuggestion(i: number, e?: MouseEvent): void {
+    e?.preventDefault();
+    void this.send({ type: 'applyCompletion', index: i });
+  }
+
+  private registerCompletion(actions: ActionService): void {
+    const step = (d: number) => {
+      const n = this.frame()?.completion?.items.length ?? 0;
+      if (n) this.completionIndex.update((i) => (Math.min(i, n - 1) + d + n) % n);
+    };
+    actions.registerAll(
+      {
+        'completion.next': { run: () => step(1) },
+        'completion.prev': { run: () => step(-1) },
+        'completion.accept': {
+          run: () => this.takeSuggestion(this.completionBox()?.active ?? 0),
+        },
+        'completion.close': { run: () => void this.send({ type: 'closeCompletion' }) },
+      },
+      this.destroyRef,
+    );
+  }
+
+  private hintSpoken = '';
+  private hintTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** The hint for screen readers – after a moment of rest, once per text. */
+  private speakHint(text: string): void {
+    if (this.hintTimer) clearTimeout(this.hintTimer);
+    this.hintTimer = setTimeout(() => {
+      this.hintTimer = null;
+      if (text !== this.hintSpoken) {
+        this.hintSpoken = text;
+        if (text) this.status.set(text);
+      }
+    }, 700);
+  }
+
   /** Search matches and markers in the scrollbar (design 010 E3). */
   protected readonly overview = signal<number[]>([]);
   protected readonly overviewTicks = computed(() => {
@@ -276,6 +379,8 @@ export class EditorView {
     effect(() => {
       this.docId();
       const s = this.settings.settings();
+      const comma =
+        s.decimalSeparator === 'comma' || (s.decimalSeparator === 'auto' && language() === 'de');
       untracked(
         () =>
           void this.send({
@@ -286,6 +391,12 @@ export class EditorView {
             wrap: s.wordWrap,
             colors: s.colorSwatches,
             expandWeights: s.expandWeights,
+            math: {
+              hints: s.mathHints,
+              suggest: s.mathSuggest,
+              decimals: s.mathDecimals < 0 ? null : s.mathDecimals,
+              comma,
+            },
           }),
       );
     });
@@ -304,6 +415,15 @@ export class EditorView {
       if (cmd) actions.register(def.id, { run: () => void this.send(cmd) }, this.destroyRef);
     }
     this.registerFind(actions);
+    this.registerCompletion(actions);
+    // the hint for screen readers (prompt 020)
+    effect(() => {
+      const text = this.hintBox()?.text ?? '';
+      untracked(() => this.speakHint(text));
+    });
+    this.destroyRef.onDestroy(() => {
+      if (this.hintTimer) clearTimeout(this.hintTimer);
+    });
   }
 
   // ---------------------------------------------------------------- find (design 006)
@@ -319,6 +439,7 @@ export class EditorView {
         'edit.escape': {
           run: () => {
             if (this.rec.isPlaying(this.docId())) void this.rec.stopPlayback();
+            else if (this.hintBox()) this.hiddenHint.set(this.hintKey(this.frame()));
             else if (f.open() || this.gotoOpen() || this.frame()?.search) this.closeFind();
             else void this.send({ type: 'singleCursor' });
           },
@@ -326,6 +447,7 @@ export class EditorView {
             this.rec.playback()?.docId === this.docId() ||
             f.open() ||
             this.gotoOpen() ||
+            !!this.hintBox() ||
             !!this.frame()?.search ||
             !!this.frame()?.multi,
         },
@@ -637,6 +759,12 @@ export class EditorView {
   private show(f: Frame): void {
     const cur = this.frame();
     if (cur && cur.info.id === f.info.id && f.seq < cur.seq) return;
+    // a new suggestion list starts at its first entry
+    if (!f.completion || !cur?.completion || cur.completion.line !== f.completion.line) {
+      this.completionIndex.set(0);
+    } else if (JSON.stringify(cur.completion.items) !== JSON.stringify(f.completion.items)) {
+      this.completionIndex.set(0);
+    }
     this.frame.set(f);
     this.frameChange.emit(f);
     if (f.approxHighlight) this.refreshSoon();
@@ -816,6 +944,9 @@ export class EditorView {
 
   protected onWheel(e: WheelEvent): void {
     e.preventDefault();
+    // scrolling closes the hint and the suggestions (prompt 020)
+    this.hiddenHint.set(this.hintKey(this.frame()));
+    if (this.frame()?.completion) void this.send({ type: 'closeCompletion' });
     const { cw, lh } = this.metrics();
     const unit = e.deltaMode === 1 ? lh : e.deltaMode === 2 ? this.size().height : 1;
     let dx = e.deltaX * unit;

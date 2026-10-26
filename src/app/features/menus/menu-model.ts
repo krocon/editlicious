@@ -96,6 +96,8 @@ export function buildMenuModel(os: Os, input: MenuInputs): TopMenuNode[] {
     a('edit.addNextOccurrence'),
     a('edit.toggleMarker'),
     a('edit.convertColor'),
+    a('edit.evaluate'),
+    a('edit.copyResult'),
     a('edit.clearMarkers'),
     a('edit.markerNext'),
     a('edit.markerPrev'),

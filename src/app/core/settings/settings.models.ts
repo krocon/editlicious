@@ -25,6 +25,14 @@ export interface Settings {
   mcp: boolean;
   /** ffmpeg for the video export (design 017); empty = the one on the PATH. */
   ffmpegPath: string;
+  /** Results of arithmetic below the expression (prompt 020). */
+  mathHints: boolean;
+  /** Results as suggestions after `=` or Ctrl+Space. */
+  mathSuggest: boolean;
+  /** Fixed decimal places; -1 = as needed. */
+  mathDecimals: number;
+  /** `auto` = by the UI language. */
+  decimalSeparator: 'auto' | 'point' | 'comma';
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -49,6 +57,10 @@ export const DEFAULT_SETTINGS: Settings = {
   expandWeights: {},
   mcp: false,
   ffmpegPath: '',
+  mathHints: true,
+  mathSuggest: true,
+  mathDecimals: -1,
+  decimalSeparator: 'auto',
 };
 
 export interface LoadedSettings {

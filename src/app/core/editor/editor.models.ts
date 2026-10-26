@@ -80,6 +80,7 @@ export type Command =
       wrap?: boolean;
       colors?: boolean;
       expandWeights?: Record<string, number>;
+      math?: MathConfig;
     }
   | { type: 'setLineEnding'; lineEnding: LineEnding }
   | {
@@ -144,7 +145,44 @@ export type Command =
   | { type: 'convertColor' }
   | { type: 'setMarker'; colour: number }
   | { type: 'markerStep'; backwards?: boolean }
-  | { type: 'setMarkers'; words: (string | null)[] };
+  | { type: 'setMarkers'; words: (string | null)[] }
+  /** Arithmetic at the caret (prompt 020). */
+  | { type: 'complete' }
+  | { type: 'applyCompletion'; index: number }
+  | { type: 'closeCompletion' }
+  | { type: 'evaluate' }
+  | { type: 'copyResult' };
+
+/** Settings of the arithmetic (`model::MathConfig`, prompt 020). */
+export interface MathConfig {
+  hints: boolean;
+  suggest: boolean;
+  /** Fixed decimal places, `null` = as needed. */
+  decimals: number | null;
+  comma: boolean;
+}
+
+/** The arithmetic hint at the caret (`model::MathHint`). */
+export interface MathHint {
+  line: number;
+  /** Cell where the expression starts. */
+  cell: number;
+  expr: string;
+  /** `null` = not defined (division by zero …). */
+  result: string | null;
+  hex: string | null;
+}
+
+export interface CompletionItem {
+  kind: 'result' | 'replace' | 'rounded' | 'hex';
+  label: string;
+}
+
+/** The open suggestion list (`model::Completion`). */
+export interface Completion {
+  line: number;
+  items: CompletionItem[];
+}
 
 /** A search (`ed_core::search::Query`, design 006). */
 export interface Query {
@@ -285,4 +323,7 @@ export interface Frame {
   markerWords: (string | null)[];
   /** Colour of the marked word at the caret (status bar count). */
   caretMarker: number | null;
+  /** Arithmetic at the caret (prompt 020). */
+  hint: MathHint | null;
+  completion: Completion | null;
 }

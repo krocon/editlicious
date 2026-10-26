@@ -108,6 +108,7 @@ pub fn render_with(
             wrap: Some(false),
             colors: None,
             expand_weights: None,
+            math: None,
         },
         &mut clip,
     )?;

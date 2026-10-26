@@ -38,6 +38,15 @@ const EN = {
   markerCount: (word: string, n: string) => `${word} · ${n}×`,
   markerTitle: 'Occurrences of the marked word (F7 / ⇧F7 jump)',
   caretColor: (v: string) => `Colour ${v}`,
+  // arithmetic (prompt 020)
+  notDefined: 'not defined',
+  suggestions: 'Suggestions',
+  insertResult: 'insert the result',
+  replaceExpression: 'replace the expression',
+  rounded: 'rounded',
+  hexadecimal: 'hexadecimal',
+  noExpression: 'No arithmetic expression at the cursor.',
+  resultCopied: 'Result copied.',
 };
 
 export const EDITOR_TEXTS = translatable('editor', EN, {
@@ -78,6 +87,14 @@ export const EDITOR_TEXTS = translatable('editor', EN, {
     markerTitle: 'Vorkommen des markierten Worts (F7 / ⇧F7 springen)',
     caretColor: (v: string) => `Farbe ${v}`,
     changeLanguage: 'Sprache ändern',
+    notDefined: 'nicht definiert',
+    suggestions: 'Vorschläge',
+    insertResult: 'Ergebnis einfügen',
+    replaceExpression: 'Ausdruck ersetzen',
+    rounded: 'gerundet',
+    hexadecimal: 'hexadezimal',
+    noExpression: 'Am Cursor steht kein Rechenausdruck.',
+    resultCopied: 'Ergebnis kopiert.',
   },
 });
 
@@ -98,6 +115,10 @@ export function noticeText(code: string): string {
       return EDITOR_TEXTS.noColor;
     case 'no_marker':
       return EDITOR_TEXTS.noMarker;
+    case 'no_expression':
+      return EDITOR_TEXTS.noExpression;
+    case 'result_copied':
+      return EDITOR_TEXTS.resultCopied;
     default:
       return '';
   }

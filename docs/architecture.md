@@ -23,6 +23,7 @@
 | A6 | Aufnahmen speichern Engine-Befehle (Klicks als Auswahl), Abspielen läuft in Rust auf einer deterministischen Zeitachse und schickt Frames über einen Channel | fensterunabhängig, wiederholbar (Seed), dieselbe Zeitachse für MCP (016) und Video (017); eine Abspielung = ein Undo-Schritt (015) |
 | A7 | KI-Steuerung über ein eigenes MCP-Sidecar (`ed-mcp`, stdio) mit Brücke zur laufenden App über 127.0.0.1 + Zufalls-Token; eigene MCP-Schicht statt `rmcp` | keine Tokio-/Makro-Abhängigkeit, ~800 KB Programm, auf allen drei Systemen nur Standardbibliothek; die App bleibt die eine Wahrheit (016) |
 | A8 | Video-Export kopflos in Rust (`ed-video`: Engine-Frames + eigener Rasterizer) statt Aufnahme der WebView | CLI/CI-fähig, deterministisch (Hash-Test), beliebige Größe ohne Fenster; die Farben kommen aus `src/styles.css` (zur Bauzeit gelesen), das Layout folgt der Editor-Ansicht; Kodieren über ein externes `ffmpeg` (Lizenz/Größe), sonst PNG-Folge (017) |
+| A9 | Rechnen am Caret mit eigenem Parser in `ed-core` (`math.rs`, `editor/hints.rs`) statt `meval`/`evalexpr`/`fasteval` | die Crates kennen weder Dezimalkomma, `0x`/`0b`/`_`, implizites Mal, `×÷−`, `fac`/Γ und `convert` der Vorlage noch Längen-/Tiefengrenzen, und sie liefern keinen aufgeräumten Ausdruck für den Hinweis; ~600 Zeilen, WASM-fähig, Fuzz-Test ohne `proptest` (eigener Zufall aus `playback::Rng`) (020) |
 | A4 | Dev-Server-Port 1440 | comic-commander nutzt 1430, files-and-folders 1420 – alle drei parallel startbar |
 
 ## Commands

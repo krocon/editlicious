@@ -5,7 +5,7 @@ import { actionDef, ActionContext } from './action-catalog';
 import { Os } from './platform';
 import { normalizeChord } from './shortcut';
 
-type KeymapFile = Record<ActionContext, Record<string, string>>;
+type KeymapFile = Partial<Record<ActionContext, Record<string, string>>>;
 
 /** The shortcuts in force: context → chord → action, and action → chords (comic-commander design 008 E7). */
 export interface Keymap {
@@ -22,7 +22,11 @@ export interface Keymap {
  */
 export function buildKeymap(os: Os, overrides: Record<string, string[]> = {}): Keymap {
   const notes: string[] = [];
-  const byContext: Keymap['byContext'] = { global: new Map(), editor: new Map() };
+  const byContext: Keymap['byContext'] = {
+    global: new Map(),
+    editor: new Map(),
+    completion: new Map(),
+  };
   for (const file of [base as KeymapFile, (os === 'mac' ? mac : other) as KeymapFile]) {
     for (const ctx of Object.keys(byContext) as ActionContext[]) {
       for (const [chord, id] of Object.entries(file[ctx] ?? {})) {

@@ -38,6 +38,9 @@ pub enum Command {
         /// or `space`/`tab`/`punctuation` → 1–9; `None` = unchanged, empty = the defaults.
         #[serde(default)]
         expand_weights: Option<std::collections::HashMap<String, f64>>,
+        /// Arithmetic hints and suggestions (prompt 020); `None` = unchanged.
+        #[serde(default)]
+        math: Option<MathConfig>,
     },
     Scroll {
         lines: f64,
@@ -190,6 +193,60 @@ pub enum Command {
     SetMarkers {
         words: Vec<Option<String>>,
     },
+    /// Shows the suggestions for the expression at the caret (prompt 020).
+    Complete,
+    /// Takes suggestion `index` (one undo step).
+    ApplyCompletion {
+        index: usize,
+    },
+    CloseCompletion,
+    /// Replaces the expression at the caret by its result.
+    Evaluate,
+    /// The result of the expression at the caret to the clipboard.
+    CopyResult,
+}
+
+/// Settings of the arithmetic (prompt 020).
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MathConfig {
+    pub hints: bool,
+    pub suggest: bool,
+    /// Fixed decimal places, `None` = as needed.
+    #[serde(default)]
+    pub decimals: Option<usize>,
+    /// Decimal comma in results.
+    #[serde(default)]
+    pub comma: bool,
+}
+
+/// The arithmetic hint at the caret (prompt 020): where, the expression, the result.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MathHint {
+    pub line: usize,
+    /// Cell where the expression starts (the hint sits below it).
+    pub cell: usize,
+    pub expr: String,
+    /// `None` = not defined (division by zero, NaN).
+    pub result: Option<String>,
+    pub hex: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompletionItem {
+    /// `result`, `replace`, `rounded`, `hex`.
+    pub kind: String,
+    pub label: String,
+}
+
+/// The open suggestion list (prompt 020).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Completion {
+    pub line: usize,
+    pub items: Vec<CompletionItem>,
 }
 
 impl Command {
@@ -205,6 +262,7 @@ impl Command {
                 | Command::Configure { .. }
                 | Command::CopyHtml { .. }
                 | Command::Copy
+                | Command::CopyResult
         )
     }
 }
@@ -351,4 +409,7 @@ pub struct Frame {
     pub marker_words: Vec<Option<String>>,
     /// Colour of the marked word at the primary caret (status bar count, design 019).
     pub caret_marker: Option<usize>,
+    /// Arithmetic at the caret (prompt 020).
+    pub hint: Option<MathHint>,
+    pub completion: Option<Completion>,
 }

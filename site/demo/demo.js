@@ -5,7 +5,7 @@ import init, { Editor, languages } from './pkg/ed_wasm.js';
 
 const SAMPLE = `// Welcome to editlicious – this is the real engine, running in your browser.
 // Type, select with Shift, add carets with Ctrl/⌘+D, move lines with Alt+↑/↓,
-// undo with Ctrl/⌘+Z. Try the buttons above for a really big file.
+// undo with Ctrl/⌘+Z, type 255/8= to calculate. Try the buttons above for a really big file.
 
 use std::collections::HashMap;
 
@@ -41,6 +41,8 @@ const vbar = $('#vbar');
 const thumb = $('#thumb');
 const statusEl = $('#status');
 const measure = $('#measure');
+const hintEl = $('#hint');
+const suggestEl = $('#suggest');
 
 let ed = null;
 let frame = null;
@@ -167,6 +169,23 @@ function draw() {
   } else {
     vbar.hidden = true;
   }
+  // arithmetic (prompt 020): the hint below its expression, the suggestions below the caret
+  const below = `${(p.row + 1) * lh}px`;
+  const hl = f.hint && f.lines.find((l) => l.line === f.hint.line);
+  hintEl.hidden = !hl;
+  if (hl) {
+    hintEl.textContent = `${f.hint.expr} = ${f.hint.result ?? 'not defined'}`;
+    hintEl.style.left = `${tl + px(hl, f.hint.cell).x}px`;
+    hintEl.style.top = below;
+  }
+  suggestEl.hidden = !f.completion;
+  if (f.completion) {
+    suggestEl.innerHTML = f.completion.items
+      .map((it, i) => `<li role="option"${i === 0 ? ' aria-selected="true"' : ''}>${esc(it.label)}</li>`)
+      .join('');
+    suggestEl.style.left = `${tl + p.x * cw}px`;
+    suggestEl.style.top = below;
+  }
   const c = f.carets[f.primary];
   const sel = f.selChars ? ` · ${f.selChars.toLocaleString()} selected` : '';
   const many = f.carets.length > 1 ? ` · ${f.carets.length} carets` : '';
@@ -195,6 +214,10 @@ function keyCommand(e) {
     return { type: 'moveLines', up: k === 'ArrowUp' };
   }
   if (e.altKey && k === 'z') return 'wrap';
+  if (frame?.completion && !mod && (k === 'Enter' || k === 'Tab')) {
+    return { type: 'applyCompletion', index: 0 };
+  }
+  if (frame?.completion && k === 'Escape') return { type: 'closeCompletion' };
   if (MOTION[k]) {
     let to = MOTION[k];
     if (mod && (k === 'Home' || k === 'End')) to = k === 'Home' ? 'docStart' : 'docEnd';

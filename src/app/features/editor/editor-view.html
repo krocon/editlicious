@@ -198,6 +198,38 @@
     (mousedown)="$event.stopPropagation()"
   />
 }
+@if (hintBox(); as h) {
+  <div class="hint" role="tooltip" id="math-hint" [style.left.px]="h.x" [style.top.px]="h.y">
+    {{ h.text }}
+    @if (h.hex) {
+      <span class="hex">{{ h.hex }}</span>
+    }
+  </div>
+}
+@if (completionBox(); as c) {
+  <ul
+    class="completion"
+    role="listbox"
+    id="completion-list"
+    [attr.aria-label]="texts.suggestions"
+    [style.left.px]="c.x"
+    [style.top.px]="c.y"
+    (mousedown)="$event.preventDefault(); $event.stopPropagation()"
+  >
+    @for (item of c.items; track $index) {
+      <li
+        role="option"
+        [id]="'completion-' + $index"
+        [attr.aria-selected]="$index === c.active"
+        [class.active]="$index === c.active"
+        (mousedown)="takeSuggestion($index, $event)"
+      >
+        <span class="label">{{ item.label }}</span>
+        <span class="kind">{{ kindLabel(item.kind) }}</span>
+      </li>
+    }
+  </ul>
+}
 <textarea
   #input
   class="input"
@@ -206,6 +238,9 @@
   [style.left.px]="textLeft() + caretXY().x"
   [style.top.px]="caretXY().y"
   [attr.aria-label]="texts.label"
+  [attr.aria-controls]="completionBox() ? 'completion-list' : null"
+  [attr.aria-activedescendant]="completionBox() ? 'completion-' + completionBox()!.active : null"
+  [attr.aria-describedby]="hintBox() ? 'math-hint' : null"
   autocapitalize="off"
   autocomplete="off"
   spellcheck="false"

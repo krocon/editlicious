@@ -136,7 +136,12 @@ export class App {
     const dispatcher = inject(KeyboardDispatcher);
     dispatcher.setContextProvider((target) => {
       if (this.dialogs.open() !== null) return null;
-      return target?.closest('app-editor-view') ? ['editor', 'global'] : ['global'];
+      const view = target?.closest('app-editor-view');
+      if (!view) return ['global'];
+      // the open suggestion list takes the arrows, Enter, Tab and Esc first (prompt 020)
+      return view.hasAttribute('data-completion')
+        ? ['completion', 'editor', 'global']
+        : ['editor', 'global'];
     });
     const doc = inject(DOCUMENT);
     dispatcher.attach(doc);
