@@ -97,6 +97,8 @@ export function buildMenuModel(os: Os, input: MenuInputs): TopMenuNode[] {
     a('edit.toggleMarker'),
     a('edit.convertColor'),
     a('edit.clearMarkers'),
+    a('edit.markerNext'),
+    a('edit.markerPrev'),
     sep,
     {
       kind: 'submenu',

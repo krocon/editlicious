@@ -43,7 +43,7 @@ Kritischer Pfad zum ersten nutzbaren Editor: **001 → 002 → 003 → 004**. Da
 | 017 | [017-video-export.md](done/017-video-export.md) | Aufzeichnung/Skript ohne Bildschirmaufnahme als Video rendern (virtuelle Uhr, PNG-Sequenz, MP4 über externes ffmpeg), CLI `editlicious render` für die Video-Pipeline | 015 | L | ✅ 26.10.2026 |
 | 018 | [018-farbfelder-im-rand.md](done/018-farbfelder-im-rand.md) | Farbwerte (CSS `#…`/`rgb()`/`hsl()`, `0xAARRGGBB`, `"ffRRGGBB"`) als Farbfelder im linken Rand (legacy), Erkennung in Rust nur für den Frame, Farbwert umrechnen | 008, 009, 010 | S–M | ✅ 26.10.2026 |
 | 018a | [018a-doppelklick.md](done/018a-doppelklick.md) | Fortschreitende Auswahl per wiederholtem Doppelklick: gewichtete Wortgrenzen (`_` `-` `.` `/` Leerzeichen …), Klammern/Anführungszeichen, Zeile, Absatz, Zyklus | 003, 007 | M | ✅ 26.10.2026 |
-| 019 | [019-marker-ausbau-html.md](019-marker-ausbau-html.md) | Wort-Marker im „Als HTML kopieren“ (deckende Farben für E-Mail), Auswahl markieren, feste Farbe 1…0, nächstes/voriges Vorkommen, Anzahl in der Statusleiste, Marker in der Sitzung | 007, 010 | S–M | offen |
+| 019 | [019-marker-ausbau-html.md](done/019-marker-ausbau-html.md) | Wort-Marker im „Als HTML kopieren“ (deckende Farben für E-Mail), Auswahl markieren, feste Farbe 1…0, nächstes/voriges Vorkommen, Anzahl in der Statusleiste, Marker in der Sitzung | 007, 010 | S–M | ✅ 26.10.2026 |
 | 020 | [020-rechnen-tooltips-autocomplete.md](020-rechnen-tooltips-autocomplete.md) | Math-Parser in Rust (Vorlage `java-k-editor/MathParser`), Ergebnis als Hinweis am Caret und als Vorschlag (`255/8=` → `31.875`); allgemeine Bausteine Tooltip- und Vorschlags-Anbieter | 005, 009, 010 | M–L | offen |
 
 ## Folge-Ideen (noch ohne Prompt)

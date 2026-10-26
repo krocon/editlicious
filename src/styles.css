@@ -225,7 +225,7 @@
   --color-hover: #ebe3cb;
   --ed-bg: #fdf6e3;
   --ed-gutter-bg: #fdf6e3;
-  --ed-text: #586e75;
+  --ed-text: #45575e;
   --ed-gutter-text: #b8b29e;
   --ed-gutter-text-active: #657b83;
   --ed-current-line: rgb(147 161 161 / 12%);
@@ -247,6 +247,9 @@
   --syn-link: #268bd2;
   --syn-log-info: #268bd2;
   --syn-log-debug: #93a1a1;
+  /* text on markers ≥ 4.5 : 1 (design 019 E5) */
+  --ed-marker-7: rgb(255 0 200 / 20%);
+  --ed-marker-9: rgb(160 82 45 / 26%);
 }
 
 :root[data-scheme='night'] {

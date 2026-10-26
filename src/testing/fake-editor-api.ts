@@ -79,6 +79,8 @@ export function textFrame(lines: string[], over: Partial<Frame> = {}): Frame {
     deco: 0,
     colorColumn: false,
     caretColor: null,
+    markerWords: [],
+    caretMarker: null,
     ...over,
   };
 }
@@ -202,6 +204,11 @@ export class FakeEditorApi extends EditorApi {
   }
 
   /** Commands of a type, for assertions. */
+  markerCount: number | null = null;
+  countMarker(): Promise<number | null> {
+    return Promise.resolve(this.markerCount);
+  }
+
   sent(type: Command['type']): Command[] {
     return this.commands.map((c) => c.cmd).filter((c) => c.type === type);
   }

@@ -50,6 +50,7 @@
 | `start_recording(id)` / `stop_recording(id)` / `save_recording(id, path, script)` | Befehle aufzeichnen, als `*.edrec.jsonl` oder `*.edscript` speichern | 015 |
 | `mcp_enable(enabled)` / `mcp_info` / `mcp_set_actions(actions)` / `mcp_set_active(id)` / `mcp_disconnect`, Ereignisse `mcp-opened`, `mcp-activate`, `mcp-changed`, `mcp-action`, `mcp-recording`, `mcp-playback`, `mcp-status` | KI-Steuerung: Brücke an/aus, Werkzeuge kennen Aktionen und aktives Dokument, die UI führt aus, was die KI verlangt | 016 |
 | `export_video(id, source, options, onEvent)` / `cancel_export` | Aufnahme/Skript als Video (ffmpeg) oder PNG-Folge rendern, Fortschritt über Channel, abbrechbar; dasselbe ohne App: `editlicious render …` | 017 |
+| `count_marker(id)` | wie oft das markierte Wort am Cursor vorkommt (Schnappschuss, abbrechbar) | 019 |
 | `check_playback(id, source)` / `play(id, source, tempo, onEvent)` / `playback_control(id, action)` | Aufnahme oder Skript prüfen und abspielen (Frames/Fortschritt über Channel, anhalten, Schritt, Stopp); während der Wiedergabe lehnt `editor_command` Bearbeitungen ab (`playback_running`) | 015 |
 
 ## Abhängigkeiten

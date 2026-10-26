@@ -82,7 +82,16 @@ export type Command =
       expandWeights?: Record<string, number>;
     }
   | { type: 'setLineEnding'; lineEnding: LineEnding }
-  | { type: 'copyHtml'; lineNumbers: boolean; styles: string[]; base: string; gutter: string }
+  | {
+      type: 'copyHtml';
+      lineNumbers: boolean;
+      styles: string[];
+      base: string;
+      gutter: string;
+      /** CSS colours of the ten markers and the editor background (design 019). */
+      markers?: string[];
+      background?: string;
+    }
   | { type: 'scroll'; lines: number; cells: number }
   | { type: 'scrollTo'; top?: number; left?: number }
   | { type: 'move'; to: Motion; select?: boolean }
@@ -132,7 +141,10 @@ export type Command =
   | { type: 'setLanguage'; name: string | null }
   /** One cursor per entry, the last one primary (design 015 E2). */
   | { type: 'select'; sels: Sel[] }
-  | { type: 'convertColor' };
+  | { type: 'convertColor' }
+  | { type: 'setMarker'; colour: number }
+  | { type: 'markerStep'; backwards?: boolean }
+  | { type: 'setMarkers'; words: (string | null)[] };
 
 /** A search (`ed_core::search::Query`, design 006). */
 export interface Query {
@@ -269,4 +281,8 @@ export interface Frame {
   colorColumn: boolean;
   /** Colour value at the primary caret, `#rrggbb[aa]`. */
   caretColor: string | null;
+  /** Marked words by colour (session file, design 019). */
+  markerWords: (string | null)[];
+  /** Colour of the marked word at the caret (status bar count). */
+  caretMarker: number | null;
 }

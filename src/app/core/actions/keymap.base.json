@@ -86,6 +86,8 @@
     "Mod+d": "edit.addNextOccurrence",
     "Mod+Shift+F7": "edit.toggleMarker",
     "Mod+Shift+F8": "edit.clearMarkers",
+    "F7": "edit.markerNext",
+    "Shift+F7": "edit.markerPrev",
     "Mod+Shift+c": "edit.copyHtml"
   }
 }

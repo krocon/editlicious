@@ -39,6 +39,8 @@ export abstract class EditorApi {
   abstract diskState(id: number): Promise<DiskState>;
   /** Counts on a snapshot; a newer count cancels an older one (`cancelled`). */
   abstract countMatches(id: number, query: Query): Promise<MatchCount>;
+  /** How often the marked word at the caret occurs; `null` = no marked word there. */
+  abstract countMarker(id: number): Promise<number | null>;
   abstract listLanguages(): Promise<string[]>;
   abstract listEncodings(): Promise<string[]>;
   /** Matches (bit 1) and markers (bit 2) per slice of the lines; a newer call cancels. */
@@ -94,6 +96,10 @@ export class TauriEditorApi extends EditorApi {
 
   countMatches(id: number, query: Query): Promise<MatchCount> {
     return call<MatchCount>('count_matches', { id, query });
+  }
+
+  countMarker(id: number): Promise<number | null> {
+    return call<number | null>('count_marker', { id });
   }
 
   listEncodings(): Promise<string[]> {

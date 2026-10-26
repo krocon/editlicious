@@ -65,3 +65,41 @@
     linear-gradient(var(--chip), var(--chip)),
     repeating-conic-gradient(#c8c8c8 0% 25%, #ffffff 0% 50%) 0 0 / 4px 4px;
 }
+
+/* the marked word at the cursor and its count (design 019) */
+.marker-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  .chip[data-colour='0'] {
+    background: var(--ed-marker-0);
+  }
+  .chip[data-colour='1'] {
+    background: var(--ed-marker-1);
+  }
+  .chip[data-colour='2'] {
+    background: var(--ed-marker-2);
+  }
+  .chip[data-colour='3'] {
+    background: var(--ed-marker-3);
+  }
+  .chip[data-colour='4'] {
+    background: var(--ed-marker-4);
+  }
+  .chip[data-colour='5'] {
+    background: var(--ed-marker-5);
+  }
+  .chip[data-colour='6'] {
+    background: var(--ed-marker-6);
+  }
+  .chip[data-colour='7'] {
+    background: var(--ed-marker-7);
+  }
+  .chip[data-colour='8'] {
+    background: var(--ed-marker-8);
+  }
+  .chip[data-colour='9'] {
+    background: var(--ed-marker-9);
+  }
+}

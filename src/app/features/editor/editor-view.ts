@@ -415,12 +415,21 @@ export class EditorView {
       'padding:8px',
     ].join(';');
     const gutter = `color:${root.getPropertyValue('--ed-gutter-text').trim() || 'gray'}`;
-    await this.send({ type: 'copyHtml', lineNumbers, styles, base, gutter });
+    // marked words keep their colour; the engine makes them solid for e-mail (design 019)
+    const mbox = this.markerProbes()?.nativeElement;
+    const markers = mbox
+      ? Array.from(mbox.children, (el) => getComputedStyle(el).backgroundColor)
+      : [];
+    const background = host.backgroundColor;
+    await this.send({ type: 'copyHtml', lineNumbers, styles, base, gutter, markers, background });
     if (!this.frame()?.notice) this.status.set(this.texts.copiedHtml);
   }
 
   /** Style classes of the highlighter (`highlight::CLASSES`) – probes for "copy as HTML". */
   protected readonly styleIds = Array.from({ length: 26 }, (_, i) => i);
+  /** The ten marker colours – probes for "copy as HTML" (design 019). */
+  protected readonly markerIds = Array.from({ length: 10 }, (_, i) => i);
+  private readonly markerProbes = viewChild<ElementRef<HTMLElement>>('markerProbes');
 
   private openFind(replace: boolean): void {
     const f = this.find;

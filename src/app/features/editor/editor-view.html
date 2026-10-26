@@ -3,6 +3,11 @@
     <span class="run" [attr.data-s]="i || null"></span>
   }
 </div>
+<div class="probes" #markerProbes aria-hidden="true">
+  @for (i of markerIds; track i) {
+    <span class="marker" [attr.data-colour]="i"></span>
+  }
+</div>
 <span class="measure" #measure aria-hidden="true"
   >MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM</span
 >

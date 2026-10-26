@@ -78,6 +78,7 @@ pub fn run() {
             commands::document_info,
             commands::editor_command,
             commands::count_matches,
+            commands::count_marker,
             commands::overview,
             commands::list_encodings,
             commands::list_languages,

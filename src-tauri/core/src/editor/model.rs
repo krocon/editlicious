@@ -160,6 +160,12 @@ pub enum Command {
         styles: Vec<String>,
         base: String,
         gutter: String,
+        /// Colours of the ten word markers as the view shows them (CSS) and the editor
+        /// background: the engine mixes them to solid colours for e-mail (design 019 E1).
+        #[serde(default)]
+        markers: Vec<String>,
+        #[serde(default)]
+        background: String,
     },
     SetLanguage {
         name: Option<String>,
@@ -171,6 +177,19 @@ pub enum Command {
     },
     /// The colour value under the caret into its next notation (design 018).
     ConvertColor,
+    /// Marks the word at the caret (or the selection) in colour `colour` 0–9 (design 019).
+    SetMarker {
+        colour: usize,
+    },
+    /// The next (previous) occurrence of the marked word at the caret (design 019).
+    MarkerStep {
+        #[serde(default)]
+        backwards: bool,
+    },
+    /// Puts back the markers of a document (session restore, design 019): text per colour.
+    SetMarkers {
+        words: Vec<Option<String>>,
+    },
 }
 
 impl Command {
@@ -328,4 +347,8 @@ pub struct Frame {
     pub color_column: bool,
     /// The colour value at the primary caret (`#rrggbb[aa]`) for the status bar.
     pub caret_color: Option<String>,
+    /// The marked words by colour (session file, design 019).
+    pub marker_words: Vec<Option<String>>,
+    /// Colour of the marked word at the primary caret (status bar count, design 019).
+    pub caret_marker: Option<usize>,
 }

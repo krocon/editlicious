@@ -20,6 +20,9 @@ pub struct SessionEntry {
     pub line: usize,
     pub ch: usize,
     pub top: f64,
+    /// Marked words by colour (design 019).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub markers: Vec<Option<String>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -70,6 +73,14 @@ pub fn sanitize(mut s: SessionFile) -> SessionFile {
         if !f.top.is_finite() || f.top < 0.0 {
             f.top = 0.0;
         }
+        f.markers.truncate(10);
+        for m in &mut f.markers {
+            if m.as_ref()
+                .is_some_and(|t| t.is_empty() || t.chars().count() > 1000)
+            {
+                *m = None;
+            }
+        }
     }
     s.recent.retain(|p| valid_path(p));
     s.recent.dedup();
@@ -108,6 +119,32 @@ mod tests {
     use super::*;
 
     #[test]
+    fn markers_round_trip_and_are_checked() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut s = SessionFile::default();
+        s.files.push(SessionEntry {
+            path: if cfg!(windows) {
+                "C:\\a.txt".into()
+            } else {
+                "/a.txt".into()
+            },
+            markers: vec![
+                Some("row".into()),
+                None,
+                Some(String::new()),
+                Some("x".repeat(2000)),
+            ],
+            ..Default::default()
+        });
+        save(dir.path(), s).unwrap();
+        let back = load(dir.path()).value;
+        assert_eq!(
+            back.files[0].markers,
+            vec![Some("row".into()), None, None, None]
+        );
+    }
+
+    #[test]
     fn round_trip_and_sanitize() {
         let dir = tempfile::tempdir().unwrap();
         assert_eq!(load(dir.path()).value, SessionFile::default());
@@ -120,6 +157,7 @@ mod tests {
                     line: 3,
                     ch: 1,
                     top: 2.5,
+                    markers: vec![],
                 },
                 SessionEntry {
                     path: "relative.txt".into(),

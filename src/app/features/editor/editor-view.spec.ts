@@ -322,7 +322,7 @@ describe('EditorView', () => {
     ];
     api.nextFrame = f;
     const { el } = await setup(api);
-    const m = el.querySelectorAll('.marker');
+    const m = el.querySelectorAll('.row .marker');
     expect(m.length).toBe(2);
     expect(m[1].getAttribute('data-colour')).toBe('3');
   });
@@ -396,5 +396,21 @@ describe('clickCount (prompt 018a)', () => {
   it('maps the browser click count to caret, word (again and again) and line', async () => {
     const { clickCount } = await import('./editor-view');
     expect([0, 1, 2, 3, 4, 5, 6].map(clickCount)).toEqual([1, 1, 2, 3, 2, 2, 2]);
+  });
+});
+
+describe('EditorView copy as HTML with markers (design 019)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    cleanups.splice(0).forEach((f) => f());
+  });
+
+  it('sends the ten marker colours and the background along', async () => {
+    const { api } = await setup();
+    TestBed.inject(ActionService).run('edit.copyHtml');
+    await flush();
+    const cmd = api.sent('copyHtml').at(-1) as Extract<Command, { type: 'copyHtml' }>;
+    expect(cmd.markers?.length).toBe(10);
+    expect(typeof cmd.background).toBe('string');
   });
 });

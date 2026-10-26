@@ -1,4 +1,4 @@
-import { MAX_RECENT_ACTIONS, MAX_SWITCH_ACTIONS } from './action-catalog';
+import { MARKER_COLOURS, MAX_RECENT_ACTIONS, MAX_SWITCH_ACTIONS } from './action-catalog';
 
 /** German action labels (design 009); the catalogs test checks that every action has one. */
 const FIXED: Record<string, string> = {
@@ -19,6 +19,8 @@ const FIXED: Record<string, string> = {
   'view.overview': 'Treffer in der Scrollleiste zeigen',
   'view.colorSwatches': 'Farbwerte im Rand zeigen',
   'edit.convertColor': 'Farbwert umrechnen (#hex / rgb / hsl)',
+  'edit.markerNext': 'Nächstes Vorkommen des markierten Worts',
+  'edit.markerPrev': 'Voriges Vorkommen des markierten Worts',
   'file.encoding': 'Zeichenkodierung …',
   'file.lineEnding': 'Zeilenenden …',
   'edit.copyHtml': 'Als HTML kopieren',
@@ -118,6 +120,12 @@ const MOTIONS_DE: Record<string, string> = {
 
 export const ACTION_LABELS_DE: Record<string, string> = {
   ...FIXED,
+  ...Object.fromEntries(
+    Array.from({ length: MARKER_COLOURS }, (_, i) => [
+      `edit.marker.${i + 1}`,
+      `Wort in Farbe ${i + 1} markieren`,
+    ]),
+  ),
   ...Object.fromEntries(
     Array.from({ length: MAX_RECENT_ACTIONS }, (_, i) => [
       `file.recent.${i + 1}`,

@@ -1271,6 +1271,8 @@ fn copy_as_html_with_styles_and_line_numbers() {
             styles,
             base: "color:black;background:white".into(),
             gutter: "color:gray".into(),
+            markers: vec![],
+            background: String::new(),
         },
         &mut clip,
     )
@@ -1701,4 +1703,137 @@ fn custom_weights_from_the_settings() {
     assert_eq!(dbl(&mut s, 0, 0), "a");
     assert_eq!(dbl(&mut s, 0, 0), "a.b");
     assert_eq!(dbl(&mut s, 0, 0), "a.b_c");
+}
+
+// ---------------------------------------------------------------- markers (design 019)
+
+fn html_of(s: &mut Session, markers: Vec<String>, bg: &str) -> String {
+    #[derive(Default)]
+    struct Clip(Option<String>);
+    impl Clipboard for Clip {
+        fn get(&mut self) -> Option<String> {
+            None
+        }
+        fn set(&mut self, _: String) -> bool {
+            true
+        }
+        fn set_html(&mut self, html: String, _: String) -> bool {
+            self.0 = Some(html);
+            true
+        }
+    }
+    let mut clip = Clip::default();
+    s.run(
+        Command::CopyHtml {
+            line_numbers: false,
+            styles: vec![],
+            base: "color:#222".into(),
+            gutter: String::new(),
+            markers,
+            background: bg.into(),
+        },
+        &mut clip,
+    )
+    .unwrap();
+    clip.0.unwrap()
+}
+
+#[test]
+fn copy_as_html_keeps_markers_in_solid_colours() {
+    let mut s = session("let row = col + row;\nrow");
+    put(&mut s, 0, 5);
+    run(&mut s, Command::SetMarker { colour: 6 }); // row: yellow
+    put(&mut s, 0, 11);
+    run(&mut s, Command::SetMarker { colour: 1 }); // col: blue
+    s.set_cursors(vec![Cursor {
+        anchor: Pos::new(0, 0),
+        head: Pos::new(1, 3),
+        goal: None,
+    }]);
+    let mut markers = vec!["rgb(0 0 0 / 0%)".to_string(); 10];
+    markers[6] = "rgba(230, 200, 0, 0.34)".into();
+    markers[1] = "rgb(54 162 235 / 30%)".into();
+    let html = html_of(&mut s, markers, "rgb(251, 250, 247)");
+    // 230*0.34 + 251*0.66 = 243.9 → f4; 200*.34+250*.66 = 233 → e9; 0*.34+247*.66=163 → a3
+    assert!(html.contains("background-color:#f4e9a3"), "{html}");
+    assert_eq!(
+        html.matches("background-color:#f4e9a3").count(),
+        3,
+        "row ×3: {html}"
+    );
+    assert!(html.contains("background-color:#c0dff3"), "col: {html}");
+    assert!(
+        html.starts_with("<pre style=\"color:#222;background-color:#fbfaf7"),
+        "{html}"
+    );
+    // without marker colours: as before
+    let plain = html_of(&mut s, vec![], "");
+    assert!(!plain.contains("background-color"), "{plain}");
+}
+
+#[test]
+fn fixed_colours_steps_and_restore() {
+    let mut s = session("a row b\nrow\nx row");
+    put(&mut s, 0, 3);
+    run(&mut s, Command::SetMarker { colour: 4 });
+    let f = run(&mut s, Command::Frame);
+    assert_eq!(f.marker_words[4].as_deref(), Some("row"));
+    assert_eq!(f.caret_marker, Some(4));
+    // the same word in another colour moves
+    run(&mut s, Command::SetMarker { colour: 2 });
+    let f = run(&mut s, Command::Frame);
+    assert_eq!(f.marker_words[2].as_deref(), Some("row"));
+    assert_eq!(f.marker_words[4], None);
+    // next / previous occurrence, wrapping
+    run(&mut s, Command::MarkerStep { backwards: false });
+    assert_eq!(sel_text(&s), "row");
+    assert_eq!(s.primary().start(), Pos::new(1, 0));
+    run(&mut s, Command::MarkerStep { backwards: false });
+    assert_eq!(s.primary().start(), Pos::new(2, 2));
+    run(&mut s, Command::MarkerStep { backwards: false });
+    assert_eq!(s.primary().start(), Pos::new(0, 2));
+    run(&mut s, Command::MarkerStep { backwards: true });
+    assert_eq!(s.primary().start(), Pos::new(2, 2));
+    // not on a marker
+    put(&mut s, 0, 0);
+    assert_eq!(
+        run(&mut s, Command::MarkerStep { backwards: false })
+            .notice
+            .as_deref(),
+        Some("no_marker")
+    );
+    // a selection (not a whole word) can be marked
+    s.set_cursors(vec![Cursor {
+        anchor: Pos::new(0, 1),
+        head: Pos::new(0, 4),
+        goal: None,
+    }]);
+    run(&mut s, Command::ToggleMarker);
+    let f = run(&mut s, Command::Frame);
+    assert!(f.marker_words.iter().any(|w| w.as_deref() == Some(" ro")));
+    // restore in another session
+    let mut t = session("a row b\nrow\nx row");
+    run(
+        &mut t,
+        Command::SetMarkers {
+            words: f.marker_words.clone(),
+        },
+    );
+    let g = run(&mut t, Command::Frame);
+    let mut want = f.marker_words.clone();
+    while want.last() == Some(&None) {
+        want.pop();
+    }
+    assert_eq!(g.marker_words, want);
+    assert!(!g.lines[1].markers.is_empty());
+}
+
+#[test]
+fn whitespace_is_not_marked() {
+    let mut s = session("a   b");
+    put(&mut s, 0, 2);
+    run(&mut s, Command::ToggleMarker);
+    run(&mut s, Command::SetMarker { colour: 3 });
+    let f = run(&mut s, Command::Frame);
+    assert!(f.marker_words.iter().all(Option::is_none));
 }

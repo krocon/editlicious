@@ -63,7 +63,7 @@ describe('DocumentsStore', () => {
     ws.session = {
       version: 1,
       files: [
-        { path: '/s/a.txt', line: 5, ch: 2, top: 3 },
+        { path: '/s/a.txt', line: 5, ch: 2, top: 3, markers: [null, 'row'] },
         { path: '/s/b.txt', line: 0, ch: 0, top: 0 },
       ],
       active: 1,
@@ -77,6 +77,13 @@ describe('DocumentsStore', () => {
     expect(store.active()?.info.path).toBe('/s/b.txt');
     expect(api.sent('goTo')[0]).toEqual({ type: 'goTo', line: 5, ch: 2 });
     expect(api.sent('scrollTo')[0]).toEqual({ type: 'scrollTo', top: 3 });
+    // markers come back and go into the session again (design 019)
+    expect(api.sent('setMarkers')).toEqual([{ type: 'setMarkers', words: [null, 'row'] }]);
+    const a = store.docs()[0];
+    store.onFrame(textFrame(['x'], { info: a.info, markerWords: [null, 'row'] }));
+    await store.persist();
+    expect(ws.savedSessions.at(-1)?.files[0].markers).toEqual([null, 'row']);
+    expect(ws.savedSessions.at(-1)?.files[1].markers).toBeUndefined();
     expect(store.tabsMode()).toBe('show');
   });
 

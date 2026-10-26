@@ -290,3 +290,47 @@ mod tests {
         assert!(theme("rainbow").is_none());
     }
 }
+
+#[cfg(test)]
+mod contrast {
+    use super::*;
+
+    fn lum(c: Rgba) -> f64 {
+        let f = |v: u8| {
+            let v = v as f64 / 255.0;
+            if v <= 0.03928 {
+                v / 12.92
+            } else {
+                ((v + 0.055) / 1.055).powf(2.4)
+            }
+        };
+        0.2126 * f(c.0) + 0.7152 * f(c.1) + 0.0722 * f(c.2)
+    }
+
+    pub fn over(fg: Rgba, bg: Rgba) -> Rgba {
+        let a = fg.3 as f64 / 255.0;
+        let m = |f: u8, b: u8| (f as f64 * a + b as f64 * (1.0 - a)).round() as u8;
+        Rgba::opaque(m(fg.0, bg.0), m(fg.1, bg.1), m(fg.2, bg.2))
+    }
+
+    pub fn ratio(a: Rgba, b: Rgba) -> f64 {
+        let (x, y) = (lum(a), lum(b));
+        (x.max(y) + 0.05) / (x.min(y) + 0.05)
+    }
+
+    /// Design 019 E5: text on every marker colour stays readable (≥ 4.5 : 1) in every scheme.
+    #[test]
+    fn text_on_markers_is_readable_in_every_scheme() {
+        let mut low = Vec::new();
+        for name in names() {
+            let t = theme(&name).unwrap();
+            for (i, m) in t.markers.iter().enumerate() {
+                let r = ratio(t.text, over(*m, t.bg));
+                if r < 4.5 {
+                    low.push(format!("{name} marker {i}: {r:.2}"));
+                }
+            }
+        }
+        assert!(low.is_empty(), "{low:?}");
+    }
+}

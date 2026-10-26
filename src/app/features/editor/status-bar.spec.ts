@@ -101,4 +101,20 @@ describe('StatusBar while recording and playing (design 015 E11)', () => {
     expect(el.querySelector('.color')?.textContent).toContain('#2f98e1');
     expect(el.querySelector('.color')?.getAttribute('aria-label')).toBe('Colour #2f98e1');
   });
+
+  it('counts the marked word at the cursor (design 019)', async () => {
+    TestBed.configureTestingModule({ imports: [StatusBar], providers: PROVIDERS });
+    const api = TestBed.inject(EditorApi) as FakeEditorApi;
+    api.markerCount = 7;
+    const fixture = TestBed.createComponent(StatusBar);
+    fixture.componentRef.setInput(
+      'frame',
+      textFrame(['x'], { caretMarker: 2, markerWords: [null, null, 'row'] }),
+    );
+    await fixture.whenStable();
+    await new Promise((r) => setTimeout(r, 200));
+    await fixture.whenStable();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.marker-count')?.textContent).toContain('row · 7×');
+  });
 });

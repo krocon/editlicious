@@ -6,6 +6,8 @@ export interface SessionEntry {
   line: number;
   ch: number;
   top: number;
+  /** Marked words by colour (design 019). */
+  markers?: (string | null)[];
 }
 
 export interface SessionFile {

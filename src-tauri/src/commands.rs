@@ -31,6 +31,8 @@ pub struct AppState {
     pub close_handled: AtomicBool,
     /// The running match count – a new one cancels it (design 006 E4).
     counting: Mutex<Option<Arc<AtomicBool>>>,
+    /// The running count of a marked word (design 019) – a new one cancels it.
+    counting_marker: Mutex<Option<Arc<AtomicBool>>>,
     /// The running overview (design 010 E3) – a new one cancels it.
     overviewing: Mutex<Option<Arc<AtomicBool>>>,
     /// Files handed to the app ("open with", a second start): `(frontend ready, waiting files)`
@@ -438,6 +440,30 @@ pub async fn count_matches(
                 0
             };
         Ok(MatchCount { total, current })
+    })
+    .await
+}
+
+/// How often the marked word at the caret occurs (status bar, design 019); `None` = the caret
+/// is on no marked word. Counted on a snapshot; a newer count cancels this one.
+#[tauri::command]
+pub async fn count_marker(state: State<'_, AppState>, id: u64) -> Result<Option<usize>, FsError> {
+    let Some((rope, re)) = lock_doc(&state.sessions.get(id)?).marker_snapshot() else {
+        return Ok(None);
+    };
+    let cancel = Arc::new(AtomicBool::new(false));
+    if let Some(old) = state
+        .counting_marker
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .replace(cancel.clone())
+    {
+        old.store(true, Ordering::Relaxed);
+    }
+    blocking(move || {
+        let (total, _) = crate::search::count(&rope, &re, 0, &cancel)
+            .ok_or_else(|| FsError::new(FsErrorCode::Cancelled, "cancelled", None))?;
+        Ok(Some(total))
     })
     .await
 }

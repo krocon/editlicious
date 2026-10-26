@@ -16,6 +16,7 @@ built with [Tauri 2](https://tauri.app), Angular 22 (zoneless, signals) and Rust
 - **Your encodings, your line endings** – detected on load, kept on save.
 - **Selections that grow** with every double click – word, `snake_case` part, path segment, brackets, line,
   paragraph ([`docs/selection.md`](docs/selection.md)).
+- **Ten word markers** that jump (F7), count and stay in “Copy as HTML” – solid colours for e-mail.
 - **Colour values as swatches** in the gutter (`#hex`, `rgb()`, `hsl()`, `0xAARRGGBB`, `"ffRRGGBB"`), converted
   with one action.
 - **Record and play back** – macros, and typing scripts with a human rhythm, rendered straight to video at any

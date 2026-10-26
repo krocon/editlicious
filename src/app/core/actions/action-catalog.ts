@@ -23,6 +23,8 @@ export interface ActionDef {
 
 /** Recently used files reachable from the menu. */
 export const MAX_RECENT_ACTIONS = 10;
+/** Colours of the word markers (design 007 E6). */
+export const MARKER_COLOURS = 10;
 /** Open files reachable by `Mod+1…9` and the menu. */
 export const MAX_SWITCH_ACTIONS = 9;
 
@@ -201,6 +203,22 @@ export const ACTIONS: readonly ActionDef[] = [
   E('edit.toggleMarker', 'Mark word', { type: 'toggleMarker' }),
   E('edit.convertColor', 'Convert colour value (#hex / rgb / hsl)', { type: 'convertColor' }),
   E('edit.clearMarkers', 'Clear all marks', { type: 'clearMarkers' }),
+  // markers (design 019)
+  E(
+    'edit.markerNext',
+    'Next occurrence of the marked word',
+    { type: 'markerStep' },
+    { repeat: true },
+  ),
+  E(
+    'edit.markerPrev',
+    'Previous occurrence of the marked word',
+    { type: 'markerStep', backwards: true },
+    { repeat: true },
+  ),
+  ...Array.from({ length: MARKER_COLOURS }, (_, i) =>
+    E(`edit.marker.${i + 1}`, `Mark word in colour ${i + 1}`, { type: 'setMarker', colour: i }),
+  ),
   E(
     'block.left',
     'Column select left',

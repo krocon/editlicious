@@ -34,6 +34,9 @@ const EN = {
   changeLineEndings: 'Convert the line endings',
   changeLanguage: 'Change the language',
   noColor: 'No colour value at the cursor.',
+  noMarker: 'The cursor is on no marked word.',
+  markerCount: (word: string, n: string) => `${word} · ${n}×`,
+  markerTitle: 'Occurrences of the marked word (F7 / ⇧F7 jump)',
   caretColor: (v: string) => `Colour ${v}`,
 };
 
@@ -70,6 +73,9 @@ export const EDITOR_TEXTS = translatable('editor', EN, {
     changeEncoding: 'Zeichenkodierung ändern',
     changeLineEndings: 'Zeilenenden umwandeln',
     noColor: 'Am Cursor steht kein Farbwert.',
+    noMarker: 'Der Cursor steht auf keinem markierten Wort.',
+    markerCount: (word: string, n: string) => `${word} · ${n}×`,
+    markerTitle: 'Vorkommen des markierten Worts (F7 / ⇧F7 springen)',
     caretColor: (v: string) => `Farbe ${v}`,
     changeLanguage: 'Sprache ändern',
   },
@@ -90,6 +96,8 @@ export function noticeText(code: string): string {
       return EDITOR_TEXTS.sortTooLarge;
     case 'no_color':
       return EDITOR_TEXTS.noColor;
+    case 'no_marker':
+      return EDITOR_TEXTS.noMarker;
     default:
       return '';
   }

@@ -12,6 +12,47 @@ use std::cmp::Ordering;
 pub const MAX_BLOCK_LINES: usize = 10_000;
 /// Marker colours (legacy: "up to 10 words").
 pub const MAX_MARKERS: usize = 10;
+/// Longest marked text (selection) in characters.
+pub const MAX_MARKER_CHARS: usize = 1000;
+
+/// Case-sensitive, whole words when the text starts and ends with word characters.
+fn marker_regex(text: &str) -> Option<regex::Regex> {
+    let wordy = |c: Option<char>| c.is_some_and(|c| c.is_alphanumeric() || c == '_');
+    search::compile(&Query {
+        pattern: text.to_owned(),
+        case_sensitive: true,
+        whole_word: wordy(text.chars().next()) && wordy(text.chars().last()),
+        ..Default::default()
+    })
+    .ok()
+}
+
+/// What "copy as HTML" paints with (design 010 E5, markers design 019).
+pub(super) struct HtmlLook<'a> {
+    pub styles: &'a [String],
+    pub base: &'a str,
+    pub gutter: &'a str,
+    /// CSS colours of the ten markers as drawn (may be translucent).
+    pub markers: &'a [String],
+    /// The editor background (CSS) the markers lie on.
+    pub background: &'a str,
+}
+
+/// A CSS colour (`rgb(…)`, `rgba(…)`, `#…`) as 0xRRGGBBAA.
+fn css_rgba(css: &str) -> Option<u32> {
+    super::colors::find(css).first().map(|h| h.rgba)
+}
+
+/// `fg` over `bg` → an opaque `#rrggbb` (e-mail programs ignore transparency).
+pub(super) fn solid(fg: u32, bg: u32) -> String {
+    let a = (fg & 0xff) as f64 / 255.0;
+    let mix = |shift: u32| {
+        let f = ((fg >> shift) & 0xff) as f64;
+        let b = ((bg >> shift) & 0xff) as f64;
+        (f * a + b * (1.0 - a)).round() as u32
+    };
+    format!("#{:02x}{:02x}{:02x}", mix(24), mix(16), mix(8))
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Block {
@@ -313,14 +354,13 @@ impl Session {
     }
 
     /// The primary selection (or its line) as HTML with inline styles, plain text as the
-    /// alternative (design 010 E5).
+    /// alternative (design 010 E5); marked words keep their colour – mixed with the background
+    /// to solid colours, since many mail programs drop transparency (design 019 E1).
     pub(super) fn copy_html(
         &mut self,
         clip: &mut dyn Clipboard,
         line_numbers: bool,
-        styles: &[String],
-        base: &str,
-        gutter: &str,
+        look: &HtmlLook<'_>,
     ) -> Result<(), FsError> {
         let c = self.primary();
         let (a, b) = if c.is_empty() {
@@ -343,10 +383,22 @@ impl Session {
             Some(h) => h.styles(&self.doc, a.line, last + 1).0,
             None => Vec::new(),
         };
+        let bg = css_rgba(look.background).unwrap_or(0xffff_ffff);
+        let marker_bg: Vec<Option<String>> = look
+            .markers
+            .iter()
+            .map(|m| css_rgba(m).map(|fg| solid(fg, bg)))
+            .collect();
         let width = (last + 1).to_string().len();
+        let background = if look.background.is_empty() {
+            String::new()
+        } else {
+            format!(";background-color:{}", solid(bg | 0xff, 0xffff_ffff))
+        };
         let mut html = format!(
-            "<pre style=\"{};tab-size:{};-moz-tab-size:{}\">",
-            esc(base),
+            "<pre style=\"{}{};tab-size:{};-moz-tab-size:{}\">",
+            esc(look.base),
+            background,
             self.tab,
             self.tab
         );
@@ -358,38 +410,70 @@ impl Session {
             if line_numbers {
                 html.push_str(&format!(
                     "<span style=\"{};user-select:none\">{:>width$} </span>",
-                    esc(gutter),
+                    esc(look.gutter),
                     line + 1
                 ));
             }
-            if self.doc.is_long(line) {
+            let (chars, st, offset): (Vec<char>, Vec<u8>, usize) = if self.doc.is_long(line) {
                 let t = self.doc.line_slice(line, from, to);
-                html.push_str(&esc(&t));
-                plain.push_str(&t);
+                let n = t.chars().count();
+                (t.chars().collect(), vec![0; n], from)
             } else {
                 let text = self.doc.line_string(line);
                 let spans = line_styles.get(line - a.line).cloned().flatten();
                 let st = super::char_styles(&text, spans.as_deref(), from, to);
-                let chars: Vec<char> = text.chars().skip(from).take(to - from).collect();
-                let mut i = 0;
-                while i < chars.len() {
-                    let k = st.get(i).copied().unwrap_or(0);
-                    let mut j = i;
-                    while j < chars.len() && st.get(j).copied().unwrap_or(0) == k {
-                        j += 1;
+                (text.chars().skip(from).take(to - from).collect(), st, from)
+            };
+            // the marker of every character (the one set last where they overlap)
+            let mut mark: Vec<Option<usize>> = vec![None; chars.len()];
+            if !marker_bg.is_empty() && self.markers.iter().any(Option::is_some) {
+                // a little context so whole words at the edges are recognised
+                let ctx_from = offset.saturating_sub(MAX_MARKER_CHARS);
+                let ctx = self.doc.line_slice(line, ctx_from, to + MAX_MARKER_CHARS);
+                let n = chars.len();
+                for (ma, mb, i) in self.markers_in(&ctx, ctx_from) {
+                    let ka = ma.max(offset) - offset;
+                    let kb = (mb.max(offset) - offset).min(n);
+                    for m in mark.iter_mut().take(kb).skip(ka) {
+                        if m.is_none_or(|old| old < i) {
+                            *m = Some(i);
+                        }
                     }
-                    let piece: String = chars[i..j].iter().collect();
-                    match styles.get(k as usize).filter(|s| k > 0 && !s.is_empty()) {
-                        Some(css) => html.push_str(&format!(
-                            "<span style=\"{}\">{}</span>",
-                            esc(css),
-                            esc(&piece)
-                        )),
-                        None => html.push_str(&esc(&piece)),
-                    }
-                    plain.push_str(&piece);
-                    i = j;
                 }
+            }
+            let mut i = 0;
+            while i < chars.len() {
+                let key = (st.get(i).copied().unwrap_or(0), mark[i]);
+                let mut j = i;
+                while j < chars.len() && (st.get(j).copied().unwrap_or(0), mark[j]) == key {
+                    j += 1;
+                }
+                let piece: String = chars[i..j].iter().collect();
+                let mut css = match look
+                    .styles
+                    .get(key.0 as usize)
+                    .filter(|s| key.0 > 0 && !s.is_empty())
+                {
+                    Some(c) => c.clone(),
+                    None => String::new(),
+                };
+                if let Some(Some(m)) = key.1.and_then(|m| marker_bg.get(m)) {
+                    if !css.is_empty() {
+                        css.push(';');
+                    }
+                    css.push_str(&format!("background-color:{m};border-radius:2px"));
+                }
+                if css.is_empty() {
+                    html.push_str(&esc(&piece));
+                } else {
+                    html.push_str(&format!(
+                        "<span style=\"{}\">{}</span>",
+                        esc(&css),
+                        esc(&piece)
+                    ));
+                }
+                plain.push_str(&piece);
+                i = j;
             }
             if line < last {
                 html.push('\n');
@@ -871,18 +955,30 @@ impl Session {
 
     // ---------------------------------------------------------------- markers
 
-    /// Marks the word at the caret (or the selection) in the next free colour; again = unmark.
-    pub(super) fn toggle_marker(&mut self) {
+    /// The text to mark: the selection on one line, else the word at the caret.
+    fn marker_text(&self) -> Option<String> {
         let c = self.primary();
         let (a, b) = if c.is_empty() {
             self.word_at(c.head)
         } else {
             (c.start(), c.end())
         };
-        if a.line != b.line || a == b {
-            return;
+        if a.line != b.line || a == b || b.ch - a.ch > MAX_MARKER_CHARS {
+            return None;
         }
-        let Ok(text) = self.doc.text(a, b) else {
+        // whitespace is no word to mark; a punctuation run without its spaces
+        let text = self.doc.text(a, b).ok()?;
+        let t = if c.is_empty() {
+            text.trim()
+        } else {
+            text.as_str()
+        };
+        (!t.trim().is_empty()).then(|| t.to_owned())
+    }
+
+    /// Marks the word at the caret (or the selection) in the next free colour; again = unmark.
+    pub(super) fn toggle_marker(&mut self) {
+        let Some(text) = self.marker_text() else {
             return;
         };
         if let Some(i) = self
@@ -893,12 +989,7 @@ impl Session {
             self.markers[i] = None;
             return;
         }
-        let Ok(re) = search::compile(&Query {
-            pattern: text.clone(),
-            case_sensitive: true,
-            whole_word: true,
-            ..Default::default()
-        }) else {
+        let Some(re) = marker_regex(&text) else {
             return;
         };
         match self.markers.iter().position(Option::is_none) {
@@ -914,6 +1005,89 @@ impl Session {
 
     pub(super) fn clear_markers(&mut self) {
         self.markers.clear();
+    }
+
+    /// Marks the word at the caret (or the selection) in colour `i` – the same word always in
+    /// the same colour (design 019 E3). Marked in another colour: it moves.
+    pub(super) fn set_marker(&mut self, i: usize) {
+        if i >= MAX_MARKERS {
+            return;
+        }
+        let Some(text) = self.marker_text() else {
+            return;
+        };
+        let Some(re) = marker_regex(&text) else {
+            return;
+        };
+        for m in self.markers.iter_mut() {
+            if m.as_ref().is_some_and(|(t, _)| *t == text) {
+                *m = None;
+            }
+        }
+        while self.markers.len() <= i {
+            self.markers.push(None);
+        }
+        self.markers[i] = Some((text, re));
+    }
+
+    /// Puts markers back (session restore); unusable entries are dropped.
+    pub(super) fn set_markers(&mut self, words: Vec<Option<String>>) {
+        self.markers = words
+            .into_iter()
+            .take(MAX_MARKERS)
+            .map(|w| {
+                w.filter(|t| !t.is_empty() && t.chars().count() <= MAX_MARKER_CHARS)
+                    .and_then(|t| marker_regex(&t).map(|re| (t, re)))
+            })
+            .collect();
+        while self.markers.last().is_some_and(Option::is_none) {
+            self.markers.pop();
+        }
+    }
+
+    /// The marker under the primary caret: `(colour, from, to)` in characters of its line.
+    pub(super) fn marker_at_caret(&self) -> Option<(usize, usize, usize)> {
+        if self.markers.iter().all(Option::is_none) {
+            return None;
+        }
+        let p = self.primary().head;
+        let from = p.ch.saturating_sub(MAX_MARKER_CHARS);
+        let text = self.doc.line_slice(p.line, from, p.ch + MAX_MARKER_CHARS);
+        // the marker set last wins where they overlap (as drawn)
+        self.markers_in(&text, from)
+            .into_iter()
+            .filter(|&(a, b, _)| a <= p.ch && p.ch <= b)
+            .max_by_key(|&(_, _, i)| i)
+            .map(|(a, b, i)| (i, a, b))
+    }
+
+    /// Selects the next (previous) occurrence of the marker at the caret, wrapping around.
+    pub(super) fn marker_step(&mut self, backwards: bool) {
+        let Some((i, a, b)) = self.marker_at_caret() else {
+            self.notice = Some("no_marker".into());
+            return;
+        };
+        let Some((_, re)) = self.markers[i].clone() else {
+            return;
+        };
+        let line = self.primary().head.line;
+        let start = self.doc.pos_to_char(Pos::new(line, a));
+        let end = self.doc.pos_to_char(Pos::new(line, b));
+        let rope = self.doc.rope();
+        let found = if backwards {
+            search::find_prev(rope, &re, start)
+        } else {
+            search::find_next(rope, &re, end)
+        };
+        if let Some((s, e)) = found {
+            let (s, e) = (self.doc.char_to_pos(s), self.doc.char_to_pos(e));
+            self.cursors = vec![Cursor {
+                anchor: s,
+                head: e,
+                goal: None,
+            }];
+            self.primary = 0;
+        }
     }
 
     /// Marker ranges `(from_ch, to_ch, colour)` in a piece of text.

@@ -1,4 +1,14 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+} from '@angular/core';
+import { EditorApi } from '../../core/editor/editor-api';
 import { ActionService } from '../../core/actions/action.service';
 import { Frame } from '../../core/editor/editor.models';
 import { locale } from '../../core/i18n/i18n';
@@ -22,6 +32,12 @@ import { EDITOR_TEXTS } from './editor-texts';
       }
       @if (f.overwrite) {
         <span class="item strong">{{ t.overwrite }}</span>
+      }
+      @if (markerCount(); as m) {
+        <span class="item marker-count" [title]="t.markerTitle"
+          ><span class="chip" [attr.data-colour]="f.caretMarker" aria-hidden="true"></span
+          >{{ m }}</span
+        >
       }
       @if (f.caretColor; as c) {
         <span class="item color" [attr.aria-label]="t.caretColor(c)"
@@ -99,6 +115,42 @@ export class StatusBar {
   private readonly actions = inject(ActionService);
   private readonly rec = inject(RecordingStore);
   private readonly mcp = inject(McpStore);
+
+  /** "row · 7×" when the caret is on a marked word (design 019): counted in the engine. */
+  private readonly markerTally = signal<{ key: string; n: number } | null>(null);
+  private readonly api = inject(EditorApi);
+  private countTimer: ReturnType<typeof setTimeout> | null = null;
+
+  protected readonly markerCount = computed(() => {
+    const f = this.frame();
+    const c = this.markerTally();
+    if (!f || f.caretMarker === null || !c || c.key !== this.countKey(f)) return '';
+    const word = f.markerWords[f.caretMarker] ?? '';
+    const shown = word.length > 24 ? word.slice(0, 23) + '…' : word;
+    const n = c.n > 9999 ? '> 9 999' : c.n.toLocaleString(locale());
+    return this.t.markerCount(shown, n);
+  });
+
+  private countKey(f: Frame): string {
+    return `${f.info.id}/${f.info.revision}/${f.caretMarker}/${f.deco}`;
+  }
+
+  constructor() {
+    effect(() => {
+      const f = this.frame();
+      const key = f && f.caretMarker !== null ? this.countKey(f) : '';
+      untracked(() => {
+        if (this.countTimer) clearTimeout(this.countTimer);
+        if (!f || !key || this.markerTally()?.key === key) return;
+        this.countTimer = setTimeout(() => {
+          this.api
+            .countMarker(f.info.id)
+            .then((n) => this.markerTally.set(n === null ? null : { key, n }))
+            .catch(() => undefined);
+        }, 150);
+      });
+    });
+  }
 
   /** "Video 37 %" while a video is rendered (design 017); a click cancels. */
   protected readonly video = computed(() => {

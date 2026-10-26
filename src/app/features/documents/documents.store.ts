@@ -15,6 +15,8 @@ export interface OpenDoc {
   line: number;
   ch: number;
   top: number;
+  /** Marked words by colour (design 019), kept in the session. */
+  markers?: (string | null)[];
 }
 
 /** Files shown in the "recent" list (and kept in the session file). */
@@ -89,7 +91,7 @@ export class DocumentsStore {
     } else if (session && session.files.length > 0 && this.settings.settings().restoreSession) {
       for (const f of session.files) {
         const doc = await this.load(f.path, false);
-        if (doc) await this.restore(doc.id, f.line, f.ch, f.top);
+        if (doc) await this.restore(doc.id, f.line, f.ch, f.top, f.markers);
       }
       const active = this.docs()[session.active] ?? this.docs()[0];
       if (active) this.activeId.set(active.id);
@@ -99,8 +101,15 @@ export class DocumentsStore {
     void this.ws.takeOverClose().catch(() => undefined);
   }
 
-  private async restore(id: number, line: number, ch: number, top: number): Promise<void> {
+  private async restore(
+    id: number,
+    line: number,
+    ch: number,
+    top: number,
+    markers?: (string | null)[],
+  ): Promise<void> {
     try {
+      if (markers?.length) await this.api.command(id, { type: 'setMarkers', words: markers });
       await this.api.command(id, { type: 'goTo', line, ch });
       const f = await this.api.command(id, { type: 'scrollTo', top });
       this.onFrame(f);
@@ -125,7 +134,13 @@ export class DocumentsStore {
     try {
       await this.ws.saveSession({
         version: 1,
-        files: docs.map((d) => ({ path: d.info.path!, line: d.line, ch: d.ch, top: d.top })),
+        files: docs.map((d) => ({
+          path: d.info.path!,
+          line: d.line,
+          ch: d.ch,
+          top: d.top,
+          ...(d.markers?.some((m) => m) ? { markers: d.markers } : {}),
+        })),
         active,
         recent: this.recent(),
         tabs: this.tabsMode(),
@@ -144,7 +159,14 @@ export class DocumentsStore {
     this.docs.update((docs) =>
       docs.map((d) =>
         d.id === f.info.id
-          ? { ...d, info: f.info, line: f.caretLine, ch: f.caretCh, top: f.top }
+          ? {
+              ...d,
+              info: f.info,
+              line: f.caretLine,
+              ch: f.caretCh,
+              top: f.top,
+              markers: f.markerWords,
+            }
           : d,
       ),
     );

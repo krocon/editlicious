@@ -533,8 +533,29 @@ impl Session {
                 styles,
                 base,
                 gutter,
+                markers,
+                background,
             } => {
-                self.copy_html(clip, line_numbers, &styles, &base, &gutter)?;
+                let look = ops::HtmlLook {
+                    styles: &styles,
+                    base: &base,
+                    gutter: &gutter,
+                    markers: &markers,
+                    background: &background,
+                };
+                self.copy_html(clip, line_numbers, &look)?;
+                reveal = Reveal::No;
+            }
+            Command::SetMarker { colour } => {
+                self.set_marker(colour);
+                reveal = Reveal::No;
+            }
+            Command::MarkerStep { backwards } => {
+                self.marker_step(backwards);
+                reveal = Reveal::Center;
+            }
+            Command::SetMarkers { words } => {
+                self.set_markers(words);
                 reveal = Reveal::No;
             }
             Command::SetLanguage { name } => {
@@ -1702,7 +1723,21 @@ impl Session {
             deco: self.deco(),
             color_column: self.color_column,
             caret_color: self.color_at_caret().map(|h| colors::to_hash(h.rgba)),
+            marker_words: self
+                .markers
+                .iter()
+                .map(|m| m.as_ref().map(|(t, _)| t.clone()))
+                .collect(),
+            caret_marker: self.marker_at_caret().map(|(i, _, _)| i),
         }
+    }
+
+    /// The regex of the marked word at the primary caret and a snapshot of the text – counted
+    /// off the session lock (status bar, design 019).
+    pub fn marker_snapshot(&self) -> Option<(ropey::Rope, Regex)> {
+        let (i, _, _) = self.marker_at_caret()?;
+        let (_, re) = self.markers.get(i)?.clone()?;
+        Some((self.doc.rope().clone(), re))
     }
 
     /// The colour value the primary caret is in or touches (design 018).
