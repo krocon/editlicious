@@ -91,6 +91,10 @@ struct DragOrigin {
 
 /// Cells kept between the caret and the edge when the view scrolls horizontally.
 const H_MARGIN: f64 = 4.0;
+/// Largest view the UI may ask for (rows, cells) and the largest single scroll step.
+const MAX_VIEW_ROWS: f64 = 2_000.0;
+const MAX_VIEW_COLS: f64 = 4_000.0;
+const MAX_SCROLL: f64 = 100_000.0;
 /// Extra cells requested left and right of the visible window.
 const WINDOW_SLACK: usize = 16;
 
@@ -208,8 +212,9 @@ impl Session {
         match cmd {
             Command::Frame => reveal = Reveal::No,
             Command::Resize { lines, cols } => {
-                self.view_lines = lines.max(1.0);
-                self.view_cols = cols.max(1.0);
+                // bounded: a frame never holds more than this (design 013 review #13)
+                self.view_lines = lines.clamp(1.0, MAX_VIEW_ROWS);
+                self.view_cols = cols.clamp(1.0, MAX_VIEW_COLS);
                 reveal = Reveal::No;
             }
             Command::Configure {
@@ -246,6 +251,8 @@ impl Session {
                 reveal = Reveal::No;
             }
             Command::Scroll { lines, cells } => {
+                let lines = lines.clamp(-MAX_SCROLL, MAX_SCROLL);
+                let cells = cells.clamp(-MAX_SCROLL, MAX_SCROLL);
                 if self.wrap {
                     let v = self.advance(self.top_vpos(), lines);
                     self.set_top_vpos(v);
@@ -1217,8 +1224,16 @@ impl Session {
         };
         if self.selection_is_match(&re) {
             let (s, e) = self.primary_chars();
-            let matched = self.doc.rope().slice(s..e).to_string();
-            let text = search::expand(&re, &matched, replacement, q.regex);
+            // groups in context: the lines around the match (lookaround-free regexes still
+            // depend on \b, ^, $ …)
+            let rope = self.doc.rope();
+            let ctx_from = rope.line_to_char(rope.char_to_line(s));
+            let ctx_to = rope
+                .line_to_char((rope.char_to_line(e) + 2).min(rope.len_lines()))
+                .max(e);
+            let ctx = rope.slice(ctx_from..ctx_to).to_string();
+            let at = rope.slice(ctx_from..s).len_bytes();
+            let text = search::expand_at(&re, &ctx, at, replacement, q.regex);
             self.insert(&text, EditKind::Other)?;
         }
         self.find(q, false, false);
@@ -1240,21 +1255,14 @@ impl Session {
             return Ok(());
         }
         let n = found.len();
-        let changes = found
-            .into_iter()
-            .map(|(s, e, text)| Change {
-                from: self.doc.char_to_pos(s),
-                to: self.doc.char_to_pos(e),
-                text,
-            })
-            .collect();
         let first = self.primary();
-        self.doc.apply(EditRequest {
-            changes,
-            kind: EditKind::Other,
-            sel_before: self.sels(),
-            sel_after: Some(vec![Sel::caret(first.start())]),
-        })?;
+        // character offsets: a match may start or end inside a CRLF
+        self.doc.apply_chars(
+            found,
+            self.sels(),
+            Some(vec![Sel::caret(first.start())]),
+            EditKind::Other,
+        )?;
         self.cursors = vec![Cursor::caret(self.doc.clamp(first.start()))];
         self.notice = Some(format!("replaced:{n}"));
         Ok(())

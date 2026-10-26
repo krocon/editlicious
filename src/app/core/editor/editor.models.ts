@@ -44,6 +44,8 @@ export interface SaveRequest {
   path?: string;
   encoding?: string;
   bom?: boolean;
+  /** Overwrite although the file changed on disk (the user said so). */
+  force?: boolean;
 }
 
 export type Motion =

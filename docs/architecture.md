@@ -71,6 +71,39 @@ Suche (006): Treffer am Ende von 100 MB 30 ms · 1,4 Mio. Treffer zählen 0,44 s
 Hervorhebung (008): Taste mit Hervorhebung ~5 ms in 100 000 Zeilen Rust, weite Sprünge sofort (ungefähr) und
 nach dem Hintergrund-Aufholen exakt.
 
+### Große Dateien (013)
+
+`cargo test -p ed-core --release -- --ignored --nocapture --test-threads 1 measure_013` (`src-tauri/core/src/measure.rs`,
+Größe über `ED_MEASURE_MB`), Linux-Container mit 2 Kernen, 7 GB RAM, über die Befehle der Sitzung wie in der App:
+
+| Schritt | 1 GB, 10 Mio. Zeilen |
+|---|---|
+| Öffnen (lesen, dekodieren, Rope) | 1,6 s · Speicher 0,95 GB |
+| erster Frame / Sprung ans Ende / Gehe zu Zeile 5 Mio. | 0,3 ms / 5 ms / 6 ms |
+| Tippen in der Mitte (mit Log-Hervorhebung / ohne) | 4,5 ms / 0,2 ms je Taste |
+| Weitersuchen / 10 000 Treffer zählen | 0,8 ms / 0,3 s |
+| Alle ersetzen (10 000) / rückgängig | 0,4 s / 17 ms |
+| Speichern (atomar) | 1,5 s |
+| Zeilenenden → CRLF / rückgängig | 3,5 s / 2,5 s (Spitze 2× Dateigröße) |
+| 2 Mio. Zeilen (200 MB) sortieren / rückgängig | 1,3 s / 0,4 s |
+
+| Schritt | eine 100-MB-Zeile | 1 Mio. Zeilen LF/CRLF/CR gemischt |
+|---|---|---|
+| Öffnen | 90 ms | 41 ms |
+| Ende der Zeile / 100 Tasten dort | < 0,1 ms / 1,2 ms | – |
+| Rückwärts suchen über 100 MB | 110 ms | – |
+| alle Zeilenenden → LF | – | 105 ms |
+| Speichern | 134 ms | 45 ms |
+
+**Grenzen** (013): Dateien bis 4 GB (`MAX_FILE_BYTES`), Speicherbedarf ≈ Dateigröße (Rope) + Undo; keine
+Zwangswarnung, die App bleibt bei 1 GB flüssig. Sortieren höchstens 512 MB an Zeilen (`MAX_SORT_BYTES`, braucht
+etwa das Vierfache), „Als HTML kopieren“ 20 000 Zeilen, Kopieren/Ausschneiden 64 MB (`MAX_TEXT_BYTES`), Undo
+10 000 Schritte bzw. 256 MB (ein einzelner größerer Schritt bleibt). Ansicht höchstens 2 000 Reihen × 4 000 Zellen,
+ein Scrollschritt höchstens 100 000 Reihen. Keine Geräte/Pipes. Behobene Engpässe: Zeilenenden-Undo als 1 Byte je
+Umbruch statt Millionen Änderungen; Edits ab 50 000 Änderungen bauen die Rope neu, darunter in place (Speicher
+flach); Sortieren ohne String je Zeile, natürlicher Vergleich ohne Allokation; Suche mit `find_iter` statt
+`find_at` je Zeichen (Muster mit leeren Treffern); Einfügen normalisiert byteweise.
+
 ## WebAssembly-Demo (011)
 
 `src-tauri/wasm` (Crate `ed-wasm`, nicht im Workspace, eigene `Cargo.lock`) bindet `ed-core` mit Feature `fancy`

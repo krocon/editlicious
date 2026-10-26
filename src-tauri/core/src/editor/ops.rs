@@ -63,52 +63,69 @@ fn digits_cmp(a: &str, b: &str) -> Ordering {
         .then_with(|| a.len().cmp(&b.len()))
 }
 
-fn chunks(s: &str) -> Vec<(bool, &str)> {
-    let mut out = Vec::new();
-    let mut start = 0;
-    let mut digit: Option<bool> = None;
-    for (i, c) in s.char_indices() {
-        let d = c.is_ascii_digit();
-        if digit.is_some_and(|x| x != d) {
-            out.push((digit.unwrap_or(false), &s[start..i]));
-            start = i;
-        }
-        digit = Some(d);
+/// Runs of digits and of other characters, without allocating (sorting compares millions of
+/// times, design 013 E5).
+struct Chunks<'a> {
+    s: &'a str,
+}
+
+impl<'a> Iterator for Chunks<'a> {
+    type Item = (bool, &'a str);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let first = self.s.as_bytes().first()?;
+        let digit = first.is_ascii_digit();
+        // digits are ASCII: a byte scan finds the end of the run on a char boundary
+        let end = self
+            .s
+            .bytes()
+            .position(|b| b.is_ascii_digit() != digit)
+            .unwrap_or(self.s.len());
+        let (run, rest) = self.s.split_at(end);
+        self.s = rest;
+        Some((digit, run))
     }
-    if start < s.len() {
-        out.push((digit.unwrap_or(false), &s[start..]));
-    }
-    out
+}
+
+fn chunks(s: &str) -> Chunks<'_> {
+    Chunks { s }
 }
 
 fn text_cmp(a: &str, b: &str, ignore_case: bool) -> Ordering {
     if ignore_case {
-        let (la, lb) = (a.to_lowercase(), b.to_lowercase());
-        la.cmp(&lb).then_with(|| a.cmp(b))
+        lower_cmp(a, b).then_with(|| a.cmp(b))
     } else {
         a.cmp(b)
     }
 }
 
+/// Like comparing the lower-case strings, without building them.
+fn lower_cmp(a: &str, b: &str) -> Ordering {
+    a.chars()
+        .flat_map(char::to_lowercase)
+        .cmp(b.chars().flat_map(char::to_lowercase))
+}
+
 /// Natural order: digit runs compare by value (`file2 < file10`).
 pub fn natural_cmp(a: &str, b: &str, ignore_case: bool) -> Ordering {
-    let (ca, cb) = (chunks(a), chunks(b));
-    for (x, y) in ca.iter().zip(cb.iter()) {
-        let o = match (x.0, y.0) {
-            (true, true) => digits_cmp(x.1, y.1),
-            _ => {
-                if ignore_case {
-                    x.1.to_lowercase().cmp(&y.1.to_lowercase())
-                } else {
-                    x.1.cmp(y.1)
+    let (mut ca, mut cb) = (chunks(a), chunks(b));
+    loop {
+        match (ca.next(), cb.next()) {
+            (Some(x), Some(y)) => {
+                let o = match (x.0, y.0) {
+                    (true, true) => digits_cmp(x.1, y.1),
+                    _ if ignore_case => lower_cmp(x.1, y.1),
+                    _ => x.1.cmp(y.1),
+                };
+                if o != Ordering::Equal {
+                    return o;
                 }
             }
-        };
-        if o != Ordering::Equal {
-            return o;
+            (None, None) => return a.cmp(b),
+            (None, Some(_)) => return Ordering::Less,
+            (Some(_), None) => return Ordering::Greater,
         }
     }
-    ca.len().cmp(&cb.len()).then_with(|| a.cmp(b))
 }
 
 /// The first number of a line (`-12.5`, `3`, `1e3` is 1).
@@ -138,13 +155,19 @@ pub fn first_number(s: &str) -> Option<f64> {
 }
 
 /// Sorts lines (stable) as the options say.
-pub fn sort_lines(lines: &mut Vec<String>, o: SortOptions) {
+pub fn sort_lines<S: AsRef<str>>(lines: &mut Vec<S>, o: SortOptions) {
     match o.mode {
-        SortMode::Natural => lines.sort_by(|a, b| natural_cmp(a, b, o.ignore_case)),
-        SortMode::Text => lines.sort_by(|a, b| text_cmp(a, b, o.ignore_case)),
+        SortMode::Natural => {
+            lines.sort_unstable_by(|a, b| natural_cmp(a.as_ref(), b.as_ref(), o.ignore_case))
+        }
+        SortMode::Text => {
+            lines.sort_unstable_by(|a, b| text_cmp(a.as_ref(), b.as_ref(), o.ignore_case))
+        }
         SortMode::Numeric => {
-            let mut keyed: Vec<(Option<f64>, String)> =
-                lines.drain(..).map(|l| (first_number(&l), l)).collect();
+            let mut keyed: Vec<(Option<f64>, S)> = lines
+                .drain(..)
+                .map(|l| (first_number(l.as_ref()), l))
+                .collect();
             keyed.sort_by(|a, b| match (a.0, b.0) {
                 (Some(x), Some(y)) => x.partial_cmp(&y).unwrap_or(Ordering::Equal),
                 (Some(_), None) => Ordering::Less,
@@ -159,11 +182,41 @@ pub fn sort_lines(lines: &mut Vec<String>, o: SortOptions) {
     }
     if o.unique {
         if o.ignore_case {
-            lines.dedup_by(|a, b| a.to_lowercase() == b.to_lowercase());
+            lines.dedup_by(|a, b| lower_cmp(a.as_ref(), b.as_ref()) == Ordering::Equal);
         } else {
-            lines.dedup();
+            lines.dedup_by(|a, b| a.as_ref() == b.as_ref());
         }
     }
+}
+
+/// The lines of a text (breaks LF, CRLF, CR); a final break ends the last line.
+fn split_lines(text: &str) -> Vec<&str> {
+    let bytes = text.as_bytes();
+    let mut out = Vec::new();
+    let (mut start, mut i) = (0, 0);
+    while i < bytes.len() {
+        match bytes[i] {
+            b'\r' => {
+                out.push(&text[start..i]);
+                i += if bytes.get(i + 1) == Some(&b'\n') {
+                    2
+                } else {
+                    1
+                };
+                start = i;
+            }
+            b'\n' => {
+                out.push(&text[start..i]);
+                i += 1;
+                start = i;
+            }
+            _ => i += 1,
+        }
+    }
+    if start < text.len() {
+        out.push(&text[start..]);
+    }
+    out
 }
 
 pub fn change_case(text: &str, how: CaseChange) -> String {
@@ -197,6 +250,9 @@ pub fn change_case(text: &str, how: CaseChange) -> String {
         }
     }
 }
+
+/// Text that "sort lines" takes at most (design 013 E4).
+pub const MAX_SORT_BYTES: usize = 512 << 20;
 
 /// Lines "copy as HTML" takes at most (it is meant for snippets, design 010 E5).
 pub const MAX_HTML_LINES: usize = 20_000;
@@ -370,7 +426,24 @@ impl Session {
         if b <= a {
             return Ok(());
         }
-        let mut lines = self.lines_text(a, b);
+        // sorting holds the lines about four times (lines, result, undo both ways): a limit
+        // instead of running out of memory (design 013 E4)
+        let rope = self.doc.rope();
+        let bytes = rope.line_to_byte((b + 1).min(rope.len_lines())) - rope.line_to_byte(a);
+        if bytes > MAX_SORT_BYTES {
+            self.notice = Some("sort_too_large".into());
+            return Ok(());
+        }
+        // one copy of the block, sorted as slices (no string per line, design 013 E5)
+        let block = {
+            let r = self.doc.rope();
+            let (ca, cb) = (r.line_to_char(a), r.line_to_char(b) + self.doc.line_len(b));
+            r.slice(ca..cb).to_string()
+        };
+        let mut lines = split_lines(&block);
+        if lines.len() < b - a + 1 {
+            lines.push(""); // the last line of the block is empty
+        }
         sort_lines(&mut lines, o);
         let le = self.doc.line_ending.as_str();
         let new_b = a + lines.len() - 1;

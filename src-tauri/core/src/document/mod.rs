@@ -31,7 +31,7 @@ pub const MAX_VIEW_LINES: usize = 2_000;
 /// Largest text `get_text` hands out (design 002 E11), in bytes of UTF-8.
 pub const MAX_TEXT_BYTES: usize = 64 << 20;
 /// From this many changes in one edit the rope is rebuilt instead of edited in place.
-const REBUILD_FROM: usize = 256;
+const REBUILD_FROM: usize = 50_000;
 
 #[derive(Debug)]
 pub struct Document {
@@ -272,38 +272,71 @@ impl Document {
 
     /// Line breaks of inserted text become the document's line ending (design 002 E6).
     fn normalize(&self, text: &str) -> String {
-        if !text.contains(['\r', '\n']) {
+        let le = self.line_ending.as_str();
+        if !text.contains('\r') && (le == "\n" || !text.contains('\n')) {
             return text.to_owned();
         }
-        let le = self.line_ending.as_str();
-        let mut out = String::with_capacity(text.len());
-        let mut chars = text.chars().peekable();
-        while let Some(c) = chars.next() {
-            match c {
-                '\r' => {
-                    if chars.peek() == Some(&'\n') {
-                        chars.next();
-                    }
+        // byte runs between breaks (a break is ASCII, so the cuts are char boundaries)
+        let bytes = text.as_bytes();
+        let mut out = String::with_capacity(text.len() + text.len() / 16);
+        let (mut start, mut i) = (0, 0);
+        while i < bytes.len() {
+            match bytes[i] {
+                b'\r' => {
+                    out.push_str(&text[start..i]);
                     out.push_str(le);
+                    i += if bytes.get(i + 1) == Some(&b'\n') {
+                        2
+                    } else {
+                        1
+                    };
+                    start = i;
                 }
-                '\n' => out.push_str(le),
-                c => out.push(c),
+                b'\n' => {
+                    out.push_str(&text[start..i]);
+                    out.push_str(le);
+                    i += 1;
+                    start = i;
+                }
+                _ => i += 1,
             }
         }
+        out.push_str(&text[start..]);
         out
     }
 
     /// Applies changes given in coordinates before the edit (design 002 E6) and records the step.
     pub fn apply(&mut self, req: EditRequest) -> Result<Vec<Sel>, FsError> {
-        let mut raw: Vec<RawChange> = req
+        let raw: Vec<(usize, usize, String)> = req
             .changes
-            .iter()
-            .map(|c: &Change| {
+            .into_iter()
+            .map(|c: Change| {
                 let (from, to) = ordered(self.pos_to_char(c.from), self.pos_to_char(c.to));
+                (from, to, c.text)
+            })
+            .collect();
+        self.apply_chars(raw, req.sel_before, req.sel_after, req.kind)
+    }
+
+    /// Like [`Document::apply`] with character offsets `(from, to, text)` – for changes that may
+    /// start or end inside a CRLF (a regex replacing `\r`, design 013 review #7), which a
+    /// line/column position cannot express.
+    pub fn apply_chars(
+        &mut self,
+        changes: Vec<(usize, usize, String)>,
+        sel_before: Vec<Sel>,
+        sel_after: Option<Vec<Sel>>,
+        kind: EditKind,
+    ) -> Result<Vec<Sel>, FsError> {
+        let len = self.rope.len_chars();
+        let mut raw: Vec<RawChange> = changes
+            .into_iter()
+            .map(|(a, b, text)| {
+                let (from, to) = ordered(a.min(len), b.min(len));
                 RawChange {
                     from,
                     to,
-                    text: self.normalize(&c.text),
+                    text: self.normalize(&text),
                 }
             })
             .filter(|c| c.from != c.to || !c.text.is_empty())
@@ -318,55 +351,130 @@ impl Document {
                 ));
             }
         }
-        Ok(self.record(raw, req.sel_before, req.sel_after, req.kind))
+        Ok(self.record(raw, sel_before, sel_after, kind))
     }
 
     /// Every line break becomes `le` (design 010 E2) as one undo step; new lines get `le`.
-    /// Scans the text once – a million lines take well under a second.
+    /// The step keeps one byte per break (design 013 E3) – 10 M lines cost 10 MB of history,
+    /// not millions of changes; the text is rebuilt in one pass.
     pub fn convert_line_endings(&mut self, le: LineEnding, sels: Vec<Sel>) -> Vec<Sel> {
-        let mut raw = Vec::new();
-        let mut idx = 0usize;
-        let mut cr_at: Option<usize> = None;
-        let push = |from: usize, to: usize, is: LineEnding, raw: &mut Vec<RawChange>| {
-            if is != le {
-                raw.push(RawChange {
-                    from,
-                    to,
-                    text: le.as_str().to_owned(),
-                });
+        let before = self.break_kinds();
+        let target = break_code(le);
+        let line_ending_before = self.line_ending;
+        let mixed_before = self.mixed_line_endings;
+        self.line_ending = le;
+        self.mixed_line_endings = false;
+        if before.iter().all(|&k| k == target) {
+            return sels;
+        }
+        self.rewrite_breaks(|_| le);
+        let state_before = self.state;
+        self.state = self.next_state;
+        self.next_state += 1;
+        self.history.push(Step {
+            forward: Vec::new(),
+            inverse: Vec::new(),
+            sel_before: sels.clone(),
+            sel_after: sels.clone(),
+            kind: EditKind::Other,
+            at: Instant::now(),
+            state_before,
+            state_after: self.state,
+            breaks: Some(history::Breaks {
+                before,
+                after: le,
+                line_ending_before,
+                mixed_before,
+            }),
+        });
+        sels
+    }
+
+    /// Kind of every line break (0 = LF, 1 = CRLF, 2 = CR) in one pass over the chunks.
+    fn break_kinds(&self) -> Vec<u8> {
+        let mut out = Vec::with_capacity(self.rope.len_lines());
+        let mut cr = false;
+        for chunk in self.rope.chunks() {
+            for b in chunk.bytes() {
+                match b {
+                    b'\n' => {
+                        out.push(if cr { 1 } else { 0 });
+                        cr = false;
+                    }
+                    b'\r' => {
+                        if cr {
+                            out.push(2);
+                        }
+                        cr = true;
+                    }
+                    _ => {
+                        if cr {
+                            out.push(2);
+                        }
+                        cr = false;
+                    }
+                }
+            }
+        }
+        if cr {
+            out.push(2);
+        }
+        out
+    }
+
+    /// Rebuilds the text with break `i` written as `kind(i)`; lines and columns stay.
+    fn rewrite_breaks(&mut self, kind: impl Fn(usize) -> LineEnding) {
+        let mut b = ropey::RopeBuilder::new();
+        let mut i = 0usize;
+        let mut cr = false;
+        let mut buf = String::with_capacity(64 * 1024);
+        let flush = |buf: &mut String, b: &mut ropey::RopeBuilder| {
+            if !buf.is_empty() {
+                b.append(buf);
+                buf.clear();
             }
         };
         for chunk in self.rope.chunks() {
-            for c in chunk.chars() {
-                match c {
-                    '\n' => match cr_at.take() {
-                        Some(i) if i + 1 == idx => push(i, idx + 1, LineEnding::Crlf, &mut raw),
-                        Some(i) => {
-                            push(i, i + 1, LineEnding::Cr, &mut raw);
-                            push(idx, idx + 1, LineEnding::Lf, &mut raw);
-                        }
-                        None => push(idx, idx + 1, LineEnding::Lf, &mut raw),
-                    },
-                    '\r' => {
-                        if let Some(i) = cr_at.replace(idx) {
-                            push(i, i + 1, LineEnding::Cr, &mut raw);
-                        }
+            let mut start = 0;
+            for (pos, byte) in chunk.bytes().enumerate() {
+                match byte {
+                    b'\n' => {
+                        buf.push_str(&chunk[start..pos]);
+                        start = pos + 1;
+                        buf.push_str(kind(i).as_str());
+                        i += 1;
+                        cr = false;
                     }
-                    _ => {
-                        if let Some(i) = cr_at.take() {
-                            push(i, i + 1, LineEnding::Cr, &mut raw);
+                    b'\r' => {
+                        buf.push_str(&chunk[start..pos]);
+                        start = pos + 1;
+                        if cr {
+                            buf.push_str(kind(i).as_str());
+                            i += 1;
                         }
+                        cr = true;
                     }
+                    _ if cr => {
+                        // a lone CR before this byte
+                        buf.push_str(kind(i).as_str());
+                        i += 1;
+                        cr = false;
+                    }
+                    _ => {}
                 }
-                idx += 1;
+            }
+            buf.push_str(&chunk[start..]);
+            if buf.len() >= 64 * 1024 {
+                flush(&mut buf, &mut b);
             }
         }
-        if let Some(i) = cr_at {
-            push(i, i + 1, LineEnding::Cr, &mut raw);
+        if cr {
+            buf.push_str(kind(i).as_str());
         }
-        self.line_ending = le;
-        self.mixed_line_endings = false;
-        self.record(raw, sels.clone(), Some(sels), EditKind::Other)
+        flush(&mut buf, &mut b);
+        self.rope = b.finish();
+        self.revision += 1;
+        self.changed_from = Some(0);
     }
 
     /// Applies sorted, non-overlapping changes (char offsets) and records the undo step.
@@ -401,6 +509,7 @@ impl Document {
             at: Instant::now(),
             state_before,
             state_after: self.state,
+            breaks: None,
         });
         sel_after
     }
@@ -466,9 +575,15 @@ impl Document {
     /// Undoes the last step; returns the selections before it.
     pub fn undo(&mut self) -> Option<Vec<Sel>> {
         let step = self.history.pop_undo()?;
-        let mut inv = step.inverse.clone();
-        inv.sort_by_key(|c| (c.from, c.to));
-        self.apply_raw(&inv);
+        if let Some(br) = &step.breaks {
+            self.rewrite_breaks(|i| code_break(br.before.get(i).copied().unwrap_or(0)));
+            self.line_ending = br.line_ending_before;
+            self.mixed_line_endings = br.mixed_before;
+        } else {
+            let mut inv = step.inverse.clone();
+            inv.sort_by_key(|c| (c.from, c.to));
+            self.apply_raw(&inv);
+        }
         self.state = step.state_before;
         let sel = step.sel_before.clone();
         self.history.push_redo(step);
@@ -478,9 +593,16 @@ impl Document {
     /// Redoes the last undone step; returns the selections after it.
     pub fn redo(&mut self) -> Option<Vec<Sel>> {
         let step = self.history.pop_redo()?;
-        let mut fwd = step.forward.clone();
-        fwd.sort_by_key(|c| (c.from, c.to));
-        self.apply_raw(&fwd);
+        if let Some(br) = &step.breaks {
+            let le = br.after;
+            self.rewrite_breaks(|_| le);
+            self.line_ending = le;
+            self.mixed_line_endings = false;
+        } else {
+            let mut fwd = step.forward.clone();
+            fwd.sort_by_key(|c| (c.from, c.to));
+            self.apply_raw(&fwd);
+        }
         self.state = step.state_after;
         let sel = step.sel_after.clone();
         self.history.push_undo_keep_redo(step);
@@ -529,6 +651,15 @@ impl Document {
                 Some(&path),
             ));
         }
+        // someone else wrote the file since we read or saved it: do not overwrite unasked
+        // (design 013 review #2)
+        if !req.force && self.path.as_deref() == Some(path.as_path()) && self.disk_state().changed {
+            return Err(FsError::new(
+                FsErrorCode::ChangedOnDisk,
+                "changed on disk",
+                Some(&path),
+            ));
+        }
         let encoding = match &req.encoding {
             Some(label) => encoding_for_label(label)?,
             None => self.encoding,
@@ -561,6 +692,22 @@ impl Document {
             meta.and_then(|m| m.modified().ok()),
         );
         Ok(())
+    }
+}
+
+fn break_code(le: LineEnding) -> u8 {
+    match le {
+        LineEnding::Lf => 0,
+        LineEnding::Crlf => 1,
+        LineEnding::Cr => 2,
+    }
+}
+
+fn code_break(c: u8) -> LineEnding {
+    match c {
+        1 => LineEnding::Crlf,
+        2 => LineEnding::Cr,
+        _ => LineEnding::Lf,
     }
 }
 

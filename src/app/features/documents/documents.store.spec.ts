@@ -30,9 +30,13 @@ function setup() {
   return { api, ws, store, answers, asked };
 }
 
-function markDirty(store: DocumentsStore, id: number) {
+/** Dirty in the store (last frame) and in the engine (what `info` answers). */
+function markDirty(store: DocumentsStore, id: number, api?: FakeEditorApi) {
   const d = store.docs().find((x) => x.id === id)!;
-  store.onFrame(textFrame(['x'], { info: { ...d.info, dirty: true } }));
+  const info = { ...d.info, dirty: true };
+  store.onFrame(textFrame(['x'], { info }));
+  const fake = api ?? (TestBed.inject(EditorApi) as FakeEditorApi);
+  fake.infos.set(id, info);
 }
 
 describe('DocumentsStore', () => {
@@ -113,6 +117,43 @@ describe('DocumentsStore', () => {
     await store.changeEncoding(id, 'KOI8-R');
     expect(api.saved.length).toBe(1);
     expect(asked.length).toBe(3);
+  });
+
+  it('asks before overwriting changes made on disk (design 013)', async () => {
+    const { store, api, answers, asked } = setup();
+    await store.start();
+    await store.openPaths(['/d/a.log']);
+    const id = store.activeId()!;
+    api.saveError = { code: 'changed_on_disk', message: 'changed', path: '/d/a.log' };
+    answers.push('overwrite');
+    expect(await store.save(id)).toBe(true);
+    expect(asked).toEqual(['File changed on disk']);
+    expect(api.saved.map((x) => x.req)).toEqual([{}, { force: true }]);
+  });
+
+  it('warns once before saving characters that could not be read', async () => {
+    const { store, api, answers, asked } = setup();
+    await store.start();
+    await store.openPaths(['/d/b.csv']);
+    const d = store.active()!;
+    store.onFrame(textFrame(['x'], { info: { ...d.info, decodeErrors: true } }));
+    answers.push('cancel');
+    expect(await store.save(d.id)).toBe(false);
+    expect(api.saved.length).toBe(0);
+    answers.push('save');
+    expect(await store.save(d.id)).toBe(true);
+    expect(asked).toEqual(['Unreadable characters', 'Unreadable characters']);
+  });
+
+  it('asks the engine whether a file is unsaved, not only the last frame', async () => {
+    const { store, api, answers, asked } = setup();
+    await store.start();
+    const id = store.activeId()!;
+    // a running replace-all: the engine knows, the frame does not yet
+    api.infos.set(id, { ...store.active()!.info, dirty: true });
+    answers.push('cancel');
+    expect(await store.close()).toBe(false);
+    expect(asked).toEqual(['Unsaved changes']);
   });
 
   it('asks before closing unsaved changes', async () => {

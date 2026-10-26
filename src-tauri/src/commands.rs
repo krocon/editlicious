@@ -34,6 +34,27 @@ pub struct AppState {
     /// Files handed to the app ("open with", a second start): `(frontend ready, waiting files)`
     /// – before the frontend asked for its start files they wait here (design 012 E3).
     opened: Mutex<(bool, Vec<String>)>,
+    /// Config files that could not be read (rights, locked): never written over with defaults
+    /// in this run (design 013 review #10).
+    keep: Mutex<std::collections::HashSet<&'static str>>,
+}
+
+impl AppState {
+    fn set_keep(&self, file: &'static str, keep: bool) {
+        let mut k = self.keep.lock().unwrap_or_else(|e| e.into_inner());
+        if keep {
+            k.insert(file);
+        } else {
+            k.remove(file);
+        }
+    }
+
+    fn keeps(&self, file: &'static str) -> bool {
+        self.keep
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .contains(file)
+    }
 }
 
 /// Event with paths to open while the app runs (design 012 E3).
@@ -329,7 +350,9 @@ pub async fn reload_document(
     state: State<'_, AppState>,
     id: u64,
     encoding: Option<String>,
+    only_if_clean: Option<bool>,
 ) -> Result<DocInfo, FsError> {
+    let only_if_clean = only_if_clean.unwrap_or(false);
     let handle = state.sessions.get(id)?;
     let encoding = encoding
         .as_deref()
@@ -348,6 +371,14 @@ pub async fn reload_document(
             None => load::load_file(&path, &never, &mut |_, _| {})?,
         };
         let mut s = lock_doc(&handle);
+        // typed into while the file was read: the user decides (design 013 review #3)
+        if only_if_clean && s.doc.dirty() {
+            return Err(FsError::new(
+                FsErrorCode::DocumentEdited,
+                "edited meanwhile",
+                Some(&path),
+            ));
+        }
         s.replace_document(Document::from_loaded(loaded, &path));
         Ok(s.doc.info(id))
     })
@@ -418,17 +449,24 @@ fn config_dir(app: &AppHandle) -> Result<PathBuf, FsError> {
 #[tauri::command]
 pub async fn load_settings(
     app: AppHandle,
+    state: State<'_, AppState>,
 ) -> Result<crate::config_file::Loaded<crate::settings::Settings>, FsError> {
     let dir = config_dir(&app)?;
-    blocking(move || Ok(crate::settings::load(&dir))).await
+    let loaded = blocking(move || Ok(crate::settings::load(&dir))).await?;
+    state.set_keep("settings", !loaded.persist);
+    Ok(loaded)
 }
 
 /// Saves and returns the settings as stored (checked, clamped).
 #[tauri::command]
 pub async fn save_settings(
     app: AppHandle,
+    state: State<'_, AppState>,
     settings: crate::settings::Settings,
 ) -> Result<crate::settings::Settings, FsError> {
+    if state.keeps("settings") {
+        return Ok(settings);
+    }
     let dir = config_dir(&app)?;
     blocking(move || crate::settings::save(&dir, settings).map_err(|e| FsError::from_io(&e, &dir)))
         .await
@@ -436,13 +474,25 @@ pub async fn save_settings(
 
 /// The session of the last run (design 004 E5).
 #[tauri::command]
-pub async fn load_session(app: AppHandle) -> Result<SessionFile, FsError> {
+pub async fn load_session(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<SessionFile, FsError> {
     let dir = config_dir(&app)?;
-    blocking(move || Ok(session_file::load(&dir).value)).await
+    let loaded = blocking(move || Ok(session_file::load(&dir))).await?;
+    state.set_keep("session", !loaded.persist);
+    Ok(loaded.value)
 }
 
 #[tauri::command]
-pub async fn save_session(app: AppHandle, session: SessionFile) -> Result<(), FsError> {
+pub async fn save_session(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    session: SessionFile,
+) -> Result<(), FsError> {
+    if state.keeps("session") {
+        return Ok(());
+    }
     let dir = config_dir(&app)?;
     blocking(move || session_file::save(&dir, session).map_err(|e| FsError::from_io(&e, &dir)))
         .await

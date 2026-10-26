@@ -1353,3 +1353,81 @@ fn wrap_width_follows_the_view() {
     assert!(f.max_width <= 40, "{}", f.max_width);
     assert_eq!(f.lines[0].wraps[0], 40);
 }
+
+#[test]
+fn line_ending_conversion_undoes_and_redoes_compactly() {
+    let orig = "a\r\nb\nc\rd\r\re\n";
+    let mut s = session(orig);
+    assert!(s.doc.mixed_line_endings);
+    run(
+        &mut s,
+        Command::SetLineEnding {
+            line_ending: crate::document::model::LineEnding::Lf,
+        },
+    );
+    assert_eq!(text(&s), "a\nb\nc\nd\n\ne\n");
+    run(&mut s, Command::Undo);
+    assert_eq!(text(&s), orig);
+    assert!(s.doc.mixed_line_endings);
+    assert!(!s.doc.dirty());
+    run(&mut s, Command::Redo);
+    assert_eq!(text(&s), "a\nb\nc\nd\n\ne\n");
+    assert_eq!(s.doc.line_ending, crate::document::model::LineEnding::Lf);
+    assert!(s.doc.dirty());
+}
+
+// ---------------------------------------------------------------- review fixes (design 013)
+
+fn rq(p: &str) -> crate::search::Query {
+    crate::search::Query {
+        pattern: p.into(),
+        regex: true,
+        ..Default::default()
+    }
+}
+
+#[test]
+fn regex_groups_are_taken_in_context() {
+    let mut s = session("ab cd");
+    run(
+        &mut s,
+        Command::ReplaceAll {
+            query: rq(r"\B(\w)"),
+            replacement: "<$1>".into(),
+        },
+    );
+    assert_eq!(text(&s), "a<b> c<d>");
+    let mut s = session("ab cd");
+    put(&mut s, 0, 0);
+    run(
+        &mut s,
+        Command::Find {
+            query: rq(r"\B(\w)"),
+            backwards: false,
+            incremental: false,
+        },
+    );
+    run(
+        &mut s,
+        Command::Replace {
+            query: rq(r"\B(\w)"),
+            replacement: "[$1]".into(),
+        },
+    );
+    assert_eq!(text(&s), "a[b] cd");
+}
+
+#[test]
+fn replace_all_can_cut_into_crlf() {
+    let mut s = session("a\r\nb\r\nc");
+    run(
+        &mut s,
+        Command::ReplaceAll {
+            query: rq(r"\r"),
+            replacement: String::new(),
+        },
+    );
+    assert_eq!(text(&s), "a\nb\nc");
+    run(&mut s, Command::Undo);
+    assert_eq!(text(&s), "a\r\nb\r\nc");
+}

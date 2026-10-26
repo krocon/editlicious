@@ -635,3 +635,43 @@ fn reopen_with_an_encoding() {
     assert_eq!(l.rope.to_string(), "hi");
     assert!(l.bom);
 }
+
+#[cfg(unix)]
+#[test]
+fn devices_are_not_files() {
+    let e = load(std::path::Path::new("/dev/null")).unwrap_err();
+    assert_eq!(e.code, FsErrorCode::NotAFile);
+}
+
+#[test]
+fn save_does_not_overwrite_changes_on_disk() {
+    let dir = tempfile::tempdir().unwrap();
+    let p = write(&dir, "a.txt", b"one\n");
+    let mut d = Document::from_loaded(load(&p).unwrap(), &p);
+    // another program appends
+    fs::write(&p, b"one\ntwo\n").unwrap();
+    let e = d.save(&SaveRequest::default()).unwrap_err();
+    assert_eq!(e.code, FsErrorCode::ChangedOnDisk);
+    assert_eq!(fs::read(&p).unwrap(), b"one\ntwo\n");
+    d.save(&SaveRequest {
+        force: true,
+        ..Default::default()
+    })
+    .unwrap();
+    assert_eq!(fs::read(&p).unwrap(), b"one\n");
+    // after a save the own write is no change
+    d.save(&SaveRequest::default()).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn saving_keeps_a_private_file_private() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let p = write(&dir, "secret.txt", b"x");
+    fs::set_permissions(&p, fs::Permissions::from_mode(0o600)).unwrap();
+    let mut d = Document::from_loaded(load(&p).unwrap(), &p);
+    d.save(&SaveRequest::default()).unwrap();
+    let mode = fs::metadata(&p).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o600);
+}

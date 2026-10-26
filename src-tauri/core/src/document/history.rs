@@ -1,7 +1,7 @@
 //! Undo/redo (design 002 E7): a step is the list of changes forward and backward plus the
 //! selections around it. Consecutive typing or deleting becomes one step.
 
-use super::model::{EditKind, Sel};
+use super::model::{EditKind, LineEnding, Sel};
 use std::collections::VecDeque;
 use std::time::Duration;
 use web_time::Instant;
@@ -26,12 +26,30 @@ pub struct Step {
     pub at: Instant,
     pub state_before: u64,
     pub state_after: u64,
+    /// "Convert line endings" (design 013 E3): instead of millions of changes, the kind of
+    /// every break before (1 byte each); `forward`/`inverse` stay empty.
+    pub breaks: Option<Breaks>,
 }
+
+/// The line breaks before a conversion to `after`.
+#[derive(Debug, Clone)]
+pub struct Breaks {
+    /// Kind of every line break in order: 0 = LF, 1 = CRLF, 2 = CR.
+    pub before: Vec<u8>,
+    pub after: LineEnding,
+    pub line_ending_before: LineEnding,
+    pub mixed_before: bool,
+}
+
+/// Book-keeping per change beyond its text (offsets, string header, allocation).
+const CHANGE_OVERHEAD: usize = 48;
 
 impl Step {
     fn bytes(&self) -> usize {
         self.forward.iter().map(|c| c.text.len()).sum::<usize>()
             + self.inverse.iter().map(|c| c.text.len()).sum::<usize>()
+            + (self.forward.len() + self.inverse.len()) * CHANGE_OVERHEAD
+            + self.breaks.as_ref().map_or(0, |b| b.before.len())
             + 64
     }
 }
@@ -124,6 +142,8 @@ fn has_break(text: &str) -> bool {
 fn merge(last: &Step, next: &Step) -> Option<Step> {
     if last.kind != next.kind
         || next.kind == EditKind::Other
+        || last.breaks.is_some()
+        || next.breaks.is_some()
         || last.forward.len() != 1
         || next.forward.len() != 1
         || next.at.duration_since(last.at) > MERGE_WINDOW
@@ -201,5 +221,6 @@ fn merge(last: &Step, next: &Step) -> Option<Step> {
         at: next.at,
         state_before: last.state_before,
         state_after: next.state_after,
+        breaks: None,
     })
 }

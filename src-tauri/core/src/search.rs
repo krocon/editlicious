@@ -124,22 +124,18 @@ fn each_match_bytes(
         }
         let b = block_end(rope, a);
         let text = text_of(rope, a, b);
-        let mut at = from.saturating_sub(a).min(text.len());
-        while at < text.len() {
-            let Some(m) = re.find_at(&text, at) else {
-                break;
-            };
+        let at = from.saturating_sub(a).min(text.len());
+        // find_iter steps over empty matches itself – calling find_at once per character made
+        // patterns like `a*` hundreds of times slower (design 013 review #11)
+        for m in re.find_iter(&text) {
+            if m.start() < at || m.end() == m.start() {
+                continue;
+            }
             if a + m.start() >= to {
                 break;
             }
-            if m.end() > m.start() {
-                if !f(a + m.start(), a + m.end()) {
-                    return false;
-                }
-                at = m.end();
-            } else {
-                // empty match: step over one character
-                at = m.end() + text[m.end()..].chars().next().map_or(1, char::len_utf8);
+            if !f(a + m.start(), a + m.end()) {
+                return false;
             }
         }
         a = b;
@@ -240,11 +236,41 @@ pub fn matches_in(text: &str, re: &Regex) -> Vec<(usize, usize)> {
     out
 }
 
-/// Replacement text in regex mode: `\n`, `\t`, `\\` escapes, then `$1`/`${name}` groups.
-pub fn expand(re: &Regex, matched: &str, replacement: &str, regex_mode: bool) -> String {
+/// Replacement text in regex mode: `\n`, `\t`, `\\` escapes, then `$1`/`${name}` groups –
+/// the groups of the match at byte `at` of `haystack` (in its context, design 013 review #6).
+pub fn expand_at(
+    re: &Regex,
+    haystack: &str,
+    at: usize,
+    replacement: &str,
+    regex_mode: bool,
+) -> String {
     if !regex_mode {
         return replacement.to_owned();
     }
+    let unescaped = unescape(replacement);
+    match re.captures_at(haystack, at) {
+        Some(caps) => {
+            let mut out = String::new();
+            caps.expand(&unescaped, &mut out);
+            out
+        }
+        None => unescaped,
+    }
+}
+
+/// [`expand_at`] for a match on its own (tests).
+pub fn expand(re: &Regex, matched: &str, replacement: &str, regex_mode: bool) -> String {
+    expand_at(re, matched, 0, replacement, regex_mode)
+}
+
+fn expand_caps(caps: &regex::Captures, unescaped: &str) -> String {
+    let mut out = String::new();
+    caps.expand(unescaped, &mut out);
+    out
+}
+
+fn unescape(replacement: &str) -> String {
     let mut unescaped = String::with_capacity(replacement.len());
     let mut it = replacement.chars().peekable();
     while let Some(c) = it.next() {
@@ -268,14 +294,7 @@ pub fn expand(re: &Regex, matched: &str, replacement: &str, regex_mode: bool) ->
             unescaped.push(c);
         }
     }
-    match re.captures(matched) {
-        Some(caps) => {
-            let mut out = String::new();
-            caps.expand(&unescaped, &mut out);
-            out
-        }
-        None => unescaped,
-    }
+    unescaped
 }
 
 /// Every match with its replacement: `(start_char, end_char, text)` – for "replace all".
@@ -296,10 +315,17 @@ pub fn replacements(
         }
         let b = if len == 0 { 0 } else { block_end(rope, a) };
         let text = text_of(rope, a, b);
-        for m in re.find_iter(&text) {
+        let unescaped = unescape(replacement);
+        for caps in re.captures_iter(&text) {
+            let Some(m) = caps.get(0) else { continue };
             let s = rope.byte_to_char(a + m.start());
             let e = rope.byte_to_char(a + m.end());
-            out.push((s, e, expand(re, m.as_str(), replacement, regex_mode)));
+            let text = if regex_mode {
+                expand_caps(&caps, &unescaped)
+            } else {
+                replacement.to_owned()
+            };
+            out.push((s, e, text));
         }
         if b == a {
             break;

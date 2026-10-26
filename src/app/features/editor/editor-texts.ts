@@ -9,6 +9,7 @@ const EN = {
   noMoreMatches: 'No more occurrences.',
   htmlTooLarge: 'Too much for “copy as HTML” – select at most 20,000 lines.',
   copiedHtml: 'Copied as HTML.',
+  sortTooLarge: 'Too much to sort at once – select at most 512 MB of lines.',
   encoding: 'Encoding',
   encodingPlaceholder: 'Type to filter encodings',
   lineEndings: 'Line endings',
@@ -44,6 +45,7 @@ export const EDITOR_TEXTS = translatable('editor', EN, {
     noMoreMatches: 'Keine weiteren Vorkommen.',
     htmlTooLarge: 'Zu viel für „Als HTML kopieren“ – höchstens 20.000 Zeilen auswählen.',
     copiedHtml: 'Als HTML kopiert.',
+    sortTooLarge: 'Zu viel zum Sortieren – höchstens 512 MB an Zeilen auswählen.',
     encoding: 'Zeichenkodierung',
     encodingPlaceholder: 'Tippen, um Kodierungen zu filtern',
     lineEndings: 'Zeilenenden',
@@ -80,6 +82,8 @@ export function noticeText(code: string): string {
       return EDITOR_TEXTS.noMoreMatches;
     case 'html_too_large':
       return EDITOR_TEXTS.htmlTooLarge;
+    case 'sort_too_large':
+      return EDITOR_TEXTS.sortTooLarge;
     default:
       return '';
   }

@@ -38,6 +38,13 @@ pub enum FsErrorCode {
     InvalidMenu,
     /// A search pattern that does not compile (design 006); the message has the details.
     InvalidSearch,
+    /// A device, pipe or socket – no regular file (design 013).
+    NotAFile,
+    /// The file changed on disk since it was loaded or saved; saving would overwrite that
+    /// (design 013) – save again with `force` after asking.
+    ChangedOnDisk,
+    /// The document was edited meanwhile – a reload that may only replace a clean one stops.
+    DocumentEdited,
 }
 
 /// The one error type every command returns.

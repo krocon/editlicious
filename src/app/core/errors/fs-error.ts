@@ -21,6 +21,9 @@ export type FsErrorCode =
   | 'cancelled'
   | 'invalid_menu'
   | 'invalid_search'
+  | 'not_a_file'
+  | 'changed_on_disk'
+  | 'document_edited'
   /** Frontend only: no Tauri backend (e.g. `pnpm start` in a browser). */
   | 'backend_unavailable'
   /** Frontend only: something that is no `FsError` was thrown. */
@@ -49,6 +52,9 @@ const KNOWN: readonly FsErrorCode[] = [
   'cancelled',
   'invalid_menu',
   'invalid_search',
+  'not_a_file',
+  'changed_on_disk',
+  'document_edited',
   'backend_unavailable',
   'unknown',
 ];
@@ -85,6 +91,9 @@ const EN: Record<FsErrorCode, string> = {
   cancelled: 'Cancelled.',
   invalid_menu: 'The menu could not be built.',
   invalid_search: 'The search pattern is not valid.',
+  not_a_file: 'This is a device or pipe, not a file.',
+  changed_on_disk: 'The file was changed by another program.',
+  document_edited: 'The file was edited meanwhile.',
   backend_unavailable: 'The desktop backend is not available (running in a browser?).',
   unknown: 'Something went wrong.',
 };
@@ -107,6 +116,9 @@ const TEXTS = translatable('fsErrors', EN, {
     cancelled: 'Abgebrochen.',
     invalid_menu: 'Das Menü konnte nicht aufgebaut werden.',
     invalid_search: 'Das Suchmuster ist ungültig.',
+    not_a_file: 'Das ist ein Gerät oder eine Pipe, keine Datei.',
+    changed_on_disk: 'Die Datei wurde von einem anderen Programm geändert.',
+    document_edited: 'Die Datei wurde inzwischen bearbeitet.',
     backend_unavailable: 'Das Desktop-Backend ist nicht verfügbar (läuft im Browser?).',
     unknown: 'Etwas ist schiefgegangen.',
   },

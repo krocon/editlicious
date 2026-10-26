@@ -250,12 +250,12 @@
         <figure class="shot hero-shot"><img src="img/main.png" width="1100" height="760" alt="editlicious with a Rust file: syntax colours, indentation guides, the find bar with “6 of 20” matches, marks for every match in the scroll bar and a quiet status bar with line, column, language, encoding and line ending"></figure>
 
         <ul class="numbers" aria-label="Measured speed">
-          <li><strong>0.2 s</strong><span>to open a 100 MB file with 1.3 million lines</span></li>
-          <li><strong>0.07 ms</strong><span>to draw the view at the end of that file</span></li>
-          <li><strong>10,000,000</strong><span>characters in one line – still smooth to scroll and type in</span></li>
-          <li><strong>30 ms</strong><span>to find a match at the end of 100 MB</span></li>
+          <li><strong>1.6 s</strong><span>to open a 1 GB file with 10 million lines</span></li>
+          <li><strong>5 ms</strong><span>to jump from its first to its last line</span></li>
+          <li><strong>100 MB</strong><span>in a single line – opens in 0.1 s, typing at its end stays instant</span></li>
+          <li><strong>0.4 s</strong><span>to replace 10,000 matches in that 1 GB file</span></li>
         </ul>
-        <p class="fine">Measured on a development machine with release builds of the engine (see <a href="https://github.com/krocon/editlicious/blob/main/docs/architecture.md">docs/architecture.md</a>). Files up to 4 GB.</p>
+        <p class="fine">Measured with release builds of the engine on a small two-core Linux machine (see <a href="https://github.com/krocon/editlicious/blob/main/docs/architecture.md">docs/architecture.md</a>). Files up to 4 GB.</p>
       </div>
     </header>
 

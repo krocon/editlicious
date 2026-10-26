@@ -126,7 +126,7 @@ export class FakeEditorApi extends EditorApi {
   }
 
   info(id: number): Promise<DocInfo> {
-    return Promise.resolve(docInfo({ id }));
+    return Promise.resolve(this.infos.get(id) ?? docInfo({ id }));
   }
 
   command(id: number, cmd: Command): Promise<Frame> {
@@ -155,8 +155,16 @@ export class FakeEditorApi extends EditorApi {
 
   reloadEncodings: (string | undefined)[] = [];
 
+  /** Next answer of `reload` (an error to throw, or nothing). */
+  reloadError: unknown = null;
+
   reload(id: number, encoding?: string): Promise<DocInfo> {
     this.reloads.push(id);
+    if (this.reloadError) {
+      const e = this.reloadError;
+      this.reloadError = null;
+      return Promise.reject(e);
+    }
     this.reloadEncodings.push(encoding);
     return Promise.resolve(docInfo({ id, path: `/doc${id}`, name: `doc${id}` }));
   }

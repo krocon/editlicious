@@ -154,6 +154,9 @@ pub struct SaveRequest {
     pub encoding: Option<String>,
     #[serde(default)]
     pub bom: Option<bool>,
+    /// Save even though the file changed on disk (the user said so).
+    #[serde(default)]
+    pub force: bool,
 }
 
 /// Progress of `open_document` (design 002 E4).

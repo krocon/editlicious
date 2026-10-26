@@ -135,6 +135,14 @@ pub fn load_file(
             Some(path),
         ));
     }
+    if !meta.is_file() {
+        // /dev/zero would be read forever, a FIFO blocks (design 013 review #5)
+        return Err(FsError::new(
+            FsErrorCode::NotAFile,
+            "not a regular file",
+            Some(path),
+        ));
+    }
     let total = meta.len();
     if total > MAX_FILE_BYTES {
         return Err(FsError::new(
@@ -198,6 +206,14 @@ pub fn load_file_as(
         return Err(FsError::new(
             FsErrorCode::IsADirectory,
             "is a directory",
+            Some(path),
+        ));
+    }
+    if !meta.is_file() {
+        // /dev/zero would be read forever, a FIFO blocks (design 013 review #5)
+        return Err(FsError::new(
+            FsErrorCode::NotAFile,
+            "not a regular file",
             Some(path),
         ));
     }
@@ -269,6 +285,14 @@ fn decode(
         let n = read_up_to(&mut file, &mut buf).map_err(io_err)?;
         let last = n < buf.len();
         loaded += n as u64;
+        if loaded > MAX_FILE_BYTES {
+            // the file grows while we read it
+            return Err(FsError::new(
+                FsErrorCode::FileTooLarge,
+                format!("{loaded} bytes"),
+                Some(path),
+            ));
+        }
         let src = &buf[skip.min(n)..n];
         skip = 0;
         out.clear();

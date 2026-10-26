@@ -34,7 +34,8 @@ export abstract class EditorApi {
   abstract save(id: number, req?: SaveRequest): Promise<DocInfo>;
   abstract startupPaths(): Promise<string[]>;
   /** Loads the file again; `encoding` = "reopen with encoding". */
-  abstract reload(id: number, encoding?: string): Promise<DocInfo>;
+  /** `onlyIfClean`: refuse (`document_edited`) when the document was edited meanwhile. */
+  abstract reload(id: number, encoding?: string, onlyIfClean?: boolean): Promise<DocInfo>;
   abstract diskState(id: number): Promise<DiskState>;
   /** Counts on a snapshot; a newer count cancels an older one (`cancelled`). */
   abstract countMatches(id: number, query: Query): Promise<MatchCount>;
@@ -83,8 +84,8 @@ export class TauriEditorApi extends EditorApi {
     return call<string[]>('startup_paths');
   }
 
-  reload(id: number, encoding?: string): Promise<DocInfo> {
-    return call<DocInfo>('reload_document', { id, encoding: encoding ?? null });
+  reload(id: number, encoding?: string, onlyIfClean = false): Promise<DocInfo> {
+    return call<DocInfo>('reload_document', { id, encoding: encoding ?? null, onlyIfClean });
   }
 
   diskState(id: number): Promise<DiskState> {

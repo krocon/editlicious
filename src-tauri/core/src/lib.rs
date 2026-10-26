@@ -12,3 +12,6 @@ pub mod editor;
 pub mod error;
 pub mod highlight;
 pub mod search;
+
+#[cfg(test)]
+mod measure;

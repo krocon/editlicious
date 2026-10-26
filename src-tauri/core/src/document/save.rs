@@ -121,7 +121,17 @@ pub fn write_file(
         std::process::id(),
         SEQ.fetch_add(1, Ordering::Relaxed)
     ));
-    let file = match OpenOptions::new().write(true).create_new(true).open(&tmp) {
+    let mut opts = OpenOptions::new();
+    opts.write(true).create_new(true);
+    // the copy of an existing file is never more readable than the original while it is
+    // written (design 013 review #8): owner-only until its permissions are copied; a new file
+    // gets the usual ones (umask)
+    #[cfg(unix)]
+    if old_meta.is_some() {
+        use std::os::unix::fs::OpenOptionsExt;
+        opts.mode(0o600);
+    }
+    let file = match opts.open(&tmp) {
         Ok(f) => f,
         Err(e) if e.kind() == io::ErrorKind::PermissionDenied && old_meta.is_some() => {
             return write_in_place(&target, write);

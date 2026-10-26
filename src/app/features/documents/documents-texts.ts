@@ -34,6 +34,13 @@ const EN = {
   reopenWith: 'Read again',
   convertTo: 'Save converted',
   reopened: (name: string, enc: string) => `“${name}” read again as ${enc}.`,
+  overwrite: (name: string) =>
+    `“${name}” was changed by another program since you opened it. Overwrite those changes with yours?`,
+  overwriteButton: 'Overwrite',
+  lossyTitle: 'Unreadable characters',
+  lossy: (name: string, enc: string) =>
+    `Some bytes of “${name}” are not valid ${enc} and are shown as “�”. Saving writes “�” in their place – the original bytes are lost. Try “Encoding…” to read the file in another encoding first.`,
+  saveAnyway: 'Save anyway',
 };
 
 export const DOC_TEXTS = translatable('documents', EN, {
@@ -70,5 +77,12 @@ export const DOC_TEXTS = translatable('documents', EN, {
     reopenWith: 'Neu lesen',
     convertTo: 'Umgewandelt speichern',
     reopened: (name: string, enc: string) => `„${name}“ neu als ${enc} gelesen.`,
+    overwrite: (name: string) =>
+      `„${name}“ wurde seit dem Öffnen von einem anderen Programm geändert. Diese Änderungen mit deinen überschreiben?`,
+    overwriteButton: 'Überschreiben',
+    lossyTitle: 'Unlesbare Zeichen',
+    lossy: (name: string, enc: string) =>
+      `Einige Bytes von „${name}“ sind kein gültiges ${enc} und werden als „�“ gezeigt. Beim Speichern steht dort „�“ – die ursprünglichen Bytes gehen verloren. Mit „Zeichenkodierung …“ lässt sich die Datei vorher in einer anderen Kodierung lesen.`,
+    saveAnyway: 'Trotzdem speichern',
   },
 });

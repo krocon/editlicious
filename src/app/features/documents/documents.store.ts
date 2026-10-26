@@ -262,7 +262,24 @@ export class DocumentsStore {
     return true;
   }
 
-  private async write(d: OpenDoc, req: { path?: string; encoding?: string }): Promise<boolean> {
+  private async write(
+    d: OpenDoc,
+    req: { path?: string; encoding?: string; force?: boolean },
+  ): Promise<boolean> {
+    // characters that could not be read become “�” on saving (design 013 review #1)
+    if (d.info.decodeErrors && !req.encoding && !this.lossyOk.has(d.id)) {
+      const answer = await this.ask.ask({
+        title: T.lossyTitle,
+        message: T.lossy(d.info.name, d.info.encoding),
+        buttons: [
+          { id: 'cancel', label: T.cancel },
+          { id: 'save', label: T.saveAnyway, primary: true },
+        ],
+        cancel: 'cancel',
+      });
+      if (answer !== 'save') return false;
+      this.lossyOk.add(d.id);
+    }
     try {
       const info = await this.api.save(d.id, req);
       this.updateInfo(info);
@@ -271,9 +288,30 @@ export class DocumentsStore {
     } catch (e) {
       const err = toFsError(e);
       if (err.code === 'unmappable_character') return this.offerUtf8(d, req, err);
+      if (err.code === 'changed_on_disk') return this.offerOverwrite(d, req);
       this.message.set(T.saveFailed(d.info.name, describeFsError(err)));
       return false;
     }
+  }
+
+  /** Asked once per document: saving it although characters could not be read. */
+  private readonly lossyOk = new Set<number>();
+
+  /** The file changed on disk since we read it: overwrite only when the user says so. */
+  private async offerOverwrite(
+    d: OpenDoc,
+    req: { path?: string; encoding?: string },
+  ): Promise<boolean> {
+    const answer = await this.ask.ask({
+      title: T.changedTitle,
+      message: T.overwrite(d.info.name),
+      buttons: [
+        { id: 'cancel', label: T.cancel },
+        { id: 'overwrite', label: T.overwriteButton, primary: true },
+      ],
+      cancel: 'cancel',
+    });
+    return answer === 'overwrite' ? this.write(d, { ...req, force: true }) : false;
   }
 
   private async offerUtf8(d: OpenDoc, req: { path?: string }, err: FsError): Promise<boolean> {
@@ -364,7 +402,10 @@ export class DocumentsStore {
   }
 
   private async okToDrop(d: OpenDoc): Promise<boolean> {
-    if (!d.info.dirty) return true;
+    // the last frame may be older than a running command (replace all in a big file): ask the
+    // engine – it answers after that command (design 013 review #4)
+    const fresh = await this.api.info(d.id).catch(() => d.info);
+    if (!fresh.dirty) return true;
     this.activeId.set(d.id);
     const answer = await this.ask.ask({
       title: T.unsavedTitle,
@@ -450,12 +491,14 @@ export class DocumentsStore {
         }
         if (reload) {
           try {
-            const info = await this.api.reload(d.id);
+            // the store's dirty flag may be a frame behind: Rust checks again (review #3)
+            const info = await this.api.reload(d.id, undefined, !d.info.dirty);
             this.updateInfo(info);
             this.message.set(T.reloaded(info.name));
             this.reloaded.update((n) => n + 1);
           } catch (e) {
-            this.fail(e);
+            // edited meanwhile: the next check asks
+            if (toFsError(e).code !== 'document_edited') this.fail(e);
           }
         }
       }
