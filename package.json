@@ -22,7 +22,7 @@
     "rust:fmt": "cargo fmt --manifest-path src-tauri/Cargo.toml --all --check",
     "rust:lint": "cargo clippy --manifest-path src-tauri/Cargo.toml --workspace --all-targets -- -D warnings",
     "rust:test": "cargo test --manifest-path src-tauri/Cargo.toml --workspace",
-    "check": "pnpm version:check && pnpm scripts:test && pnpm format:check && pnpm lint && pnpm test && pnpm build && pnpm rust:fmt && pnpm rust:lint && pnpm rust:test && pnpm notices:check",
+    "check": "pnpm version:check && pnpm scripts:test && pnpm format:check && pnpm lint && pnpm test && pnpm build && pnpm rust:fmt && pnpm rust:lint && pnpm rust:test && pnpm notices:check && pnpm licenses:check",
     "site:demo": "bash scripts/site-demo.sh",
     "site:test": "node --test scripts/site.test.mjs",
     "version:check": "node scripts/version.mjs check",
@@ -30,7 +30,9 @@
     "release:notes": "node scripts/release-notes.mjs",
     "scripts:test": "node --test \"scripts/*.test.mjs\"",
     "notices": "node scripts/notices.mjs",
-    "notices:check": "node scripts/notices.mjs --check"
+    "notices:check": "node scripts/notices.mjs --check",
+    "licenses:report": "node scripts/licenses.mjs",
+    "licenses:check": "node scripts/licenses.mjs --check"
   },
   "private": true,
   "packageManager": "pnpm@10.28.0",

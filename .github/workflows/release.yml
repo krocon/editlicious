@@ -1,10 +1,13 @@
-# Release for editlicious (design 012, taken over from comic-commander-tauri / files-and-folders-tauri design 017).
-# Builds installable packages for macOS (universal .dmg/.app), Windows (.msi + NSIS .exe) and
-# Linux (.deb, .rpm, .AppImage) with tauri-apps/tauri-action and attaches them to a DRAFT
-# GitHub release.
+# Release pipeline of editlicious (design 012 + 014, taken over from comic-commander-tauri /
+# files-and-folders-tauri design 017). Builds installable packages for macOS (universal .dmg/.app),
+# Windows (.msi + NSIS setup .exe) and Linux (.deb, .rpm, .AppImage) with tauri-apps/tauri-action,
+# checks them, writes SHA256SUMS.txt and – only when asked – attaches everything to a DRAFT release.
 #
-# Triggers: manually (Actions → Release → Run workflow) or by pushing a tag `v*`.
-# Nothing is published automatically: the release stays a draft until Marc publishes it.
+# Modes:
+#   - Actions → Release → Run workflow, mode "dry-run" (default): build + check + artifacts only.
+#     No tag, no release, no draft – safe to run any time to test the pipeline.
+#   - mode "draft" or pushing a tag `v*`: the same, plus a DRAFT GitHub release with generated
+#     release notes and checksums. Nothing is published: Marc publishes the draft by hand.
 #
 # Signing is optional. Without the secrets below the packages are built unsigned
 # (macOS: Gatekeeper warning, Windows: SmartScreen warning) – see docs/release.md.
@@ -13,15 +16,20 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      draft:
-        description: 'Create the GitHub release as a draft'
-        type: boolean
-        default: true
+      mode:
+        description: 'dry-run = build and check only; draft = also create a draft release'
+        type: choice
+        options: [dry-run, draft]
+        default: dry-run
   push:
     tags: ['v*']
 
 permissions:
-  contents: write # create the (draft) release and upload assets
+  contents: write # create the draft release and upload assets (not used in dry-run)
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   CARGO_INCREMENTAL: 0
@@ -29,11 +37,19 @@ env:
 
 jobs:
   check:
+    name: Pre-flight (versions, scripts, notes)
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.v.outputs.version }}
+      publish: ${{ steps.v.outputs.publish }}
+      body: ${{ steps.notes.outputs.body }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # tags and history for the release notes
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
       - name: Versions agree (and match the tag, if any)
         id: v
         run: |
@@ -43,6 +59,36 @@ jobs:
           if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$v" ]]; then
             echo "::error::tag $GITHUB_REF_NAME does not match package.json version $v"; exit 1
           fi
+          if [[ "$GITHUB_REF_TYPE" == "tag" || "${{ inputs.mode }}" == "draft" ]]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Script tests (version, notes, notices, licences, packages, site)
+        run: node --test scripts/*.test.mjs
+      - name: Release notes
+        id: notes
+        run: |
+          v="${{ steps.v.outputs.version }}"
+          # the tag of this release is no "previous" tag: notes since the one before
+          prev=$(git tag --list 'v*' --sort=-v:refname | grep -vx "v$v" | head -1 || true)
+          {
+            echo "editlicious $v – the calm text editor for huge files."
+            echo
+            node scripts/release-notes.mjs $prev
+            echo
+            echo "### Downloads"
+            echo
+            echo "- macOS 12+: \`.dmg\` (Apple silicon and Intel) · Windows 10/11: \`-setup.exe\` or \`.msi\` · Linux: \`.deb\`, \`.rpm\`, \`.AppImage\`"
+            echo "- Checksums: \`SHA256SUMS.txt\` (\`sha256sum -c SHA256SUMS.txt\`)"
+            echo "- Unless noted otherwise the packages are not signed yet: macOS – right-click → Open; Windows – SmartScreen → More info → Run anyway."
+          } > release-body.md
+          cat release-body.md >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo 'body<<EOF_RELEASE_BODY'
+            cat release-body.md
+            echo 'EOF_RELEASE_BODY'
+          } >> "$GITHUB_OUTPUT"
 
   build:
     needs: check
@@ -51,15 +97,19 @@ jobs:
       matrix:
         include:
           - platform: macos-latest
+            os: macos
             args: --target universal-apple-darwin
             rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
           # Oldest supported Ubuntu runner → AppImage/deb work on older glibc as well
           - platform: ubuntu-22.04
+            os: linux
             args: ''
             rust_targets: ''
           - platform: windows-latest
+            os: windows
             args: ''
             rust_targets: ''
+    name: Packages (${{ matrix.os }})
     runs-on: ${{ matrix.platform }}
     env:
       # secrets cannot be used in `if:` directly
@@ -137,7 +187,10 @@ jobs:
             echo "APPLE_API_KEY_PATH=$key" >> "$GITHUB_ENV"
           fi
 
-      - uses: tauri-apps/tauri-action@v0
+      # --- build: with a draft release, or packages only (dry-run) ---------------------
+      - name: Build and attach to the draft release
+        if: needs.check.outputs.publish == 'true'
+        uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # --- updater signature (only once the updater is enabled, docs/release.md) -
@@ -146,7 +199,71 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: editlicious v__VERSION__
-          releaseBody: "Unsigned preview build unless noted. Release notes: generate with `pnpm release:notes` (docs/release.md) and paste here before publishing."
-          releaseDraft: ${{ github.event_name != 'workflow_dispatch' || inputs.draft }}
+          releaseBody: ${{ needs.check.outputs.body }}
+          releaseDraft: true
           prerelease: ${{ startsWith(needs.check.outputs.version, '0.') }}
           args: ${{ matrix.args }}
+      - name: Build only (dry-run)
+        if: needs.check.outputs.publish != 'true'
+        uses: tauri-apps/tauri-action@v0
+        with:
+          args: ${{ matrix.args }}
+
+      # --- check what was built ---------------------------------------------------------
+      - name: Collect packages, checksums, summary
+        shell: bash
+        run: node scripts/collect-packages.mjs ${{ matrix.os }} packages
+      - name: Linux package contents
+        if: runner.os == 'Linux'
+        run: |
+          deb=$(ls packages/*.deb)
+          dpkg-deb -c "$deb" > deb.txt
+          grep -q './usr/bin/editlicious$' deb.txt
+          grep -q 'THIRD-PARTY-NOTICES.txt$' deb.txt
+          mkdir debx && dpkg-deb -x "$deb" debx
+          desktop=$(find debx -name '*.desktop')
+          grep -q '^Exec=editlicious %F$' "$desktop"
+          grep -q '^MimeType=text/plain;' "$desktop"
+          echo "deb: binary, notices and .desktop (Exec %F, MimeType) present" >> "$GITHUB_STEP_SUMMARY"
+      - name: macOS bundle contents
+        if: runner.os == 'macOS'
+        run: |
+          app=$(find src-tauri/target -maxdepth 6 -path '*/release/bundle/macos/*.app' | head -1)
+          lipo -archs "$app/Contents/MacOS/editlicious" | tee archs.txt
+          grep -q x86_64 archs.txt && grep -q arm64 archs.txt
+          test -f "$app/Contents/Resources/THIRD-PARTY-NOTICES.txt"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleDocumentTypes:0:LSHandlerRank' "$app/Contents/Info.plist" | grep -q Alternate
+          echo "app: universal (x86_64 + arm64), notices, document types as Alternate" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.os }}
+          path: packages
+          if-no-files-found: error
+          retention-days: 14
+
+  checksums:
+    name: SHA256SUMS.txt
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: packages-*
+          path: all
+          merge-multiple: true
+      - name: One checksum file for every package
+        run: |
+          cd all
+          cat SHA256SUMS-*.txt | sort -k2 > SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+          { echo '### SHA256SUMS.txt'; echo; echo '```'; cat SHA256SUMS.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SHA256SUMS
+          path: all/SHA256SUMS.txt
+      - name: Attach to the draft release
+        if: needs.check.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release upload "v${{ needs.check.outputs.version }}" all/SHA256SUMS.txt --clobber
