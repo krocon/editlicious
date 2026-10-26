@@ -1,6 +1,7 @@
 # Builds the live demo of the website (prompt 011): the engine ed-core as WebAssembly.
-# The result (site/demo/pkg) is uploaded as the artifact "demo-pkg" and committed to the repo by
-# hand (or `pnpm site:demo` locally) – the website stays plain files without a build step.
+# The result (site/demo/pkg) is committed back to main when it changed (and uploaded as the artifact
+# "demo-pkg") – the website stays plain files without a build step. Pushes made with GITHUB_TOKEN
+# start no further workflow runs.
 name: Site demo
 
 on:
@@ -14,7 +15,11 @@ on:
       - '.github/workflows/site-demo.yml'
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: site-demo
+  cancel-in-progress: false
 
 env:
   CARGO_INCREMENTAL: 0
@@ -47,3 +52,15 @@ jobs:
           name: demo-pkg
           path: site/demo/pkg
           if-no-files-found: error
+      - name: Commit the new build
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git add site/demo/pkg
+          if git diff --cached --quiet; then
+            echo "demo unchanged"
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "chore(site): build of the live demo engine" -m "Built by the Site demo workflow from ${GITHUB_SHA}."
+          git pull --rebase origin main
+          git push origin HEAD:main
