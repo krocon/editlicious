@@ -31,7 +31,7 @@
 | Rust | `pnpm rust:fmt`, `pnpm rust:lint` (clippy `-D warnings`), `pnpm rust:test` (ganzer Workspace inkl. `ed-core`) |
 | Messungen | `cd src-tauri && cargo test -p ed-core --release -- --ignored --nocapture measure_` |
 | Alles prüfen | `pnpm check` |
-| Release | `pnpm version:set X.Y.Z`, `pnpm release:notes`, `pnpm notices` (nach Abhängigkeitsänderungen!) – Ablauf `docs/release.md` |
+| Release | `pnpm version:set X.Y.Z`, `pnpm release:notes`, `pnpm notices` + `pnpm licenses:report` (nach Abhängigkeitsänderungen!); Pipeline testen: Workflow „Release“ Modus `dry-run` (kein Release) – Ablauf `docs/release.md` |
 | Webseite | `pnpm site:test`; Demo-Engine `pnpm site:demo` (braucht wasm32-Ziel) bzw. Workflow „Site demo“ |
 | Debug-App ohne Bundle | `pnpm tauri build --debug --no-bundle` → `src-tauri/target/debug/editlicious` |
 | Icons neu erzeugen | `pnpm tauri icon src-tauri/icons/source/app-icon.svg -o src-tauri/icons` (danach `android/`, `ios/` löschen) |

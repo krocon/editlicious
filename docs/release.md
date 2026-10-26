@@ -17,16 +17,33 @@ pnpm version:set 0.2.0      # schreibt package.json, Cargo.toml, Cargo.lock (kei
 pnpm version:check          # Teil von `pnpm check` und beider Workflows
 ```
 
+## Die Pipeline (`.github/workflows/release.yml`, Prompt 014)
+
+| Job | Was | Läuft |
+|---|---|---|
+| **Pre-flight** | Versionen gleich (und = Tag), alle `scripts/*.test.mjs`, Release Notes seit dem letzten Tag erzeugt (in die Zusammenfassung des Laufs und in den Entwurf) | immer |
+| **Packages (macos / linux / windows)** | `pnpm notices:check`, optional Signierung, Bauen mit `tauri-action`; dann `scripts/collect-packages.mjs`: alle erwarteten Pakete da (dmg + app / msi + setup.exe / deb + rpm + AppImage), Größen und SHA-256 in der Zusammenfassung. Linux: `.deb` enthält Programm, Lizenzhinweise und `.desktop` mit `%F`/`MimeType`. macOS: App ist universal (x86_64 + arm64), Lizenzhinweise drin, Dokumenttypen mit Rang `Alternate`. Artefakt `packages-<os>` (14 Tage) | immer |
+| **SHA256SUMS.txt** | eine Prüfsummendatei über alle Pakete, `sha256sum -c` geprüft; Artefakt und – bei Entwurf – am Release | immer |
+
+| Auslöser | Ergebnis |
+|---|---|
+| Actions → **Release** → Run workflow, Modus **`dry-run`** (Standard) | nur Pakete + Prüfsummen als Artefakte – **kein Tag, kein Release**. Jederzeit zum Testen der Pipeline |
+| Run workflow, Modus **`draft`** | zusätzlich Release-**Entwurf** `vX.Y.Z` (Tag entsteht erst beim Veröffentlichen) |
+| Tag `vX.Y.Z` pushen | Entwurf zu diesem Tag (Tag muss zu `package.json` passen) |
+
+Veröffentlicht wird nie automatisch. Versionen `0.x` werden als Pre-release angelegt.
+
 ## Ablauf eines Releases (Checkliste)
 
-1. `main` ist grün (Workflow **CI**: Frontend + Rust auf Linux, macOS, Windows).
+1. `main` ist grün (Workflow **CI**: Frontend + Rust auf Linux, macOS, Windows) und ein **Probelauf**
+   (`dry-run`) war grün.
 2. `pnpm version:set X.Y.Z`, `pnpm check`, Commit `chore: release X.Y.Z`, pushen.
-3. Release Notes: `pnpm release:notes` (Conventional Commits seit dem letzten Tag, gruppiert: Breaking, Features,
-   Fixes, Performance, Doku; `chore`/`test`/`ci` ausgeblendet). Vor dem ersten Tag: die ganze Historie.
-4. Tag pushen – `git tag vX.Y.Z && git push origin vX.Y.Z` – **oder** GitHub → Actions → **Release** → Run workflow.
-   Der Workflow prüft, dass Tag und `package.json` übereinstimmen, baut auf drei Runnern und legt einen
-   **Entwurf** an (`editlicious vX.Y.Z`, Versionen `0.x` als Pre-release).
-5. Pakete aus dem Entwurf installieren und starten (s. „Prüfen“), Notes einfügen, Entwurf veröffentlichen.
+3. Release Notes ansehen: `pnpm release:notes` (Conventional Commits seit dem letzten Tag, gruppiert: Breaking,
+   Features, Fixes, Performance, Doku; `chore`/`test`/`ci` ausgeblendet). Der Workflow setzt sie selbst in den
+   Entwurf.
+4. Tag pushen – `git tag vX.Y.Z && git push origin vX.Y.Z` – **oder** Run workflow mit Modus `draft`.
+5. Pakete aus dem Entwurf installieren und starten (s. „Prüfen“), Text bei Bedarf anpassen, Entwurf veröffentlichen.
+6. Webseite: Download-Tabelle („planned“ → Links auf die Release-Seite) in `site/index.html` anpassen, hochladen.
 
 Dauer: ca. 15–25 min (macOS universal ist der langsamste Runner). Ein fehlgeschlagener Runner lässt die anderen
 weiterlaufen (`fail-fast: false`); erneut starten über „Re-run failed jobs“.
@@ -54,7 +71,13 @@ Ein zweiter Start (Windows/Linux, „Öffnen mit“ bei laufender App) reicht se
 `tauri-plugin-single-instance` an die laufende App weiter (Ereignis `open-files`) und holt das Fenster nach vorn.
 Dateien, die vor dem Start der Oberfläche ankommen, warten in Rust und kommen mit `startup_paths`.
 
-## Lizenzhinweise
+## Lizenzhinweise und Lizenzbericht
+
+**`docs/licenses.md`** (`pnpm licenses:report`, aus files-and-folders `scripts/licenses.mjs`): Lizenzen aller
+Crates und npm-Pakete als Übersicht. `pnpm licenses:check` (in `pnpm check`) schlägt fehl, wenn der Bericht veraltet
+ist oder eine ausgelieferte Abhängigkeit nicht rein permissiv lizenziert und nicht in `REVIEWED` (mit Begründung,
+heute: MPL-2.0-Crates von Tauri, unverändert genutzt) steht.
+
 
 **`THIRD-PARTY-NOTICES.txt`** im Repo-Wurzelordner, erzeugt mit `pnpm notices` (`scripts/notices.mjs`): die
 Lizenztexte aller ausgelieferten Teile – Rust-Crates über normale Abhängigkeiten aller Zielplattformen

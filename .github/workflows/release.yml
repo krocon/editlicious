@@ -50,6 +50,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
+          package-manager-cache: false # no pnpm here – the scripts need plain node
       - name: Versions agree (and match the tag, if any)
         id: v
         run: |
