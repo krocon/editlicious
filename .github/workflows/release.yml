@@ -76,7 +76,12 @@ jobs:
           {
             echo "editlicious $v – the calm text editor for huge files."
             echo
-            node scripts/release-notes.mjs $prev
+            if [ -n "$prev" ]; then
+              node scripts/release-notes.mjs "$prev"
+            else
+              # first release: no earlier tag (describe would find this release's own tag)
+              echo "First public release."
+            fi
             echo
             echo "### Downloads"
             echo

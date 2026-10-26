@@ -35,6 +35,9 @@ nicht per `instantiateStreaming`; wasm-bindgen fällt auf `ArrayBuffer` zurück)
 - **Bilder** sind Fensteraufnahmen der App (1100 × 760, Xvfb im Container, Englisch): `main` (paper, Suche),
   `big-log` (night, 1 Mio. Zeilen), `wrap` (sand, Umbruch), `palette`, `settings` (ink). Neue Aufnahmen mit
   anderem Maß: `width`/`height` anpassen (Test).
+- **Version und Downloads** (Abschnitt `#download`, Knopf im Kopf): bei jedem Release Versionsnummer, Datum,
+  Dateinamen und Größen aus dem GitHub-Release übernehmen (Links zeigen direkt auf
+  `releases/download/vX.Y.Z/…`, dazu `SHA256SUMS.txt`).
 - **Messwerte** in den Zahlen-Kacheln stammen aus `docs/architecture.md`; ändern sie sich, die Seite mitziehen.
 - **Open Graph**: `og:url`/`og:image` zeigen auf `https://krocon.de/products/editlicious/` – bei anderem Ort anpassen.
 - **Datenschutz**: keine Cookies, kein Tracking; Impressum und Datenschutz über den Link auf `https://krocon.de`.
