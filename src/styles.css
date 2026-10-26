@@ -1,0 +1,216 @@
+/*
+ * Design tokens – the only place for colours, sizes and fonts.
+ * Without `html[data-theme]` the scheme follows the system (`prefers-color-scheme`);
+ * `data-theme="light"|"dark"` forces one (settings, prompt 009).
+ * New tokens go into ALL THREE blocks (light, dark via media query, dark forced).
+ * Editor colours (`--ed-*`) are the "ink" of the text area; syntax colours follow in prompt 008.
+ */
+:root {
+  color-scheme: light;
+  --color-bg: #f7f6f2;
+  --color-surface: #ffffff;
+  --color-surface-2: #eeece6;
+  --color-text: #22252b;
+  --color-text-muted: #6b6f78;
+  --color-border: #d9d6cc;
+  --color-accent: #2f6fdf;
+  --color-accent-text: #ffffff;
+  --color-focus: #2f6fdf;
+  --color-error: #b42318;
+  --color-warning: #8a5a00;
+  --color-backdrop: rgb(20 18 12 / 40%);
+  --color-hover: #e9e6dd;
+  --shadow-popup: 0 12px 32px rgb(0 0 0 / 18%);
+
+  --ed-bg: #fbfaf7;
+  --ed-text: #2a2d33;
+  --ed-gutter-bg: #fbfaf7;
+  --ed-gutter-text: #b3b0a6;
+  --ed-gutter-text-active: #5d6068;
+  --ed-current-line: rgb(0 0 0 / 3.5%);
+  --ed-selection: rgb(47 111 223 / 22%);
+  --ed-selection-inactive: rgb(0 0 0 / 9%);
+  --ed-caret: #2f6fdf;
+  --ed-whitespace: rgb(0 0 0 / 18%);
+  --ed-indent-guide: rgb(0 0 0 / 7%);
+  --ed-search-match: rgb(255 196 0 / 38%);
+  --ed-search-current: rgb(255 140 0 / 55%);
+  --ed-scrollbar: rgb(0 0 0 / 22%);
+  --ed-scrollbar-hover: rgb(0 0 0 / 38%);
+
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, sans-serif;
+  --font-editor:
+    ui-monospace, 'SF Mono', Menlo, 'Cascadia Mono', Consolas, 'JetBrains Mono', 'DejaVu Sans Mono',
+    'Liberation Mono', monospace;
+  --font-size: 14px;
+  --font-size-small: 12px;
+  --editor-font-size: 14px;
+  --editor-line-height: 1.55;
+  --radius: 6px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --control-height: 30px;
+  --menubar-height: 28px;
+  --tabbar-height: 32px;
+  --statusbar-height: 24px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --color-bg: #17191d;
+    --color-surface: #1f2228;
+    --color-surface-2: #282c33;
+    --color-text: #e4e5e8;
+    --color-text-muted: #969ba5;
+    --color-border: #343841;
+    --color-accent: #6aa8ff;
+    --color-accent-text: #0b1220;
+    --color-focus: #8fbcff;
+    --color-error: #f97066;
+    --color-warning: #f5b84a;
+    --color-backdrop: rgb(0 0 0 / 60%);
+    --color-hover: #2b2f37;
+    --shadow-popup: 0 12px 32px rgb(0 0 0 / 60%);
+
+    --ed-bg: #17191d;
+    --ed-text: #d7d9de;
+    --ed-gutter-bg: #17191d;
+    --ed-gutter-text: #4b505a;
+    --ed-gutter-text-active: #a3a8b2;
+    --ed-current-line: rgb(255 255 255 / 3.5%);
+    --ed-selection: rgb(106 168 255 / 26%);
+    --ed-selection-inactive: rgb(255 255 255 / 9%);
+    --ed-caret: #8fbcff;
+    --ed-whitespace: rgb(255 255 255 / 16%);
+    --ed-indent-guide: rgb(255 255 255 / 6%);
+    --ed-search-match: rgb(255 196 0 / 26%);
+    --ed-search-current: rgb(255 140 0 / 48%);
+    --ed-scrollbar: rgb(255 255 255 / 18%);
+    --ed-scrollbar-hover: rgb(255 255 255 / 32%);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-bg: #17191d;
+  --color-surface: #1f2228;
+  --color-surface-2: #282c33;
+  --color-text: #e4e5e8;
+  --color-text-muted: #969ba5;
+  --color-border: #343841;
+  --color-accent: #6aa8ff;
+  --color-accent-text: #0b1220;
+  --color-focus: #8fbcff;
+  --color-error: #f97066;
+  --color-warning: #f5b84a;
+  --color-backdrop: rgb(0 0 0 / 60%);
+  --color-hover: #2b2f37;
+  --shadow-popup: 0 12px 32px rgb(0 0 0 / 60%);
+
+  --ed-bg: #17191d;
+  --ed-text: #d7d9de;
+  --ed-gutter-bg: #17191d;
+  --ed-gutter-text: #4b505a;
+  --ed-gutter-text-active: #a3a8b2;
+  --ed-current-line: rgb(255 255 255 / 3.5%);
+  --ed-selection: rgb(106 168 255 / 26%);
+  --ed-selection-inactive: rgb(255 255 255 / 9%);
+  --ed-caret: #8fbcff;
+  --ed-whitespace: rgb(255 255 255 / 16%);
+  --ed-indent-guide: rgb(255 255 255 / 6%);
+  --ed-search-match: rgb(255 196 0 / 26%);
+  --ed-search-current: rgb(255 140 0 / 48%);
+  --ed-scrollbar: rgb(255 255 255 / 18%);
+  --ed-scrollbar-hover: rgb(255 255 255 / 32%);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  font-family: var(--font-ui);
+  font-size: var(--font-size);
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.btn {
+  height: var(--control-height);
+  padding: 0 var(--space-3);
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--color-hover);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  &.primary {
+    color: var(--color-accent-text);
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+
+  &.quiet {
+    background: transparent;
+    border-color: transparent;
+  }
+}
+
+.input {
+  height: var(--control-height);
+  padding: 0 var(--space-2);
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+kbd {
+  padding: 1px 5px;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-small);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -1,0 +1,8 @@
+# Test files with special line endings / encodings must stay byte-exact
+src-tauri/testdata/** -text
+*.png binary
+*.ico binary
+*.icns binary
+*.webp binary
+*.jpg binary
+*.psd binary

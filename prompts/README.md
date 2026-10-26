@@ -20,7 +20,7 @@ Kritischer Pfad zum ersten nutzbaren Editor: **001 → 002 → 003 → 004**. Da
 | Nr. | Prompt | Inhalt | Braucht | Umfang | Status |
 |---|---|---|---|---|---|
 | 000 | [000-arbeitsweise.md](000-arbeitsweise.md) | gemeinsamer Ablauf, Phasen, Regeln | – | – | – |
-| 001 | [001-grundgeruest.md](001-grundgeruest.md) | Walking Skeleton: Tauri 2 + Angular 22 zoneless + Rust, Fassade `call.ts`, Fehler, About, Icon, Checks, CI, Doku, Legacy-Analyse | – | M | offen |
+| 001 | [001-grundgeruest.md](done/001-grundgeruest.md) | Walking Skeleton: Tauri 2 + Angular 22 zoneless + Rust, Fassade `call.ts`, Fehler, About, Icon, Checks, CI, Doku, Legacy-Analyse | – | M | ✅ 26.10.2026 |
 | 002 | [002-dokumentmodell.md](002-dokumentmodell.md) | Rust: Dokument als Rope, Öffnen mit Encoding-/BOM-/Zeilenende-Erkennung, Viewport-Abfrage mit Spaltenfenster, Bearbeiten, Undo/Redo, atomares Speichern; TS-Fassade + In-Memory-Implementierung | 001 | L | offen |
 | 003 | [003-editor-ansicht.md](003-editor-ansicht.md) | Virtuelle Editor-Ansicht in beide Richtungen: Zeilen und Spaltenfenster, Caret, Auswahl, Tastatur, Maus, IME, Zwischenablage, Zeilennummern, Tabs | 002 | L | offen |
 | 004 | [004-dateien-tabs.md](004-dateien-tabs.md) | Mehrere Dateien: Tabs (auto/aus), Neu/Öffnen/Speichern/Speichern unter/Schließen, Ungespeichert-Abfrage, Sitzung wiederherstellen, Drag & Drop, Änderungen von außen | 003 | M | offen |

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- editlicious app icon: a gold fountain-pen nib writing a calm line (macOS grid: body 824 px, radius 185.4) -->
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a3142"/>
+      <stop offset="1" stop-color="#11141b"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff1b8"/>
+      <stop offset="0.45" stop-color="#e9b949"/>
+      <stop offset="1" stop-color="#9c6a12"/>
+    </linearGradient>
+    <linearGradient id="ink" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7cc4ff"/>
+      <stop offset="1" stop-color="#3b82f6"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185.4" fill="url(#body)" filter="url(#shadow)"/>
+  <!-- three quiet text lines -->
+  <g stroke="#ffffff" stroke-opacity="0.13" stroke-width="34" stroke-linecap="round">
+    <line x1="222" y1="300" x2="560" y2="300"/>
+    <line x1="222" y1="390" x2="470" y2="390"/>
+    <line x1="222" y1="480" x2="520" y2="480"/>
+  </g>
+  <!-- the ink line the nib is writing -->
+  <path d="M222 700 C 300 640, 360 760, 440 700 S 560 650, 622 700" fill="none" stroke="url(#ink)" stroke-width="30" stroke-linecap="round"/>
+  <!-- nib, tip at (612, 702) -->
+  <g transform="translate(628 704) rotate(-36) scale(0.74)">
+    <path d="M 0 0 C -70 -110 -150 -220 -150 -330 L -150 -470 L 150 -470 L 150 -330 C 150 -220 70 -110 0 0 Z"
+          fill="url(#gold)" stroke="#6b4708" stroke-width="10" stroke-linejoin="round"/>
+    <rect x="-162" y="-560" width="324" height="100" rx="18" fill="#1b1f29" stroke="#e9b949" stroke-width="10"/>
+    <line x1="0" y1="-260" x2="0" y2="-8" stroke="#5b3d07" stroke-width="12" stroke-linecap="round"/>
+    <circle cx="0" cy="-285" r="30" fill="#2a3142" stroke="#6b4708" stroke-width="8"/>
+  </g>
+</svg>
