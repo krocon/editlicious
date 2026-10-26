@@ -36,7 +36,7 @@ Kritischer Pfad zum ersten nutzbaren Editor: **001 → 002 → 003 → 004**. Da
 | 011 | [011-webseite.md](done/011-webseite.md) | Werbe-Webseite `/site` (statisch, light/dark, Screenshots, Features, Tastenkürzel, Download, Live-Demo mit `ed-core` als WebAssembly) | 004 | M | ✅ 26.10.2026 |
 | 012 | [012-release-distribution.md](done/012-release-distribution.md) | Version, Release-Notes, Lizenzhinweise, Pakete je OS, CI- und Release-Workflows | 001 | M | ✅ 26.10.2026 |
 | 013 | [013-performance-haertung.md](done/013-performance-haertung.md) | Messungen mit 1 GB / 10 Mio. Zeilen / 100-MB-Zeile, Engpässe beheben, Review durch separaten Agenten, Feature-Parität gegen legacy | 002–010 | M | ✅ 26.10.2026 |
-| 014 | [014-release-pipeline.md](014-release-pipeline.md) | Release-Pipeline wie Comic Commander / Files and Folders: Probelauf ohne Release, Vorabprüfung, automatische Release Notes, Paketprüfung, Prüfsummen, Lizenzbericht | 012 | M | offen |
+| 014 | [014-release-pipeline.md](done/014-release-pipeline.md) | Release-Pipeline wie Comic Commander / Files and Folders: Probelauf ohne Release, Vorabprüfung, automatische Release Notes, Paketprüfung, Prüfsummen, Lizenzbericht | 012 | M | ✅ 26.10.2026 |
 
 ## Folge-Ideen (noch ohne Prompt)
 

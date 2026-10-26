@@ -23,3 +23,9 @@ erledigt:
 ## Verifikation
 
 Probelauf des Workflows auf GitHub (alle drei Runner) – Ergebnis im Abschlussbericht.
+
+**Ergebnis (26.10.2026):** Probelauf `dry-run` (Lauf 40311301700) auf allen Runnern grün – Pre-flight, macOS
+(universal, `lipo` x86_64 + arm64, Lizenzhinweise, `LSHandlerRank` Alternate), Windows (msi + NSIS mit
+„Öffnen mit“-Hook), Linux (deb/rpm/AppImage, `.desktop` geprüft), `SHA256SUMS.txt` mit `sha256sum -c`.
+Artefakte: macOS 21 MB, Windows 8 MB, Linux 98 MB (AppImage). Kein Release, kein Tag angelegt. Zwei Fehler
+unterwegs behoben: `setup-node` wollte ohne pnpm dessen Cache; `.deb`-Pfade ohne `./`.
