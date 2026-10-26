@@ -203,6 +203,12 @@ pub async fn count_matches(
     .await
 }
 
+/// All languages of the highlighter (design 008).
+#[tauri::command]
+pub async fn list_languages() -> Result<Vec<String>, FsError> {
+    blocking(|| Ok(crate::highlight::languages())).await
+}
+
 /// Saves (design 002 E8); "Save as" passes a path, "Save with encoding" an encoding.
 #[tauri::command]
 pub async fn save_document(
@@ -435,6 +441,6 @@ mod command_rules {
                 count += 1;
             }
         }
-        assert!(count >= 22);
+        assert!(count >= 23);
     }
 }

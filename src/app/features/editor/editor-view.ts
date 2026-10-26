@@ -23,6 +23,8 @@ import { FindBar } from '../find/find-bar';
 import { FindStore } from '../find/find.store';
 import { FIND_TEXTS } from '../find/find-texts';
 import { GotoBar } from '../find/goto-bar';
+import { PickService } from '../../shared/pick/pick.service';
+import { MENUS_TEXTS } from '../menus/menus-texts';
 
 /** Cells of padding left of the text. */
 const PAD_CELLS = 1;
@@ -191,9 +193,26 @@ export class EditorView {
             f.open() || this.gotoOpen() || !!this.frame()?.search || !!this.frame()?.multi,
         },
         'goto.line': { run: () => this.gotoOpen.set(true) },
+        'view.language': { run: () => void this.chooseLanguage() },
       },
       this.destroyRef,
     );
+  }
+
+  private readonly picker = inject(PickService);
+
+  /** "Change language…": the engine's grammars, plain text first. */
+  private async chooseLanguage(): Promise<void> {
+    const names = await this.api.listLanguages().catch((): string[] => []);
+    const t = MENUS_TEXTS;
+    const id = await this.picker.pick({
+      title: t.language,
+      placeholder: t.languagePlaceholder,
+      options: [{ id: '', label: t.plainText }, ...names.map((n) => ({ id: n, label: n }))],
+      current: this.frame()?.language ?? '',
+    });
+    if (id !== null) void this.send({ type: 'setLanguage', name: id || null });
+    this.focus();
   }
 
   private openFind(replace: boolean): void {
@@ -325,6 +344,7 @@ export class EditorView {
         if (id === this.docId()) {
           this.frame.set(f);
           this.frameChange.emit(f);
+          if (f.approxHighlight) this.refreshSoon();
           if (f.notice) this.onNotice(f.notice);
         }
       } catch (e) {
@@ -332,6 +352,17 @@ export class EditorView {
       }
     });
     return this.chain;
+  }
+
+  private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Approximate highlighting: ask again until the background parse has caught up. */
+  private refreshSoon(): void {
+    if (this.refreshTimer) return;
+    this.refreshTimer = setTimeout(() => {
+      this.refreshTimer = null;
+      void this.send({ type: 'frame' });
+    }, 250);
   }
 
   private onNotice(notice: string): void {

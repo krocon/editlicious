@@ -110,7 +110,8 @@ export type Command =
   | { type: 'addNextOccurrence' }
   | { type: 'singleCursor' }
   | { type: 'toggleMarker' }
-  | { type: 'clearMarkers' };
+  | { type: 'clearMarkers' }
+  | { type: 'setLanguage'; name: string | null };
 
 /** A search (`ed_core::search::Query`, design 006). */
 export interface Query {
@@ -143,7 +144,39 @@ export interface Run {
   width: number;
   kind: RunKind;
   text: string;
+  /** Style class, index into {@link STYLE_CLASSES} (0 = plain). */
+  style: number;
 }
+
+/** Mirror of Rust `highlight::CLASSES` (design 008). */
+export const STYLE_CLASSES = [
+  '',
+  'comment',
+  'string',
+  'keyword',
+  'number',
+  'constant',
+  'type',
+  'function',
+  'tag',
+  'attribute',
+  'variable',
+  'operator',
+  'punct',
+  'heading',
+  'bold',
+  'italic',
+  'code',
+  'link',
+  'invalid',
+  'inserted',
+  'deleted',
+  'changed',
+  'log-error',
+  'log-warning',
+  'log-info',
+  'log-debug',
+] as const;
 
 export interface FrameLine {
   line: number;
@@ -184,5 +217,9 @@ export interface Frame {
   search: boolean;
   /** More than one cursor. */
   multi: boolean;
+  /** Language of the highlighting, `null` = plain text. */
+  language: string | null;
+  /** The highlighting of the view is approximate (far jump; exact soon). */
+  approxHighlight: boolean;
   selectionText: string | null;
 }

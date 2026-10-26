@@ -74,6 +74,88 @@
   text-align: center;
 }
 
+/* syntax classes (design 008): colours from the scheme tokens --syn-* */
+.run[data-s='1'] {
+  color: var(--syn-comment);
+  font-style: italic;
+}
+.run[data-s='2'] {
+  color: var(--syn-string);
+}
+.run[data-s='3'] {
+  color: var(--syn-keyword);
+}
+.run[data-s='4'] {
+  color: var(--syn-number);
+}
+.run[data-s='5'] {
+  color: var(--syn-constant);
+}
+.run[data-s='6'] {
+  color: var(--syn-type);
+}
+.run[data-s='7'] {
+  color: var(--syn-function);
+}
+.run[data-s='8'] {
+  color: var(--syn-tag);
+}
+.run[data-s='9'] {
+  color: var(--syn-attribute);
+}
+.run[data-s='10'] {
+  color: var(--syn-variable);
+}
+.run[data-s='11'] {
+  color: var(--syn-operator);
+}
+.run[data-s='12'] {
+  color: var(--syn-punct);
+}
+.run[data-s='13'] {
+  color: var(--syn-heading);
+  font-weight: 600;
+}
+.run[data-s='14'] {
+  font-weight: 600;
+}
+.run[data-s='15'] {
+  font-style: italic;
+}
+.run[data-s='16'] {
+  color: var(--syn-code);
+}
+.run[data-s='17'] {
+  color: var(--syn-link);
+  text-decoration: underline;
+}
+.run[data-s='18'] {
+  color: var(--syn-invalid);
+  text-decoration: wavy underline;
+}
+.run[data-s='19'] {
+  color: var(--syn-inserted);
+}
+.run[data-s='20'] {
+  color: var(--syn-deleted);
+}
+.run[data-s='21'] {
+  color: var(--syn-changed);
+}
+.run[data-s='22'] {
+  color: var(--syn-log-error);
+  font-weight: 600;
+}
+.run[data-s='23'] {
+  color: var(--syn-log-warning);
+}
+.run[data-s='24'] {
+  color: var(--syn-log-info);
+}
+.run[data-s='25'] {
+  color: var(--syn-log-debug);
+}
+
 .tab::before {
   content: '→';
   color: var(--ed-whitespace);

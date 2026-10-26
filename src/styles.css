@@ -38,6 +38,30 @@
   --ed-scrollbar: rgb(0 0 0 / 22%);
   --ed-scrollbar-hover: rgb(0 0 0 / 38%);
 
+  --syn-comment: #8a8f98;
+  --syn-string: #2f7d32;
+  --syn-keyword: #8e44ad;
+  --syn-number: #b5532b;
+  --syn-constant: #b5532b;
+  --syn-type: #1f6fb2;
+  --syn-function: #0b6e8c;
+  --syn-tag: #1f6fb2;
+  --syn-attribute: #8a6d00;
+  --syn-variable: inherit;
+  --syn-operator: #6b6f78;
+  --syn-punct: #6b6f78;
+  --syn-heading: #1f6fb2;
+  --syn-code: #b5532b;
+  --syn-link: #2f6fdf;
+  --syn-invalid: #b42318;
+  --syn-inserted: #2f7d32;
+  --syn-deleted: #b42318;
+  --syn-changed: #8a6d00;
+  --syn-log-error: #c62828;
+  --syn-log-warning: #b26a00;
+  --syn-log-info: #1f6fb2;
+  --syn-log-debug: #8a8f98;
+
   /* word markers (design 007 E6): translucent, readable on light and dark – the same in both */
   --ed-marker-0: rgb(255 99 132 / 30%);
   --ed-marker-1: rgb(54 162 235 / 30%);
@@ -102,6 +126,30 @@
     --ed-search-current: rgb(255 140 0 / 48%);
     --ed-scrollbar: rgb(255 255 255 / 18%);
     --ed-scrollbar-hover: rgb(255 255 255 / 32%);
+
+    --syn-comment: #6b7280;
+    --syn-string: #a5d6a7;
+    --syn-keyword: #c792ea;
+    --syn-number: #f78c6c;
+    --syn-constant: #f78c6c;
+    --syn-type: #82aaff;
+    --syn-function: #7fd1e8;
+    --syn-tag: #82aaff;
+    --syn-attribute: #ffcb6b;
+    --syn-variable: inherit;
+    --syn-operator: #89ddff;
+    --syn-punct: #8f96a3;
+    --syn-heading: #82aaff;
+    --syn-code: #f78c6c;
+    --syn-link: #8fbcff;
+    --syn-invalid: #f97066;
+    --syn-inserted: #a5d6a7;
+    --syn-deleted: #f97066;
+    --syn-changed: #ffcb6b;
+    --syn-log-error: #ff6b6b;
+    --syn-log-warning: #ffb74d;
+    --syn-log-info: #82aaff;
+    --syn-log-debug: #6b7280;
   }
 }
 
@@ -137,6 +185,101 @@
   --ed-search-current: rgb(255 140 0 / 48%);
   --ed-scrollbar: rgb(255 255 255 / 18%);
   --ed-scrollbar-hover: rgb(255 255 255 / 32%);
+
+  --syn-comment: #6b7280;
+  --syn-string: #a5d6a7;
+  --syn-keyword: #c792ea;
+  --syn-number: #f78c6c;
+  --syn-constant: #f78c6c;
+  --syn-type: #82aaff;
+  --syn-function: #7fd1e8;
+  --syn-tag: #82aaff;
+  --syn-attribute: #ffcb6b;
+  --syn-variable: inherit;
+  --syn-operator: #89ddff;
+  --syn-punct: #8f96a3;
+  --syn-heading: #82aaff;
+  --syn-code: #f78c6c;
+  --syn-link: #8fbcff;
+  --syn-invalid: #f97066;
+  --syn-inserted: #a5d6a7;
+  --syn-deleted: #f97066;
+  --syn-changed: #ffcb6b;
+  --syn-log-error: #ff6b6b;
+  --syn-log-warning: #ffb74d;
+  --syn-log-info: #82aaff;
+  --syn-log-debug: #6b7280;
+}
+
+/*
+ * Further colour schemes (design 008 E6; legacy: four built-in styles, F12 switches).
+ * `paper` and `ink` are the light/dark blocks above; these override them and set
+ * `data-theme` for the chrome as well (ChromeStore).
+ */
+:root[data-scheme='sand'] {
+  --color-bg: #f3ecd8;
+  --color-surface: #fdf6e3;
+  --color-surface-2: #eee8d5;
+  --color-border: #ddd3b6;
+  --color-hover: #ebe3cb;
+  --ed-bg: #fdf6e3;
+  --ed-gutter-bg: #fdf6e3;
+  --ed-text: #586e75;
+  --ed-gutter-text: #b8b29e;
+  --ed-gutter-text-active: #657b83;
+  --ed-current-line: rgb(147 161 161 / 12%);
+  --ed-selection: rgb(38 139 210 / 20%);
+  --ed-caret: #cb4b16;
+  --syn-comment: #93a1a1;
+  --syn-string: #2aa198;
+  --syn-keyword: #859900;
+  --syn-number: #d33682;
+  --syn-constant: #cb4b16;
+  --syn-type: #b58900;
+  --syn-function: #268bd2;
+  --syn-tag: #268bd2;
+  --syn-attribute: #b58900;
+  --syn-operator: #657b83;
+  --syn-punct: #839496;
+  --syn-heading: #cb4b16;
+  --syn-code: #d33682;
+  --syn-link: #268bd2;
+  --syn-log-info: #268bd2;
+  --syn-log-debug: #93a1a1;
+}
+
+:root[data-scheme='night'] {
+  --color-bg: #191a17;
+  --color-surface: #22231f;
+  --color-surface-2: #2c2d28;
+  --color-border: #3b3c35;
+  --color-hover: #30312b;
+  --ed-bg: #22231f;
+  --ed-gutter-bg: #22231f;
+  --ed-text: #f8f8f2;
+  --ed-gutter-text: #58594f;
+  --ed-gutter-text-active: #b6b7aa;
+  --ed-current-line: rgb(255 255 255 / 5%);
+  --ed-selection: rgb(73 72 62 / 90%);
+  --ed-caret: #f8f8f0;
+  --syn-comment: #8f8c76;
+  --syn-string: #e6db74;
+  --syn-keyword: #f92672;
+  --syn-number: #ae81ff;
+  --syn-constant: #ae81ff;
+  --syn-type: #66d9ef;
+  --syn-function: #a6e22e;
+  --syn-tag: #f92672;
+  --syn-attribute: #a6e22e;
+  --syn-operator: #f92672;
+  --syn-punct: #c9c9bf;
+  --syn-heading: #66d9ef;
+  --syn-code: #fd971f;
+  --syn-link: #66d9ef;
+  --syn-log-error: #f92672;
+  --syn-log-warning: #fd971f;
+  --syn-log-info: #66d9ef;
+  --syn-log-debug: #8f8c76;
 }
 
 *,

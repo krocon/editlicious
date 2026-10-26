@@ -48,6 +48,8 @@ pub struct Document {
     next_state: u64,
     saved_state: u64,
     history: History,
+    /// First line changed since the highlighter last looked (design 008 E2).
+    changed_from: Option<usize>,
 }
 
 impl Document {
@@ -68,6 +70,7 @@ impl Document {
             next_state: 1,
             saved_state: 0,
             history: History::default(),
+            changed_from: None,
         }
     }
 
@@ -97,6 +100,11 @@ impl Document {
 
     pub fn rope(&self) -> &Rope {
         &self.rope
+    }
+
+    /// The first line changed since the last call (syntax highlighting starts over there).
+    pub fn take_changed_from(&mut self) -> Option<usize> {
+        self.changed_from.take()
     }
 
     pub fn revision(&self) -> u64 {
@@ -343,6 +351,10 @@ impl Document {
     /// Applies sorted, non-overlapping changes; returns the inverse changes (ascending, in the
     /// coordinates after the edit).
     fn apply_raw(&mut self, changes: &[RawChange]) -> Vec<RawChange> {
+        if let Some(first) = changes.iter().map(|c| c.from).min() {
+            let line = self.rope.char_to_line(first.min(self.rope.len_chars()));
+            self.changed_from = Some(self.changed_from.map_or(line, |l| l.min(line)));
+        }
         let mut inverse = Vec::with_capacity(changes.len());
         let mut delta: isize = 0;
         for c in changes {

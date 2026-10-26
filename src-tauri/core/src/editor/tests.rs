@@ -872,3 +872,82 @@ fn markers_colour_words() {
     let f = run(&mut s, Command::ClearMarkers);
     assert!(f.lines[0].markers.is_empty());
 }
+
+// ---------------------------------------------------------------- highlighting (design 008)
+
+#[test]
+fn frames_carry_styles_by_language() {
+    let mut s = session("// hi\nlet x = 1;");
+    let f = run(&mut s, Command::Frame);
+    assert_eq!(f.language, None, "no path, plain first line");
+    let f = run(
+        &mut s,
+        Command::SetLanguage {
+            name: Some("Rust".into()),
+        },
+    );
+    assert_eq!(f.language.as_deref(), Some("Rust"));
+    assert_eq!(f.lines[0].runs[0].style, 1, "comment");
+    assert!(
+        f.lines[1]
+            .runs
+            .iter()
+            .any(|r| r.style == 4 && r.text == "1")
+    );
+    // typing invalidates from the changed line on
+    put(&mut s, 0, 0);
+    typ(&mut s, "x");
+    let f = run(&mut s, Command::Frame);
+    assert_eq!(
+        f.lines[0]
+            .runs
+            .iter()
+            .map(|r| r.text.as_str())
+            .collect::<String>(),
+        "x// hi"
+    );
+    let f = run(&mut s, Command::SetLanguage { name: None });
+    assert!(f.lines[1].runs.iter().all(|r| r.style == 0));
+}
+
+/// `cargo test -p ed-core --release -- --ignored --nocapture measure_` (design 008).
+#[test]
+#[ignore]
+fn measure_highlighting() {
+    use std::time::Instant;
+    let code = "fn main() {\n    let s = \"text\"; // comment\n    println!(\"{}\", s + 42);\n}\n";
+    let mut s = session(&code.repeat(25_000)); // 100 000 lines
+    run(
+        &mut s,
+        Command::SetLanguage {
+            name: Some("Rust".into()),
+        },
+    );
+    run(
+        &mut s,
+        Command::Resize {
+            lines: 50.0,
+            cols: 120.0,
+        },
+    );
+    let t = Instant::now();
+    run(&mut s, Command::Frame);
+    println!("first frame: {:?}", t.elapsed());
+    put(&mut s, 2_000, 4);
+    let t = Instant::now();
+    typ(&mut s, "x");
+    println!("first keystroke at line 2000 (catch up): {:?}", t.elapsed());
+    let t = Instant::now();
+    for _ in 0..20 {
+        typ(&mut s, "x");
+    }
+    println!("20 keystrokes with highlighting: {:?}", t.elapsed());
+    mv(&mut s, Motion::DocEnd);
+    let t = Instant::now();
+    let f = run(&mut s, Command::Frame);
+    println!(
+        "frame at the end (approx {}): {:?}",
+        f.approx_highlight,
+        t.elapsed()
+    );
+}

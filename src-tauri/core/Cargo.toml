@@ -22,6 +22,14 @@ unicode-width = "0.2"
 unicode-segmentation = "1.12"
 # design 006: search (linear time, no backtracking blow-ups)
 regex = "1.11"
+# design 008: syntax highlighting with the Sublime/TextMate grammars (legacy wish); regex engine via features
+syntect = { version = "5.3", default-features = false, features = ["default-syntaxes", "yaml-load"] }
+
+[features]
+# design 008 E5: Oniguruma (C, ~3.5× faster) for the app; the pure-Rust engine for WebAssembly
+default = ["onig"]
+onig = ["syntect/regex-onig"]
+fancy = ["syntect/regex-fancy"]
 
 [dev-dependencies]
 tempfile = "3"

@@ -112,6 +112,20 @@ export function buildMenuModel(os: Os, input: MenuInputs): TopMenuNode[] {
       label: t.tabs,
       items: [a('view.tabs.auto'), a('view.tabs.show'), a('view.tabs.hide')],
     },
+    {
+      kind: 'submenu',
+      label: t.scheme,
+      items: [
+        a('view.scheme.auto'),
+        a('view.scheme.paper'),
+        a('view.scheme.ink'),
+        a('view.scheme.sand'),
+        a('view.scheme.night'),
+        sep,
+        a('view.nextScheme'),
+      ],
+    },
+    a('view.language'),
     sep,
     a('file.next'),
     a('file.prev'),
@@ -207,5 +221,7 @@ export function menuChord(chords: readonly string[]): string {
 
 /** Items that exclude each other are radio items. */
 export function isRadio(id: string): boolean {
-  return id.startsWith('view.tabs.') || id.startsWith('file.switch.');
+  return (
+    id.startsWith('view.tabs.') || id.startsWith('file.switch.') || id.startsWith('view.scheme.')
+  );
 }

@@ -37,6 +37,7 @@
 | `load_session` / `save_session` | `session.json` | 004 |
 | `set_title` / `take_over_close` / `quit_app`, Ereignis `close-requested` | Fenster, Beenden mit Frage | 004 |
 | `count_matches(id, query)` | Treffer zählen auf einem Schnappschuss (abbrechbar) | 006 |
+| `list_languages` | Sprachen der Hervorhebung | 008 |
 | `toggle_fullscreen` | Vollbild | 005 |
 | `set_app_menu(spec)`, Ereignis `menu-action` | natives Menü (macOS) | 005 |
 | `load_keymap_overrides` | `keymap.json` | 005 |
@@ -54,6 +55,7 @@
 | `memchr` | schnelles Zählen der Zeilenenden, NUL-Erkennung | 002 |
 | `unicode-width`, `unicode-segmentation` | Zellen je Zeichen (breit/kombinierend), Graphem-Grenzen für Cursor-Schritte | 003 |
 | `regex` | Suchen/Ersetzen mit linearer Laufzeit | 006 |
+| `syntect` (Oniguruma; `fancy` für WASM) | Syntax-Hervorhebung mit Sublime/TextMate-Grammatiken | 008 |
 | `arboard` (nur Text, Wayland) | System-Zwischenablage aus Rust – große Auswahlen gehen nicht über die IPC | 003 |
 | `@angular/*`, `@tauri-apps/api`, `rxjs`, `tslib` | Frontend | 001 |
 
@@ -63,3 +65,5 @@ Release-Build im Linux-Container (26.10.2026), Details in `prompts/done/002-doku
 100-MB-Datei mit 1,3 Mio. Zeilen öffnen 191 ms · Ansicht am Ende 0,07 ms · Fenster in 10-Mio.-Zeichen-Zeile
 0,007 ms · 100 Tastenanschläge am Ende dieser Zeile 0,37 ms.
 Suche (006): Treffer am Ende von 100 MB 30 ms · 1,4 Mio. Treffer zählen 0,44 s.
+Hervorhebung (008): Taste mit Hervorhebung ~5 ms in 100 000 Zeilen Rust, weite Sprünge sofort (ungefähr) und
+nach dem Hintergrund-Aufholen exakt.

@@ -84,4 +84,37 @@ describe('App', () => {
     expect(text).toContain('Undo');
     expect(text).toContain('Ctrl+Z');
   });
+
+  it('F12 switches the colour scheme on the document', async () => {
+    setup(true);
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    const actions = TestBed.inject(ActionService);
+    actions.run('view.nextScheme');
+    await fixture.whenStable();
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    actions.run('view.scheme.night');
+    await fixture.whenStable();
+    expect(document.documentElement.getAttribute('data-scheme')).toBe('night');
+    actions.run('view.scheme.auto');
+    await fixture.whenStable();
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
+  });
+
+  it('changes the language through the picker', async () => {
+    const api = setup(true);
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    await new Promise((r) => setTimeout(r));
+    await fixture.whenStable();
+    TestBed.inject(ActionService).run('view.language');
+    await new Promise((r) => setTimeout(r));
+    await fixture.whenStable();
+    const el = fixture.nativeElement as HTMLElement;
+    const options = [...el.querySelectorAll('[role="option"]')].map((o) => o.textContent?.trim());
+    expect(options).toEqual(['Plain text', 'JavaScript', 'Rust']);
+    (el.querySelectorAll('[role="option"]')[2] as HTMLElement).click();
+    await new Promise((r) => setTimeout(r));
+    expect(api.sent('setLanguage')).toEqual([{ type: 'setLanguage', name: 'Rust' }]);
+  });
 });

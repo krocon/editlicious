@@ -85,6 +85,14 @@ export const ACTIONS: readonly ActionDef[] = [
   G('view.tabs.auto', 'Tabs: from the second file on'),
   G('view.tabs.show', 'Tabs: always'),
   G('view.tabs.hide', 'Tabs: never'),
+  // colours and languages (design 008)
+  G('view.nextScheme', 'Next colour scheme'),
+  G('view.scheme.auto', 'Colour scheme: follow the system'),
+  G('view.scheme.paper', 'Colour scheme: Paper (light)'),
+  G('view.scheme.ink', 'Colour scheme: Ink (dark)'),
+  G('view.scheme.sand', 'Colour scheme: Sand (light)'),
+  G('view.scheme.night', 'Colour scheme: Night (dark)'),
+  { id: 'view.language', label: 'Change language…', context: 'editor' },
   // editing – the engine does it
   E('edit.undo', 'Undo', { type: 'undo' }, { repeat: true }),
   E('edit.redo', 'Redo', { type: 'redo' }, { repeat: true }),

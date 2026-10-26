@@ -35,6 +35,7 @@ export abstract class EditorApi {
   abstract diskState(id: number): Promise<DiskState>;
   /** Counts on a snapshot; a newer count cancels an older one (`cancelled`). */
   abstract countMatches(id: number, query: Query): Promise<MatchCount>;
+  abstract listLanguages(): Promise<string[]>;
 }
 
 let loadSeq = 0;
@@ -86,5 +87,9 @@ export class TauriEditorApi extends EditorApi {
 
   countMatches(id: number, query: Query): Promise<MatchCount> {
     return call<MatchCount>('count_matches', { id, query });
+  }
+
+  listLanguages(): Promise<string[]> {
+    return call<string[]>('list_languages');
   }
 }

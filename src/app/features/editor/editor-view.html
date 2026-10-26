@@ -77,7 +77,9 @@
               <span class="run ctrl" [style.left.px]="x(run.cell)">{{ run.text }}</span>
             }
             @default {
-              <span class="run" [style.left.px]="x(run.cell)">{{ run.text }}</span>
+              <span class="run" [attr.data-s]="run.style || null" [style.left.px]="x(run.cell)">{{
+                run.text
+              }}</span>
             }
           }
         }

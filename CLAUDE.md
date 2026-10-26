@@ -55,6 +55,7 @@ src/                          Angular 22 (zoneless, Signals, OnPush, Standalone)
                               außen, Beenden), TabBar
   app/features/find/          FindStore (Muster, Optionen, Verlauf), FindBar, GotoBar
   app/shared/ask/             AskService + AskDialog (Fragen als Promise)
+  app/shared/pick/            PickService + PickDialog (filterbare Auswahl: Sprache, später Encoding)
   app/core/menu/              MenuApi (set_app_menu, menu-action), KeymapApi (keymap.json)
   app/features/menus/         menu-model (rein), MenuService (nativ/HTML), MenuBar (APG, versteckt bis Alt),
                               CommandPalette, ShortcutsDialog, ChromeStore (F1, Menüleiste, Vollbild)
@@ -72,6 +73,7 @@ src-tauri/                    Rust (Tauri 2), Crate `editlicious`, Lib `ed_lib`
   core/                       Crate `ed-core` (Workspace-Mitglied): Editor-Engine ohne Tauri
     src/error.rs              FsError { code, message, path }
     src/document/             Rope, load (Encoding/BOM/Zeilenenden), save (atomar), history (Undo), registry, model
+    src/highlight.rs          Syntax-Hervorhebung (syntect, Checkpoints, Hintergrund-Aufholen, Stilklassen)
     src/search.rs             Suchen/Ersetzen in Zeilenblöcken (regex), Zählen auf Schnappschuss
     src/editor/               Sitzung (Cursor, Befehle, Scroll, Frames), layout (Zellen, Grapheme), words,
                               ops (Sortieren, Groß/klein, Zeilen, Blockauswahl, mehrere Cursor, Marker)

@@ -38,7 +38,7 @@ export function docInfo(over: Partial<DocInfo> = {}): DocInfo {
 export function textFrame(lines: string[], over: Partial<Frame> = {}): Frame {
   const frameLines: FrameLine[] = lines.map((text, line) => ({
     line,
-    runs: text ? [{ cell: 0, width: text.length, kind: 'text', text }] : [],
+    runs: text ? [{ cell: 0, width: text.length, kind: 'text', text, style: 0 }] : [],
     sel: [],
     selEol: false,
     width: text.length,
@@ -65,6 +65,8 @@ export function textFrame(lines: string[], over: Partial<Frame> = {}): Frame {
     notice: null,
     search: false,
     multi: false,
+    language: null,
+    approxHighlight: false,
     selectionText: null,
     ...over,
   };
@@ -155,6 +157,11 @@ export class FakeEditorApi extends EditorApi {
   countMatches(_id: number, query: Query): Promise<MatchCount> {
     this.counted.push(query);
     return Promise.resolve(this.matchCount);
+  }
+
+  languages = ['JavaScript', 'Rust'];
+  listLanguages(): Promise<string[]> {
+    return Promise.resolve(this.languages);
   }
 
   /** Commands of a type, for assertions. */

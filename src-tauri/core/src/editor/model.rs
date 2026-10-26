@@ -134,6 +134,10 @@ pub enum Command {
     SingleCursor,
     ToggleMarker,
     ClearMarkers,
+    /// Language by name (`None` = plain text), design 008.
+    SetLanguage {
+        name: Option<String>,
+    },
 }
 
 fn one() -> u8 {
@@ -179,6 +183,8 @@ pub struct Run {
     pub width: usize,
     pub kind: RunKind,
     pub text: String,
+    /// Style class (`highlight::CLASSES`), 0 = plain (design 008).
+    pub style: u8,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -236,6 +242,10 @@ pub struct Frame {
     pub search: bool,
     /// More than one cursor (Escape goes back to one).
     pub multi: bool,
+    /// Language of the highlighting, `None` = plain text.
+    pub language: Option<String>,
+    /// The highlighting of the view started fresh (far jump in a big file, design 008 E3).
+    pub approx_highlight: bool,
     /// The primary selection when it is short and on one line (to prefill the find field).
     pub selection_text: Option<String>,
 }

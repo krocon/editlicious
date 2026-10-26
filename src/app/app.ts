@@ -4,6 +4,7 @@ import {
   Component,
   computed,
   DestroyRef,
+  effect,
   inject,
   viewChild,
 } from '@angular/core';
@@ -17,7 +18,8 @@ import { AboutDialog } from './features/about/about-dialog';
 import { DocumentsStore } from './features/documents/documents.store';
 import { TabBar } from './features/documents/tab-bar';
 import { EditorView } from './features/editor/editor-view';
-import { ChromeStore } from './features/menus/chrome.store';
+import { ChromeStore, Scheme, SCHEMES, schemeAttributes } from './features/menus/chrome.store';
+import { PickDialog } from './shared/pick/pick-dialog';
 import { CommandPalette } from './features/menus/command-palette';
 import { MenuBar } from './features/menus/menu-bar';
 import { MenuService } from './features/menus/menu.service';
@@ -32,7 +34,16 @@ import { DialogService } from './shared/dialog/dialog.service';
  */
 @Component({
   selector: 'app-root',
-  imports: [AboutDialog, AskDialog, CommandPalette, EditorView, MenuBar, ShortcutsDialog, TabBar],
+  imports: [
+    AboutDialog,
+    AskDialog,
+    CommandPalette,
+    EditorView,
+    MenuBar,
+    PickDialog,
+    ShortcutsDialog,
+    TabBar,
+  ],
   template: `
     @if (store.loading(); as l) {
       <div class="progress" [style.width.%]="l.progress * 100"></div>
@@ -74,6 +85,9 @@ import { DialogService } from './shared/dialog/dialog.service';
       @case ('shortcuts') {
         <app-shortcuts-dialog />
       }
+      @case ('pick') {
+        <app-pick-dialog />
+      }
     }
   `,
   styleUrl: './app.css',
@@ -99,7 +113,17 @@ export class App {
       if (this.dialogs.open() !== null) return null;
       return target?.closest('app-editor-view') ? ['editor', 'global'] : ['global'];
     });
-    dispatcher.attach(inject(DOCUMENT));
+    const doc = inject(DOCUMENT);
+    dispatcher.attach(doc);
+    // the colour scheme sets the chrome's light/dark and the editor colours (design 008 E6)
+    effect(() => {
+      const a = schemeAttributes(this.chrome.scheme());
+      const root = doc.documentElement;
+      if (a.theme) root.setAttribute('data-theme', a.theme);
+      else root.removeAttribute('data-theme');
+      if (a.scheme) root.setAttribute('data-scheme', a.scheme);
+      else root.removeAttribute('data-scheme');
+    });
     this.registerActions();
     void this.actions.loadOverrides();
     inject(MenuService).start();
@@ -126,7 +150,13 @@ export class App {
       run: () => s.tabsMode.set(mode),
       checked: () => s.tabsMode() === mode,
     });
+    const scheme = (s: Scheme): ActionHandler => ({
+      run: () => c.scheme.set(s),
+      checked: () => c.scheme() === s,
+    });
     const handlers: Record<string, ActionHandler> = {
+      'view.nextScheme': { run: () => c.nextScheme() },
+      ...Object.fromEntries(SCHEMES.map((s) => [`view.scheme.${s}`, scheme(s)])),
       'file.new': { run: () => after(s.newDoc()) },
       'file.open': { run: () => after(s.openDialog()) },
       'file.save': { run: () => after(s.save()), enabled: () => s.active() !== null },

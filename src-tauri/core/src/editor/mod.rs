@@ -13,6 +13,7 @@ mod tests;
 use crate::document::Document;
 use crate::document::model::{Change, EditKind, EditRequest, Pos, Sel};
 use crate::error::FsError;
+use crate::highlight::{self, Highlighter};
 use crate::search::{self, Query};
 use layout::{LineLayout, char_width, next_grapheme, prev_grapheme};
 use model::{CaretPos, Command, Frame, FrameLine, Motion, Run, RunKind};
@@ -114,11 +115,13 @@ pub struct Session {
     markers: Vec<Option<(String, Regex)>>,
     /// Line and cell of the last click – the corner of an Alt-drag block.
     block_origin: Option<(usize, usize)>,
+    highlighter: Option<Highlighter>,
 }
 
 impl Session {
     pub fn new(doc: Document, id: u64) -> Self {
         let (spaces, tab) = words::detect_indent(&doc);
+        let highlighter = Self::detect_highlighter(&doc);
         Self {
             doc,
             id,
@@ -139,7 +142,22 @@ impl Session {
             block: None,
             markers: Vec::new(),
             block_origin: None,
+            highlighter,
         }
+    }
+
+    fn detect_highlighter(doc: &Document) -> Option<Highlighter> {
+        let first = if doc.is_long(0) {
+            doc.line_slice(0, 0, 200)
+        } else {
+            doc.line_string(0)
+        };
+        let name = doc
+            .path
+            .as_deref()
+            .and_then(|p| p.file_name())
+            .map(|n| n.to_string_lossy().into_owned());
+        highlight::detect(name.as_deref(), &first).and_then(|l| Highlighter::new(&l))
     }
 
     pub fn cursors(&self) -> &[Cursor] {
@@ -163,7 +181,9 @@ impl Session {
     /// Replaces the text with a fresh load of the file (changed on disk, design 004 E6);
     /// cursors and scroll position stay where they were, as far as the new text allows.
     pub fn replace_document(&mut self, doc: Document) {
+        let lang = self.highlighter.as_ref().map(|h| h.language.clone());
         self.doc = doc;
+        self.highlighter = lang.and_then(|l| Highlighter::new(&l));
         self.max_width = 0;
         self.drag = None;
         self.normalize();
@@ -334,6 +354,10 @@ impl Session {
             }
             Command::ClearMarkers => {
                 self.clear_markers();
+                reveal = Reveal::No;
+            }
+            Command::SetLanguage { name } => {
+                self.highlighter = name.as_deref().and_then(Highlighter::new);
                 reveal = Reveal::No;
             }
         }
@@ -1195,8 +1219,19 @@ impl Session {
         let wa = (self.left.floor() as usize).saturating_sub(WINDOW_SLACK);
         let wb = (self.left + self.view_cols).ceil() as usize + WINDOW_SLACK;
         let mut lines = Vec::with_capacity(end - first);
+        let changed = self.doc.take_changed_from();
+        let (styles, approx) = match &mut self.highlighter {
+            Some(h) => {
+                if let Some(l) = changed {
+                    h.invalidate_from(l);
+                }
+                h.styles(&self.doc, first, end)
+            }
+            None => (Vec::new(), false),
+        };
         for line in first..end {
-            let fl = self.frame_line(line, wa, wb);
+            let st = styles.get(line - first).cloned().flatten();
+            let fl = self.frame_line(line, wa, wb, st.as_deref());
             self.max_width = self.max_width.max(fl.width);
             lines.push(fl);
         }
@@ -1238,6 +1273,8 @@ impl Session {
             notice: self.notice.clone(),
             search: self.search.is_some(),
             multi: self.cursors.len() > 1,
+            language: self.highlighter.as_ref().map(|h| h.language.clone()),
+            approx_highlight: approx,
             selection_text: self.selection_text(),
         }
     }
@@ -1251,7 +1288,13 @@ impl Session {
         self.doc.text(c.start(), c.end()).ok()
     }
 
-    fn frame_line(&self, line: usize, wa: usize, wb: usize) -> FrameLine {
+    fn frame_line(
+        &self,
+        line: usize,
+        wa: usize,
+        wb: usize,
+        styles: Option<&[(usize, u8)]>,
+    ) -> FrameLine {
         let len = self.doc.line_len(line);
         let long = self.doc.is_long(line);
         let mut found: Vec<(usize, usize)> = Vec::new();
@@ -1269,7 +1312,7 @@ impl Session {
                     .collect();
             }
             (
-                runs_of(text.chars(), from, |_, _| 1),
+                runs_of(text.chars(), from, |_, _| 1, |_| 0),
                 len,
                 Box::new(|ch| ch),
             )
@@ -1291,7 +1334,18 @@ impl Session {
                 .iter()
                 .copied();
             let tab = self.tab;
-            let runs = runs_of(chars, start_cell, |c, col| char_width(c, col, tab));
+            let style = char_styles(
+                &line_text,
+                styles,
+                first.min(lay.len()),
+                last.max(first).min(lay.len()),
+            );
+            let runs = runs_of(
+                chars,
+                start_cell,
+                |c, col| char_width(c, col, tab),
+                |i| style.get(i).copied().unwrap_or(0),
+            );
             (runs, width, Box::new(move |ch| lay.cell_of(ch)))
         };
         let mut sel = Vec::new();
@@ -1353,14 +1407,41 @@ enum Reveal {
 }
 
 /// Groups characters into runs of one kind; `width(c, col)` gives the cells of a character.
+/// Styles of the characters `[from, to)` of a line from its byte-offset spans.
+fn char_styles(text: &str, spans: Option<&[(usize, u8)]>, from: usize, to: usize) -> Vec<u8> {
+    let Some(spans) = spans else {
+        return Vec::new();
+    };
+    let mut out = Vec::with_capacity(to.saturating_sub(from));
+    let mut si = 0;
+    let mut cur = 0u8;
+    for (i, (b, _)) in text.char_indices().enumerate() {
+        if i >= to {
+            break;
+        }
+        while si < spans.len() && spans[si].0 <= b {
+            cur = spans[si].1;
+            si += 1;
+        }
+        if i >= from {
+            out.push(cur);
+        }
+    }
+    out
+}
+
+/// Groups characters into runs of one kind and style; `width(c, col)` gives the cells of a
+/// character, `style(i)` its style class (i = index in `chars`).
 fn runs_of(
     chars: impl Iterator<Item = char>,
     start_cell: usize,
     width: impl Fn(char, usize) -> usize,
+    style: impl Fn(usize) -> u8,
 ) -> Vec<Run> {
     let mut runs: Vec<Run> = Vec::new();
     let mut col = start_cell;
-    for c in chars {
+    for (i, c) in chars.enumerate() {
+        let st = style(i);
         let w = width(c, col);
         let kind = match c {
             '\t' => RunKind::Tab,
@@ -1381,7 +1462,7 @@ fn runs_of(
             continue;
         }
         match runs.last_mut() {
-            Some(last) if last.kind == kind && kind != RunKind::Tab => {
+            Some(last) if last.kind == kind && kind != RunKind::Tab && last.style == st => {
                 if let Some(g) = glyph {
                     last.text.push(g);
                 }
@@ -1392,6 +1473,7 @@ fn runs_of(
                 width: w,
                 kind,
                 text: glyph.map(String::from).unwrap_or_default(),
+                style: st,
             }),
         }
         col += w;

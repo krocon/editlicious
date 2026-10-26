@@ -23,7 +23,8 @@
     "Mod+6": "file.switch.6",
     "Mod+7": "file.switch.7",
     "Mod+8": "file.switch.8",
-    "Mod+9": "file.switch.9"
+    "Mod+9": "file.switch.9",
+    "F12": "view.nextScheme"
   },
   "editor": {
     "ArrowLeft": "cursor.left",

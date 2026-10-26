@@ -15,7 +15,7 @@ pub mod about;
 pub mod app_menu;
 pub mod commands;
 pub mod config_file;
-pub use ed_core::{document, editor, error, search};
+pub use ed_core::{document, editor, error, highlight, search};
 pub mod fs_atomic;
 pub mod keymap_file;
 pub mod model;
@@ -57,6 +57,7 @@ pub fn run() {
             commands::document_info,
             commands::editor_command,
             commands::count_matches,
+            commands::list_languages,
             commands::save_document,
             commands::startup_paths,
             commands::reload_document,
