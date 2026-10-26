@@ -97,8 +97,8 @@ export class CommandPalette {
       ({ id, def }) =>
         def && def.palette !== false && id !== 'app.palette' && this.actions.enabled(id),
     )
-    .map(({ id, def }) => ({ id, label: def!.label, shortcut: this.actions.shortcut(id) }))
-    .sort((a, b) => a.label.localeCompare(b.label, 'en'));
+    .map(({ id }) => ({ id, label: this.actions.label(id), shortcut: this.actions.shortcut(id) }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   protected readonly entries = computed(() => this.all.filter((e) => matches(e, this.query())));
 

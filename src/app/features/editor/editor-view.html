@@ -14,7 +14,9 @@
         [class.active]="line.line === f.caretLine"
         [style.transform]="'translateY(' + y(line.line) + 'px)'"
       >
-        {{ line.line + 1 }}
+        @if (lineNumbers() !== 'off') {
+          {{ lineLabel(line.line, f.caretLine) }}
+        }
       </div>
     }
   </div>
@@ -31,6 +33,9 @@
         [class.long]="line.long"
         [style.transform]="'translateY(' + y(line.line) + 'px)'"
       >
+        @for (g of guides(line, f.tabWidth); track g) {
+          <div class="guide" [style.left.px]="x(g)"></div>
+        }
         @for (s of line.sel; track $index) {
           <div class="sel" [style.left.px]="x(s[0])" [style.width.px]="x(s[1]) - x(s[0])"></div>
         }

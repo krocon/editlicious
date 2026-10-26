@@ -28,6 +28,11 @@ const INDENT_SAMPLE: usize = 2_000;
 
 /// `(insert_spaces, tab_width)` the file seems to use; new files: 4 spaces.
 pub fn detect_indent(doc: &Document) -> (bool, usize) {
+    file_indent(doc).unwrap_or((true, 4))
+}
+
+/// `(insert_spaces, indent width)` of an indented file, `None` when no line is indented.
+pub fn file_indent(doc: &Document) -> Option<(bool, usize)> {
     let (mut tabs, mut spaces, mut two) = (0usize, 0usize, 0usize);
     let n = doc.line_count().min(INDENT_SAMPLE);
     for line in 0..n {
@@ -44,11 +49,13 @@ pub fn detect_indent(doc: &Document) -> (bool, usize) {
             }
         }
     }
-    if tabs > spaces {
-        (false, 4)
-    } else if spaces > 0 && two * 5 >= spaces {
-        (true, 2)
+    if tabs == 0 && spaces == 0 {
+        None
+    } else if tabs > spaces {
+        Some((false, 4))
+    } else if two * 5 >= spaces {
+        Some((true, 2))
     } else {
-        (true, 4)
+        Some((true, 4))
     }
 }

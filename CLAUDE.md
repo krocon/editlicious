@@ -60,6 +60,9 @@ src/                          Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/features/menus/         menu-model (rein), MenuService (nativ/HTML), MenuBar (APG, versteckt bis Alt),
                               CommandPalette, ShortcutsDialog, ChromeStore (F1, Menüleiste, Vollbild)
   app/features/about/         About-Dialog
+  app/core/i18n/              translatable(), Sprache (Signal), System-Sprache, catalogs.spec (Vollständigkeit)
+  app/core/settings/          Settings-DTO (= Rust settings.rs), SettingsApi
+  app/features/settings/      SettingsStore (laden, sofort anwenden, gebündelt speichern, Zoom), SettingsDialog
   app/shared/dialog/          Modal (Fokusfalle, Esc), DialogService (aus comic-commander/files-and-folders)
   testing/                    Fakes – nie im Produktivcode importieren
 public/                       favicon.png, logo.svg (Schriftzug, Yellowtail-Pfade), icon.svg (App-Icon)
@@ -69,6 +72,7 @@ src-tauri/                    Rust (Tauri 2), Crate `editlicious`, Lib `ed_lib`
   src/app_menu.rs             natives macOS-Menü aus dem Frontend-Modell (ohne vordefiniertes Edit-Menü)
   src/keymap_file.rs          keymap.json laden
   src/session_file.rs         session.json (offene Dateien, zuletzt benutzt, Tab-Modus)
+  src/settings.rs             settings.json (Einstellungen, nachsichtig laden, Werte begrenzen)
   src/model.rs                DTOs der App (serde camelCase); `document`, `error` kommen aus ed-core
   core/                       Crate `ed-core` (Workspace-Mitglied): Editor-Engine ohne Tauri
     src/error.rs              FsError { code, message, path }
@@ -116,7 +120,8 @@ site/                         Werbe-Webseite (Prompt 011)
   Befehlspalette und (ausblendbares) Menü.
 - **Neue Abhängigkeiten** (npm oder crates) nur mit kurzer Begründung in `docs/architecture.md`. Keine
   UI-Frameworks; Styling mit CSS (natives Nesting) + Tokens aus `src/styles.css` – kein SCSS.
-- **Texte** nur aus Katalogen (`*-texts.ts`, Englisch = Quelle; Deutsch ab 009).
+- **Texte** nur aus Katalogen (`*-texts.ts` über `translatable()` aus `core/i18n`, Englisch = Quelle, Deutsch
+  daneben; Aktionsnamen deutsch in `action-catalog.de.ts`). `catalogs.spec.ts` prüft Vollständigkeit.
 - **Barrierefreiheit**: sichtbarer Fokus, alles per Tastatur, Dialoge mit `role="dialog"`/`aria-modal` und
   Fokusfalle, Live-Region für Statusmeldungen, Kontraste in light und dark.
 

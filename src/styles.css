@@ -75,9 +75,10 @@
   --ed-marker-9: rgb(160 82 45 / 32%);
 
   --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, sans-serif;
-  --font-editor:
+  --font-editor-default:
     ui-monospace, 'SF Mono', Menlo, 'Cascadia Mono', Consolas, 'JetBrains Mono', 'DejaVu Sans Mono',
     'Liberation Mono', monospace;
+  --font-editor: var(--font-editor-default);
   --font-size: 14px;
   --font-size-small: 12px;
   --editor-font-size: 14px;

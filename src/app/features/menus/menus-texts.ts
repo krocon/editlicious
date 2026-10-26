@@ -1,5 +1,7 @@
-/** Texts of the menus (English = source; German follows in prompt 009). */
-export const MENUS_TEXTS = {
+import { translatable } from '../../core/i18n/i18n';
+
+/** Texts of the menus and dialogs around them (English = source, German below; design 009). */
+const EN = {
   menuBar: 'Menu',
   file: 'File',
   edit: 'Edit',
@@ -14,7 +16,6 @@ export const MENUS_TEXTS = {
   plainText: 'Plain text',
   lines: 'Lines',
   case: 'Case',
-  noRecent: 'No recent files',
   paletteTitle: 'Command palette',
   palettePlaceholder: 'Type a command…',
   paletteEmpty: 'No command matches.',
@@ -23,3 +24,29 @@ export const MENUS_TEXTS = {
   shortcutsHint: 'Your own shortcuts go into keymap.json in the settings folder.',
   close: 'Close',
 };
+
+export const MENUS_TEXTS = translatable('menus', EN, {
+  de: {
+    menuBar: 'Menü',
+    file: 'Datei',
+    edit: 'Bearbeiten',
+    view: 'Ansicht',
+    help: 'Hilfe',
+    recent: 'Zuletzt geöffnet',
+    switchTo: 'Wechseln zu',
+    tabs: 'Tabs',
+    scheme: 'Farbschema',
+    language: 'Sprache',
+    languagePlaceholder: 'Sprache eingeben …',
+    plainText: 'Reiner Text',
+    lines: 'Zeilen',
+    case: 'Groß/klein',
+    paletteTitle: 'Befehlspalette',
+    palettePlaceholder: 'Befehl eingeben …',
+    paletteEmpty: 'Kein Befehl passt.',
+    shortcutsTitle: 'Tastenkürzel',
+    shortcutsFilter: 'Kürzel filtern …',
+    shortcutsHint: 'Eigene Kürzel gehören in die Datei keymap.json im Einstellungsordner.',
+    close: 'Schließen',
+  },
+});

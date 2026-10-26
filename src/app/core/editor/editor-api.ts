@@ -6,6 +6,7 @@ import {
   DiskState,
   DocInfo,
   Frame,
+  LineEnding,
   LoadEvent,
   MatchCount,
   Query,
@@ -25,7 +26,8 @@ export interface Loading {
 export abstract class EditorApi {
   abstract open(path: string, onProgress?: (e: LoadEvent) => void): Loading;
   abstract cancelLoad(loadId: number): Promise<void>;
-  abstract newDocument(): Promise<DocInfo>;
+  /** `lineEnding` null = the system's. */
+  abstract newDocument(lineEnding?: LineEnding | null): Promise<DocInfo>;
   abstract close(id: number): Promise<void>;
   abstract info(id: number): Promise<DocInfo>;
   abstract command(id: number, cmd: Command): Promise<Frame>;
@@ -53,8 +55,8 @@ export class TauriEditorApi extends EditorApi {
     return call<void>('cancel_load', { loadId });
   }
 
-  newDocument(): Promise<DocInfo> {
-    return call<DocInfo>('new_document');
+  newDocument(lineEnding: LineEnding | null = null): Promise<DocInfo> {
+    return call<DocInfo>('new_document', { lineEnding });
   }
 
   close(id: number): Promise<void> {

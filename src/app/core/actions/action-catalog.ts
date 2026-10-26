@@ -93,6 +93,12 @@ export const ACTIONS: readonly ActionDef[] = [
   G('view.scheme.sand', 'Colour scheme: Sand (light)'),
   G('view.scheme.night', 'Colour scheme: Night (dark)'),
   { id: 'view.language', label: 'Change language…', context: 'editor' },
+  // settings (design 009)
+  G('view.zoomIn', 'Larger font', { repeat: true }),
+  G('view.zoomOut', 'Smaller font', { repeat: true }),
+  G('view.zoomReset', 'Reset font size'),
+  G('view.lineNumbers', 'Line numbers: absolute / relative / off'),
+  G('view.indentGuides', 'Show indentation guides'),
   // editing – the engine does it
   E('edit.undo', 'Undo', { type: 'undo' }, { repeat: true }),
   E('edit.redo', 'Redo', { type: 'redo' }, { repeat: true }),

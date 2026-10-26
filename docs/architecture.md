@@ -28,7 +28,7 @@
 |---|---|---|
 | `get_app_info` | Name, Version, OS, Architektur | 001 |
 | `open_document(path, loadId, onEvent)` / `cancel_load(loadId)` | Datei laden in eine neue Editor-Sitzung (gestreamt, Fortschritt, Abbruch) | 002/003 |
-| `new_document` / `close_document(id)` / `document_info(id)` | Sitzungen verwalten | 002/003 |
+| `new_document(lineEnding?)` / `close_document(id)` / `document_info(id)` | Sitzungen verwalten | 002/003 |
 | `editor_command(id, cmd) -> Frame` | **jede** Editor-Aktion (Bewegen, Tippen, Maus, Scrollen, Undo, Zwischenablage); Antwort = zu zeichnender Frame | 003 |
 | `save_document(id, req)` | atomar speichern, Speichern unter, mit Encoding | 002 |
 | `startup_paths` | Dateien der Kommandozeile | 003 |
@@ -41,6 +41,7 @@
 | `toggle_fullscreen` | Vollbild | 005 |
 | `set_app_menu(spec)`, Ereignis `menu-action` | natives Menü (macOS) | 005 |
 | `load_keymap_overrides` | `keymap.json` | 005 |
+| `load_settings` / `save_settings(settings)` | `settings.json` (nachsichtig laden, Werte begrenzen, atomar schreiben) | 009 |
 
 ## Abhängigkeiten
 

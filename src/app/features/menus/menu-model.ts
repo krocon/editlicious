@@ -127,6 +127,12 @@ export function buildMenuModel(os: Os, input: MenuInputs): TopMenuNode[] {
     },
     a('view.language'),
     sep,
+    a('view.zoomIn'),
+    a('view.zoomOut'),
+    a('view.zoomReset'),
+    a('view.lineNumbers'),
+    a('view.indentGuides'),
+    sep,
     a('file.next'),
     a('file.prev'),
     ...(switchTo.length

@@ -18,13 +18,14 @@ import { Command, Frame, FrameLine, Run } from '../../core/editor/editor.models'
 import { describeFsError, toFsError } from '../../core/errors/fs-error';
 import { ActionService } from '../../core/actions/action.service';
 import { ACTIONS } from '../../core/actions/action-catalog';
-import { EDITOR_TEXTS } from './editor-texts';
+import { EDITOR_TEXTS, noticeText } from './editor-texts';
 import { FindBar } from '../find/find-bar';
 import { FindStore } from '../find/find.store';
 import { FIND_TEXTS } from '../find/find-texts';
 import { GotoBar } from '../find/goto-bar';
 import { PickService } from '../../shared/pick/pick.service';
 import { MENUS_TEXTS } from '../menus/menus-texts';
+import { SettingsStore } from '../settings/settings.store';
 
 /** Cells of padding left of the text. */
 const PAD_CELLS = 1;
@@ -52,6 +53,8 @@ interface Metrics {
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[class.focused]': 'focused()',
+    '[class.no-current]': '!settings.settings().highlightCurrentLine',
+    '[class.no-tabs]': '!settings.settings().showTabs',
     '(wheel)': 'onWheel($event)',
   },
 })
@@ -71,6 +74,7 @@ export class EditorView {
   protected readonly composing = signal(false);
   protected readonly status = signal('');
   protected readonly find = inject(FindStore);
+  protected readonly settings = inject(SettingsStore);
   protected readonly gotoOpen = signal(false);
   protected readonly findCount = signal('');
   protected readonly findInvalid = signal(false);
@@ -95,11 +99,29 @@ export class EditorView {
 
   // ---------------------------------------------------------------- geometry
 
+  protected readonly lineNumbers = computed(() => this.settings.settings().lineNumbers);
+
   protected readonly gutterWidth = computed(() => {
+    const mode = this.lineNumbers();
+    if (mode === 'off') return this.metrics().cw;
     const lines = this.frame()?.info.lineCount ?? 1;
     const digits = Math.max(3, String(lines).length);
     return (digits + 2) * this.metrics().cw;
   });
+
+  /** Gutter number of a line: absolute, or the distance to the caret line (design 009). */
+  protected lineLabel(line: number, caretLine: number): string {
+    if (this.lineNumbers() !== 'relative' || line === caretLine) return String(line + 1);
+    return String(Math.abs(line - caretLine));
+  }
+
+  /** Cells of the indentation guides of a line (one per indent step, not at 0). */
+  protected guides(line: FrameLine, tab: number): number[] {
+    if (!this.settings.settings().indentGuides || line.indent < tab * 1) return [];
+    const out: number[] = [];
+    for (let c = tab; c < line.indent; c += tab) out.push(c);
+    return out;
+  }
 
   /** Left edge of the text in px (gutter + padding). */
   protected readonly textLeft = computed(() => this.gutterWidth() + PAD_CELLS * this.metrics().cw);
@@ -163,6 +185,27 @@ export class EditorView {
     });
     effect(() => {
       if (this.refresh() > 0) untracked(() => void this.send({ type: 'frame' }));
+    });
+    // a new font or size: measure again (the resize effect above follows)
+    effect(() => {
+      const key = `${this.settings.settings().fontSize}/${this.settings.fontFamily()}`;
+      untracked(() => {
+        if (key && this.size().height > 0) setTimeout(() => this.measureFont());
+      });
+    });
+    // tab width and indentation for every session (design 009)
+    effect(() => {
+      this.docId();
+      const s = this.settings.settings();
+      untracked(
+        () =>
+          void this.send({
+            type: 'configure',
+            tabWidth: s.tabWidth,
+            insertSpaces: s.indentWith !== 'tabs',
+            detect: s.indentWith === 'auto',
+          }),
+      );
     });
     this.destroyRef.onDestroy(() => this.stopDrag());
     // the editor actions run engine commands (design 004 E1)
@@ -377,7 +420,7 @@ export class EditorView {
       this.findInvalid.set(true);
       this.findCount.set(FIND_TEXTS.invalid);
     } else {
-      this.status.set(this.texts.notice(notice));
+      this.status.set(noticeText(notice));
     }
   }
 

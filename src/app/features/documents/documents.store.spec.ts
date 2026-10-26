@@ -1,9 +1,12 @@
+import { SettingsApi } from '../../core/settings/settings-api';
+import { FakeSettingsApi } from '../../../testing/fake-settings-api';
 import { TestBed } from '@angular/core/testing';
 import { EditorApi } from '../../core/editor/editor-api';
 import { WorkspaceApi } from '../../core/workspace/workspace-api';
 import { AskService } from '../../shared/ask/ask.service';
 import { docInfo, FakeEditorApi, textFrame } from '../../../testing/fake-editor-api';
 import { FakeWorkspaceApi } from '../../../testing/fake-workspace-api';
+import { SettingsStore } from '../settings/settings.store';
 import { DocumentsStore } from './documents.store';
 
 function setup() {
@@ -11,6 +14,7 @@ function setup() {
   const ws = new FakeWorkspaceApi();
   TestBed.configureTestingModule({
     providers: [
+      { provide: SettingsApi, useClass: FakeSettingsApi },
       { provide: EditorApi, useValue: api },
       { provide: WorkspaceApi, useValue: ws },
     ],
@@ -70,6 +74,26 @@ describe('DocumentsStore', () => {
     expect(api.sent('goTo')[0]).toEqual({ type: 'goTo', line: 5, ch: 2 });
     expect(api.sent('scrollTo')[0]).toEqual({ type: 'scrollTo', top: 3 });
     expect(store.tabsMode()).toBe('show');
+  });
+
+  it('follows the settings: no session restore, line ending of new files', async () => {
+    const { store, api, ws } = setup();
+    const settings = TestBed.inject(SettingsStore);
+    settings.update({ restoreSession: false, newLineEnding: 'crlf' });
+    ws.session = {
+      version: 1,
+      files: [{ path: '/s/a.txt', line: 0, ch: 0, top: 0 }],
+      active: 0,
+      recent: ['/s/a.txt'],
+      tabs: 'auto',
+      findHistory: [],
+      replaceHistory: [],
+    };
+    await store.start();
+    expect(api.opened).toEqual([]);
+    expect(store.recent()).toEqual(['/s/a.txt']);
+    expect(api.newLineEndings).toEqual(['crlf']);
+    expect(store.active()?.info.lineEnding).toBe('crlf');
   });
 
   it('asks before closing unsaved changes', async () => {

@@ -21,9 +21,13 @@ pub enum Command {
         lines: f64,
         cols: f64,
     },
+    /// Settings (design 009): `detect` = indentation like the file (spaces and width when the
+    /// file is indented with spaces, else `tab_width` and `insert_spaces`).
     Configure {
         tab_width: Option<usize>,
         insert_spaces: Option<bool>,
+        #[serde(default)]
+        detect: bool,
     },
     Scroll {
         lines: f64,
@@ -204,6 +208,9 @@ pub struct FrameLine {
     pub marks: Vec<[usize; 3]>,
     /// Marked words `[from, to, colour 0…9]` in cells (design 007 E6).
     pub markers: Vec<[usize; 3]>,
+    /// Width of the leading whitespace in cells (indentation guides, design 009); blank lines
+    /// take the indentation of the line above.
+    pub indent: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]

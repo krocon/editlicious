@@ -15,6 +15,7 @@ import { DESKTOP } from './core/backend/desktop';
 import { WorkspaceApi } from './core/workspace/workspace-api';
 import { TabsMode } from './core/workspace/workspace.models';
 import { AboutDialog } from './features/about/about-dialog';
+import { ABOUT_TEXTS } from './features/about/about-texts';
 import { DocumentsStore } from './features/documents/documents.store';
 import { TabBar } from './features/documents/tab-bar';
 import { EditorView } from './features/editor/editor-view';
@@ -26,6 +27,8 @@ import { MenuService } from './features/menus/menu.service';
 import { ShortcutsDialog } from './features/menus/shortcuts-dialog';
 import { AskDialog } from './shared/ask/ask-dialog';
 import { DialogService } from './shared/dialog/dialog.service';
+import { SettingsDialog } from './features/settings/settings-dialog';
+import { SettingsStore } from './features/settings/settings.store';
 
 /**
  * Root: (hidden) menu bar, tabs only when wanted, the editor surface of the active file –
@@ -41,6 +44,7 @@ import { DialogService } from './shared/dialog/dialog.service';
     EditorView,
     MenuBar,
     PickDialog,
+    SettingsDialog,
     ShortcutsDialog,
     TabBar,
   ],
@@ -66,9 +70,11 @@ import { DialogService } from './shared/dialog/dialog.service';
     } @else {
       <main class="welcome">
         <img class="logo" src="logo.svg" alt="editlicious" />
-        <p class="hint">A calm text editor for huge files.</p>
-        <p class="hint">The editor runs in the desktop app (pnpm tauri dev).</p>
-        <button type="button" class="btn quiet about" (click)="dialogs.show('about')">About</button>
+        <p class="hint">{{ about.tagline }}</p>
+        <p class="hint">{{ about.desktopOnly }}</p>
+        <button type="button" class="btn quiet about" (click)="dialogs.show('about')">
+          {{ about.about }}
+        </button>
       </main>
     }
     <div class="sr-only" aria-live="polite">{{ store.message() }}</div>
@@ -88,6 +94,9 @@ import { DialogService } from './shared/dialog/dialog.service';
       @case ('pick') {
         <app-pick-dialog />
       }
+      @case ('settings') {
+        <app-settings-dialog />
+      }
     }
   `,
   styleUrl: './app.css',
@@ -99,6 +108,7 @@ export class App {
   protected readonly store = inject(DocumentsStore);
   protected readonly chrome = inject(ChromeStore);
   protected readonly desktop = inject(DESKTOP);
+  protected readonly about = ABOUT_TEXTS;
   private readonly actions = inject(ActionService);
   protected readonly mac = this.actions.os === 'mac';
   protected readonly tabsVisible = computed(() => this.store.tabsVisible() && !this.chrome.bare());
@@ -106,6 +116,7 @@ export class App {
   private readonly menuBar = viewChild(MenuBar);
   private readonly ws = inject(WorkspaceApi);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly settings = inject(SettingsStore);
 
   constructor() {
     const dispatcher = inject(KeyboardDispatcher);
@@ -128,9 +139,11 @@ export class App {
     void this.actions.loadOverrides();
     inject(MenuService).start();
     if (this.desktop) void this.start();
+    else void this.settings.load();
   }
 
   private async start(): Promise<void> {
+    await this.settings.load();
     await this.store.start();
     const offClose = await this.ws.onCloseRequested(() => void this.store.quit()).catch(() => null);
     const offDrop = await this.ws
@@ -145,6 +158,7 @@ export class App {
   private registerActions(): void {
     const s = this.store;
     const c = this.chrome;
+    const st = this.settings;
     const after = (p: Promise<unknown>) => void p.then(() => this.focusEditor());
     const tabs = (mode: TabsMode): ActionHandler => ({
       run: () => s.tabsMode.set(mode),
@@ -168,8 +182,15 @@ export class App {
       'file.prev': { run: () => s.next(-1), enabled: () => s.docs().length > 1 },
       'app.palette': { run: () => this.dialogs.show('palette') },
       'app.shortcuts': { run: () => this.dialogs.show('shortcuts') },
-      // settings follow with prompt 009
-      'app.settings': { run: () => undefined, enabled: () => false },
+      'app.settings': { run: () => this.dialogs.show('settings') },
+      'view.zoomIn': { run: () => st.zoom(1) },
+      'view.zoomOut': { run: () => st.zoom(-1) },
+      'view.zoomReset': { run: () => st.zoom(0) },
+      'view.lineNumbers': { run: () => st.cycleLineNumbers() },
+      'view.indentGuides': {
+        run: () => st.update({ indentGuides: !st.settings().indentGuides }),
+        checked: () => st.settings().indentGuides,
+      },
       'app.about': { run: () => this.dialogs.show('about') },
       'app.quit': { run: () => void s.quit() },
       'app.focusMenu': {

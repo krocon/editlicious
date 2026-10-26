@@ -82,7 +82,7 @@ export class ShortcutsDialog {
   private readonly all = computed(() =>
     ACTIONS.map((def) => ({
       id: def.id,
-      label: def.label,
+      label: this.actions.label(def.id),
       keys: this.actions.chords(def.id).map((c) => formatChord(c, this.actions.os)),
     })).filter((r) => r.keys.length > 0),
   );

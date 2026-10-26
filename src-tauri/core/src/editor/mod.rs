@@ -205,12 +205,23 @@ impl Session {
             Command::Configure {
                 tab_width,
                 insert_spaces,
+                detect,
             } => {
                 if let Some(t) = tab_width {
                     self.tab = t.clamp(1, 16);
                 }
                 if let Some(s) = insert_spaces {
                     self.spaces = s;
+                }
+                if detect {
+                    match words::file_indent(&self.doc) {
+                        Some((true, w)) => {
+                            self.spaces = true;
+                            self.tab = w;
+                        }
+                        Some((false, _)) => self.spaces = false,
+                        None => {}
+                    }
                 }
                 reveal = Reveal::No;
             }
@@ -1229,9 +1240,15 @@ impl Session {
             }
             None => (Vec::new(), false),
         };
+        let mut indent_above = 0;
         for line in first..end {
             let st = styles.get(line - first).cloned().flatten();
-            let fl = self.frame_line(line, wa, wb, st.as_deref());
+            let mut fl = self.frame_line(line, wa, wb, st.as_deref());
+            if fl.indent == usize::MAX {
+                fl.indent = indent_above;
+            } else {
+                indent_above = fl.indent;
+            }
             self.max_width = self.max_width.max(fl.width);
             lines.push(fl);
         }
@@ -1299,6 +1316,7 @@ impl Session {
         let long = self.doc.is_long(line);
         let mut found: Vec<(usize, usize)> = Vec::new();
         let mut marked: Vec<(usize, usize, usize)> = Vec::new();
+        let mut indent = 0;
         let (runs, width, cell_of): (Vec<Run>, usize, CellOf) = if long {
             let from = wa.min(len);
             let text = self.doc.line_slice(line, from, wb);
@@ -1326,6 +1344,15 @@ impl Session {
             }
             let lay = LineLayout::new(&line_text, self.tab);
             let width = lay.width();
+            let lead = line_text
+                .chars()
+                .take_while(|&c| c == ' ' || c == '\t')
+                .count();
+            indent = if lead == lay.len() {
+                usize::MAX
+            } else {
+                lay.cell_of(lead)
+            };
             // characters touching the window
             let first = lay.cells.partition_point(|&c| c < wa).saturating_sub(1);
             let last = lay.cells.partition_point(|&c| c <= wb).min(lay.len());
@@ -1390,6 +1417,7 @@ impl Session {
             long,
             marks,
             markers,
+            indent,
         }
     }
 }

@@ -1,7 +1,10 @@
+import { SettingsApi } from '../../core/settings/settings-api';
+import { FakeSettingsApi } from '../../../testing/fake-settings-api';
 import { TestBed } from '@angular/core/testing';
 import { EditorApi } from '../../core/editor/editor-api';
 import { FakeEditorApi, textFrame } from '../../../testing/fake-editor-api';
 import { EditorView } from './editor-view';
+import { SettingsStore } from '../settings/settings.store';
 import { KeyboardDispatcher } from '../../core/actions/keyboard-dispatcher';
 import { OS } from '../../core/actions/platform';
 
@@ -13,6 +16,7 @@ async function setup(api = new FakeEditorApi()) {
   TestBed.configureTestingModule({
     imports: [EditorView],
     providers: [
+      { provide: SettingsApi, useClass: FakeSettingsApi },
       { provide: EditorApi, useValue: api },
       { provide: OS, useValue: 'other' },
     ],
@@ -50,6 +54,42 @@ describe('EditorView', () => {
     expect(rows.length).toBe(2);
     expect(rows[0].textContent).toContain('hello');
     expect(el.querySelectorAll('.ln')[1].textContent?.trim()).toBe('2');
+  });
+
+  it('follows the settings: indentation, relative line numbers, guides', async () => {
+    const api = new FakeEditorApi();
+    api.nextFrame = textFrame(['a', '    b', '        c'], {
+      tabWidth: 4,
+      caretLine: 1,
+    });
+    api.nextFrame.lines[1].indent = 4;
+    api.nextFrame.lines[2].indent = 8;
+    const { el, fixture } = await setup(api);
+    expect(api.sent('configure').at(-1)).toEqual({
+      type: 'configure',
+      tabWidth: 4,
+      insertSpaces: true,
+      detect: true,
+    });
+    // one guide per indent step, none at the left edge
+    expect(el.querySelectorAll('.row')[2].querySelectorAll('.guide').length).toBe(1);
+    const settings = TestBed.inject(SettingsStore);
+    settings.update({ lineNumbers: 'relative', indentWith: 'tabs', tabWidth: 8 });
+    await fixture.whenStable();
+    await flush();
+    await fixture.whenStable();
+    const ln = [...el.querySelectorAll('.ln')].map((e) => e.textContent?.trim());
+    expect(ln).toEqual(['1', '2', '1']);
+    expect(api.sent('configure').at(-1)).toEqual({
+      type: 'configure',
+      tabWidth: 8,
+      insertSpaces: false,
+      detect: false,
+    });
+    settings.update({ lineNumbers: 'off', indentGuides: false });
+    await fixture.whenStable();
+    expect(el.querySelector('.ln')?.textContent?.trim()).toBe('');
+    expect(el.querySelectorAll('.guide').length).toBe(0);
   });
 
   it('turns keys into engine commands', async () => {

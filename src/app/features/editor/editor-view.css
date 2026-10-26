@@ -156,6 +156,22 @@
   color: var(--syn-log-debug);
 }
 
+.guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--ed-indent-guide);
+}
+
+:host(.no-current) .row.current {
+  background: none;
+}
+
+:host(.no-tabs) .tab::before {
+  content: none;
+}
+
 .tab::before {
   content: '→';
   color: var(--ed-whitespace);

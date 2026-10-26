@@ -1,3 +1,5 @@
+import { translatable } from '../i18n/i18n';
+
 /**
  * Errors from the backend: `FsError { code, message, path }` (Rust `error.rs`). New codes go
  * into both files and into `describeFsError()`. The UI never shows Rust's `message`.
@@ -66,44 +68,51 @@ export function toFsError(value: unknown): FsError {
   return { code: 'unknown', message };
 }
 
-/** User-facing text for an error (English; German follows in prompt 009). */
+const EN: Record<FsErrorCode, string> = {
+  not_found: 'The file does not exist.',
+  permission_denied: 'Access denied.',
+  not_a_directory: 'This is not a folder.',
+  is_a_directory: 'This is a folder, not a file.',
+  invalid_path: 'The path is not valid.',
+  io: 'The file could not be read or written.',
+  unknown_document: 'This file is no longer open.',
+  binary_file: 'This is not a text file.',
+  file_too_large: 'The file is too large (more than 4 GB).',
+  unsupported_encoding: 'This encoding is not supported.',
+  unmappable_character: 'A character cannot be stored in this encoding.',
+  selection_too_large: 'The selection is too large for this operation.',
+  invalid_edit: 'The change could not be applied.',
+  cancelled: 'Cancelled.',
+  invalid_menu: 'The menu could not be built.',
+  invalid_search: 'The search pattern is not valid.',
+  backend_unavailable: 'The desktop backend is not available (running in a browser?).',
+  unknown: 'Something went wrong.',
+};
+
+const TEXTS = translatable('fsErrors', EN, {
+  de: {
+    not_found: 'Die Datei gibt es nicht.',
+    permission_denied: 'Zugriff verweigert.',
+    not_a_directory: 'Das ist kein Ordner.',
+    is_a_directory: 'Das ist ein Ordner, keine Datei.',
+    invalid_path: 'Der Pfad ist ungültig.',
+    io: 'Die Datei konnte nicht gelesen oder geschrieben werden.',
+    unknown_document: 'Diese Datei ist nicht mehr geöffnet.',
+    binary_file: 'Das ist keine Textdatei.',
+    file_too_large: 'Die Datei ist zu groß (mehr als 4 GB).',
+    unsupported_encoding: 'Diese Kodierung wird nicht unterstützt.',
+    unmappable_character: 'Ein Zeichen lässt sich in dieser Kodierung nicht speichern.',
+    selection_too_large: 'Die Auswahl ist für diese Aktion zu groß.',
+    invalid_edit: 'Die Änderung konnte nicht ausgeführt werden.',
+    cancelled: 'Abgebrochen.',
+    invalid_menu: 'Das Menü konnte nicht aufgebaut werden.',
+    invalid_search: 'Das Suchmuster ist ungültig.',
+    backend_unavailable: 'Das Desktop-Backend ist nicht verfügbar (läuft im Browser?).',
+    unknown: 'Etwas ist schiefgegangen.',
+  },
+});
+
+/** User-facing text for an error, in the UI language (design 009). */
 export function describeFsError(error: FsError): string {
-  switch (error.code) {
-    case 'not_found':
-      return 'The file does not exist.';
-    case 'permission_denied':
-      return 'Access denied.';
-    case 'not_a_directory':
-      return 'This is not a folder.';
-    case 'is_a_directory':
-      return 'This is a folder, not a file.';
-    case 'invalid_path':
-      return 'The path is not valid.';
-    case 'io':
-      return 'The file could not be read or written.';
-    case 'unknown_document':
-      return 'This file is no longer open.';
-    case 'binary_file':
-      return 'This is not a text file.';
-    case 'file_too_large':
-      return 'The file is too large (more than 4 GB).';
-    case 'unsupported_encoding':
-      return 'This encoding is not supported.';
-    case 'unmappable_character':
-      return 'A character cannot be stored in this encoding.';
-    case 'selection_too_large':
-      return 'The selection is too large for this operation.';
-    case 'invalid_edit':
-      return 'The change could not be applied.';
-    case 'cancelled':
-      return 'Cancelled.';
-    case 'invalid_menu':
-      return 'The menu could not be built.';
-    case 'invalid_search':
-      return 'The search pattern is not valid.';
-    case 'backend_unavailable':
-      return 'The desktop backend is not available (running in a browser?).';
-    case 'unknown':
-      return 'Something went wrong.';
-  }
+  return TEXTS[error.code] ?? TEXTS.unknown;
 }

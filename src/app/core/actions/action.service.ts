@@ -1,6 +1,8 @@
 import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { KeymapApi } from '../menu/menu-api';
 import { actionDef, ActionDef } from './action-catalog';
+import { ACTION_LABELS_DE } from './action-catalog.de';
+import { language } from '../i18n/i18n';
 import { buildKeymap, Keymap } from './keymap';
 import { OS } from './platform';
 import { formatChord } from './shortcut';
@@ -103,6 +105,12 @@ export class ActionService {
 
   def(id: string): ActionDef | undefined {
     return actionDef(id);
+  }
+
+  /** The label in the UI language (reactive, design 009). */
+  label(id: string): string {
+    const en = actionDef(id)?.label ?? id;
+    return language() === 'de' ? (ACTION_LABELS_DE[id] ?? en) : en;
   }
 
   /** The chords of an action (canonical). */

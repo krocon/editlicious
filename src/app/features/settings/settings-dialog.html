@@ -1,0 +1,166 @@
+@let s = store.settings();
+<app-modal [heading]="t.title" width="34rem" (closed)="dialogs.close()">
+  <div class="body">
+    <fieldset>
+      <legend>{{ t.general }}</legend>
+      <label class="row" for="set-lang">
+        <span>{{ t.language }}</span>
+        <select
+          id="set-lang"
+          class="input"
+          data-autofocus
+          [value]="s.language"
+          (change)="set('language', $any(value($event)))"
+        >
+          <option value="auto">{{ t.languageAuto }}</option>
+          <option value="en">English</option>
+          <option value="de">Deutsch</option>
+        </select>
+      </label>
+      <label class="row" for="set-le">
+        <span>{{ t.newLineEnding }}</span>
+        <select
+          id="set-le"
+          class="input"
+          [value]="s.newLineEnding"
+          (change)="set('newLineEnding', $any(value($event)))"
+        >
+          <option value="auto">{{ t.lineEndingAuto }}</option>
+          <option value="lf">LF (Unix, macOS)</option>
+          <option value="crlf">CRLF (Windows)</option>
+        </select>
+      </label>
+      <label class="check">
+        <input
+          type="checkbox"
+          [checked]="s.restoreSession"
+          (change)="set('restoreSession', checked($event))"
+        />
+        {{ t.restoreSession }}
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>{{ t.editor }}</legend>
+      <label class="row" for="set-font">
+        <span>{{ t.fontFamily }}</span>
+        <input
+          id="set-font"
+          class="input"
+          type="text"
+          spellcheck="false"
+          placeholder="JetBrains Mono"
+          [value]="s.fontFamily"
+          (change)="set('fontFamily', value($event))"
+        />
+      </label>
+      <p class="hint">{{ t.fontFamilyHint }}</p>
+      <label class="row" for="set-size">
+        <span>{{ t.fontSize }}</span>
+        <input
+          id="set-size"
+          class="input num"
+          type="number"
+          min="6"
+          max="72"
+          [value]="s.fontSize"
+          (change)="set('fontSize', number($event, 14))"
+        />
+      </label>
+      <label class="row" for="set-tab">
+        <span>{{ t.tabWidth }}</span>
+        <select
+          id="set-tab"
+          class="input num"
+          [value]="'' + s.tabWidth"
+          (change)="set('tabWidth', number($event, 4))"
+        >
+          @for (n of [2, 3, 4, 6, 8]; track n) {
+            <option [value]="'' + n" [selected]="n === s.tabWidth">{{ n }}</option>
+          }
+        </select>
+      </label>
+      <label class="row" for="set-indent">
+        <span>{{ t.indentWith }}</span>
+        <select
+          id="set-indent"
+          class="input"
+          [value]="s.indentWith"
+          (change)="set('indentWith', $any(value($event)))"
+        >
+          <option value="auto">{{ t.indentAuto }}</option>
+          <option value="spaces">{{ t.indentSpaces }}</option>
+          <option value="tabs">{{ t.indentTabs }}</option>
+        </select>
+      </label>
+      <label class="row" for="set-ln">
+        <span>{{ t.lineNumbers }}</span>
+        <select
+          id="set-ln"
+          class="input"
+          [value]="s.lineNumbers"
+          (change)="set('lineNumbers', $any(value($event)))"
+        >
+          <option value="absolute">{{ t.lineNumbersAbsolute }}</option>
+          <option value="relative">{{ t.lineNumbersRelative }}</option>
+          <option value="off">{{ t.lineNumbersOff }}</option>
+        </select>
+      </label>
+      <label class="check">
+        <input
+          type="checkbox"
+          [checked]="s.indentGuides"
+          (change)="set('indentGuides', checked($event))"
+        />
+        {{ t.indentGuides }}
+      </label>
+      <label class="check">
+        <input
+          type="checkbox"
+          [checked]="s.highlightCurrentLine"
+          (change)="set('highlightCurrentLine', checked($event))"
+        />
+        {{ t.currentLine }}
+      </label>
+      <label class="check">
+        <input type="checkbox" [checked]="s.showTabs" (change)="set('showTabs', checked($event))" />
+        {{ t.showTabs }}
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>{{ t.appearance }}</legend>
+      <label class="row" for="set-scheme">
+        <span>{{ t.scheme }}</span>
+        <select
+          id="set-scheme"
+          class="input"
+          [value]="s.scheme"
+          (change)="set('scheme', $any(value($event)))"
+        >
+          @for (k of schemes; track k) {
+            <option [value]="k" [selected]="k === s.scheme">{{ schemeLabel(k) }}</option>
+          }
+        </select>
+      </label>
+      @if (!mac) {
+        <label class="check">
+          <input type="checkbox" [checked]="s.menuBar" (change)="set('menuBar', checked($event))" />
+          {{ t.menuBar }}
+        </label>
+      }
+      <label class="check">
+        <input
+          type="checkbox"
+          [checked]="s.statusBar"
+          (change)="set('statusBar', checked($event))"
+        />
+        {{ t.statusBar }}
+      </label>
+    </fieldset>
+  </div>
+  <div class="actions">
+    <span class="hint">{{ t.savedIn }}</span>
+    <button type="button" class="btn primary" (click)="dialogs.close()">{{ t.close }}</button>
+  </div>
+</app-modal>

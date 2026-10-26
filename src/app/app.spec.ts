@@ -1,3 +1,5 @@
+import { SettingsApi } from './core/settings/settings-api';
+import { FakeSettingsApi } from '../testing/fake-settings-api';
 import { TestBed } from '@angular/core/testing';
 import { App } from './app';
 import { AboutApi } from './core/about/about-api';
@@ -16,6 +18,7 @@ function setup(desktop: boolean, paths: string[] = []): FakeEditorApi {
   TestBed.configureTestingModule({
     imports: [App],
     providers: [
+      { provide: SettingsApi, useClass: FakeSettingsApi },
       { provide: AboutApi, useClass: FakeAboutApi },
       { provide: EditorApi, useValue: api },
       { provide: WorkspaceApi, useClass: FakeWorkspaceApi },

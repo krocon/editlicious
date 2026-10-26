@@ -5,6 +5,7 @@
 //! - [`model`]         DTOs shared with the frontend
 //! - [`config_file`], [`fs_atomic`] loader of small config files / atomic writes (from files-and-folders)
 //! - [`document`]      the document model: rope, load (encodings), view, edits, undo, save (design 002)
+//! - [`settings`]      settings.json (design 009)
 //! - [`session_file`]  open files, recent files and tab mode between starts (design 004)
 //! - [`app_menu`]      native menu bar of macOS from the frontend's menu model (design 005)
 //! - [`keymap_file`]   the user's shortcut overrides `keymap.json` (design 005)
@@ -20,6 +21,7 @@ pub mod fs_atomic;
 pub mod keymap_file;
 pub mod model;
 pub mod session_file;
+pub mod settings;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -65,6 +67,8 @@ pub fn run() {
             commands::pick_open_files,
             commands::pick_save_path,
             commands::load_session,
+            commands::load_settings,
+            commands::save_settings,
             commands::save_session,
             commands::set_title,
             commands::take_over_close,

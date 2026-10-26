@@ -247,6 +247,7 @@ fn backspace_removes_a_soft_tab() {
         Command::Configure {
             tab_width: Some(4),
             insert_spaces: Some(true),
+            detect: false,
         },
     );
     put(&mut s, 0, 0);
@@ -278,6 +279,7 @@ fn indent_and_outdent_lines() {
         Command::Configure {
             tab_width: Some(2),
             insert_spaces: Some(true),
+            detect: false,
         },
     );
     s.set_cursors(vec![Cursor {
@@ -753,6 +755,7 @@ fn whitespace_commands() {
         Command::Configure {
             tab_width: Some(4),
             insert_spaces: None,
+            detect: false,
         },
     );
     run(&mut s, Command::ConvertIndentation { spaces: true });
@@ -950,4 +953,61 @@ fn measure_highlighting() {
         f.approx_highlight,
         t.elapsed()
     );
+}
+
+#[test]
+fn configure_detect_follows_the_file() {
+    // indented with two spaces: the file wins over the setting
+    let mut s = session("a\n  b\n    c\n");
+    let f = run(
+        &mut s,
+        Command::Configure {
+            tab_width: Some(8),
+            insert_spaces: Some(false),
+            detect: true,
+        },
+    );
+    assert!(f.insert_spaces);
+    assert_eq!(f.tab_width, 2);
+    // not indented: the settings stay
+    let mut s = session("a\nb\n");
+    let f = run(
+        &mut s,
+        Command::Configure {
+            tab_width: Some(8),
+            insert_spaces: Some(false),
+            detect: true,
+        },
+    );
+    assert!(!f.insert_spaces);
+    assert_eq!(f.tab_width, 8);
+    // tabs: tabs, width from the setting
+    let mut s = session("a\n\tb\n");
+    let f = run(
+        &mut s,
+        Command::Configure {
+            tab_width: Some(3),
+            insert_spaces: Some(true),
+            detect: true,
+        },
+    );
+    assert!(!f.insert_spaces);
+    assert_eq!(f.tab_width, 3);
+}
+
+#[test]
+fn frame_lines_carry_their_indentation() {
+    let mut s = session("a\n    b\n\n\tc\n  \n");
+    run(
+        &mut s,
+        Command::Configure {
+            tab_width: Some(4),
+            insert_spaces: None,
+            detect: false,
+        },
+    );
+    let f = run(&mut s, Command::Frame);
+    let ind: Vec<usize> = f.lines.iter().map(|l| l.indent).collect();
+    // blank lines take the indentation of the line above
+    assert_eq!(ind, vec![0, 4, 4, 4, 4, 4]);
 }

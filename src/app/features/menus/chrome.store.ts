@@ -38,6 +38,8 @@ export class ChromeStore {
   readonly bare = signal(false);
   readonly fullscreen = signal(false);
   readonly scheme = signal<Scheme>('auto');
+  /** The status bar (prompt 010). */
+  readonly statusBar = signal(true);
 
   readonly menuVisible = computed(() => this.menuOnce() || (this.menuBar() && !this.bare()));
 

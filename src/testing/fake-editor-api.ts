@@ -6,6 +6,7 @@ import {
   DocInfo,
   Frame,
   FrameLine,
+  LineEnding,
   LoadEvent,
   MatchCount,
   Query,
@@ -45,6 +46,7 @@ export function textFrame(lines: string[], over: Partial<Frame> = {}): Frame {
     long: false,
     marks: [],
     markers: [],
+    indent: 0,
   }));
   return {
     seq: 1,
@@ -101,8 +103,11 @@ export class FakeEditorApi extends EditorApi {
   /** What the fake engine knows about each document. */
   infos = new Map<number, DocInfo>();
 
-  newDocument(): Promise<DocInfo> {
-    const info = docInfo({ id: this.nextId++ });
+  newLineEndings: (LineEnding | null)[] = [];
+
+  newDocument(lineEnding: LineEnding | null = null): Promise<DocInfo> {
+    this.newLineEndings.push(lineEnding);
+    const info = docInfo({ id: this.nextId++, lineEnding: lineEnding ?? 'lf' });
     this.infos.set(info.id, info);
     return Promise.resolve(info);
   }

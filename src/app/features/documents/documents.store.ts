@@ -6,6 +6,7 @@ import { WorkspaceApi } from '../../core/workspace/workspace-api';
 import { SessionFile, TabsMode } from '../../core/workspace/workspace.models';
 import { AskService } from '../../shared/ask/ask.service';
 import { FindStore } from '../find/find.store';
+import { SettingsStore } from '../settings/settings.store';
 import { DOC_TEXTS as T } from './documents-texts';
 
 export interface OpenDoc {
@@ -32,6 +33,7 @@ export class DocumentsStore {
   private readonly ws = inject(WorkspaceApi);
   private readonly ask = inject(AskService);
   private readonly find = inject(FindStore);
+  private readonly settings = inject(SettingsStore);
 
   readonly docs = signal<OpenDoc[]>([]);
   readonly activeId = signal<number | null>(null);
@@ -84,7 +86,7 @@ export class DocumentsStore {
     const paths = await this.api.startupPaths().catch((): string[] => []);
     if (paths.length > 0) {
       await this.openPaths(paths);
-    } else if (session && session.files.length > 0) {
+    } else if (session && session.files.length > 0 && this.settings.settings().restoreSession) {
       for (const f of session.files) {
         const doc = await this.load(f.path, false);
         if (doc) await this.restore(doc.id, f.line, f.ch, f.top);
@@ -156,7 +158,8 @@ export class DocumentsStore {
 
   async newDoc(): Promise<void> {
     try {
-      const info = await this.api.newDocument();
+      const le = this.settings.settings().newLineEnding;
+      const info = await this.api.newDocument(le === 'auto' ? null : le);
       this.add(info);
     } catch (e) {
       this.fail(e);
@@ -313,6 +316,7 @@ export class DocumentsStore {
     if (this.quitting) return;
     this.quitting = true;
     await this.persist();
+    await this.settings.flush();
     for (const d of this.docs()) {
       if (!(await this.okToDrop(d))) {
         this.quitting = false;

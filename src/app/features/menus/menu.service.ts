@@ -35,7 +35,7 @@ export class MenuService {
     return resolveMenu(
       model,
       {
-        label: (id) => this.actions.def(id)?.label ?? id,
+        label: (id) => this.actions.label(id),
         enabled: (id) => this.actions.enabled(id),
         checked: (id) => this.actions.checked(id),
         chord: (id) => menuChord(this.actions.chords(id)),

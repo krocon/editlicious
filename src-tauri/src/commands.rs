@@ -126,15 +126,19 @@ pub async fn cancel_load(state: State<'_, AppState>, load_id: u64) -> Result<(),
     Ok(())
 }
 
-/// A new, empty document in its own session.
+/// A new, empty document in its own session; `line_ending` from the settings (`auto` =
+/// the platform's).
 #[tauri::command]
-pub async fn new_document(state: State<'_, AppState>) -> Result<DocInfo, FsError> {
+pub async fn new_document(
+    state: State<'_, AppState>,
+    line_ending: Option<LineEnding>,
+) -> Result<DocInfo, FsError> {
     let id = state.sessions.reserve_id();
-    let doc = Document::new_empty(if cfg!(windows) {
+    let doc = Document::new_empty(line_ending.unwrap_or(if cfg!(windows) {
         LineEnding::Crlf
     } else {
         LineEnding::Lf
-    });
+    }));
     state.sessions.insert(id, Session::new(doc, id));
     info_of(&state.sessions, id)
 }
@@ -324,6 +328,26 @@ fn config_dir(app: &AppHandle) -> Result<PathBuf, FsError> {
         .map_err(|e| FsError::new(FsErrorCode::Io, e.to_string(), None))
 }
 
+/// The settings (design 009); problems with the file come as a warning.
+#[tauri::command]
+pub async fn load_settings(
+    app: AppHandle,
+) -> Result<crate::config_file::Loaded<crate::settings::Settings>, FsError> {
+    let dir = config_dir(&app)?;
+    blocking(move || Ok(crate::settings::load(&dir))).await
+}
+
+/// Saves and returns the settings as stored (checked, clamped).
+#[tauri::command]
+pub async fn save_settings(
+    app: AppHandle,
+    settings: crate::settings::Settings,
+) -> Result<crate::settings::Settings, FsError> {
+    let dir = config_dir(&app)?;
+    blocking(move || crate::settings::save(&dir, settings).map_err(|e| FsError::from_io(&e, &dir)))
+        .await
+}
+
 /// The session of the last run (design 004 E5).
 #[tauri::command]
 pub async fn load_session(app: AppHandle) -> Result<SessionFile, FsError> {
@@ -441,6 +465,6 @@ mod command_rules {
                 count += 1;
             }
         }
-        assert!(count >= 23);
+        assert!(count >= 25);
     }
 }

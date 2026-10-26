@@ -64,7 +64,7 @@ export type Motion =
 export type Command =
   | { type: 'frame' }
   | { type: 'resize'; lines: number; cols: number }
-  | { type: 'configure'; tabWidth?: number; insertSpaces?: boolean }
+  | { type: 'configure'; tabWidth?: number; insertSpaces?: boolean; detect?: boolean }
   | { type: 'scroll'; lines: number; cells: number }
   | { type: 'scrollTo'; top?: number; left?: number }
   | { type: 'move'; to: Motion; select?: boolean }
@@ -190,6 +190,8 @@ export interface FrameLine {
   marks: [number, number, number][];
   /** Marked words `[from, to, colour 0…9]` in cells. */
   markers: [number, number, number][];
+  /** Width of the leading whitespace in cells; blank lines: the line above's. */
+  indent: number;
 }
 
 export interface CaretPos {

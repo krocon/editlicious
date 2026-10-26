@@ -24,7 +24,13 @@
     "Mod+7": "file.switch.7",
     "Mod+8": "file.switch.8",
     "Mod+9": "file.switch.9",
-    "F12": "view.nextScheme"
+    "F12": "view.nextScheme",
+    "Mod+=": "view.zoomIn",
+    "Mod++": "view.zoomIn",
+    "Mod+-": "view.zoomOut",
+    "Mod+0": "view.zoomReset",
+    "Mod+Shift+l": "view.lineNumbers",
+    "Mod+Alt+l": "view.indentGuides"
   },
   "editor": {
     "ArrowLeft": "cursor.left",
