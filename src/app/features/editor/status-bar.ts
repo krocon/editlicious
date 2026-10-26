@@ -23,6 +23,11 @@ import { EDITOR_TEXTS } from './editor-texts';
       @if (f.overwrite) {
         <span class="item strong">{{ t.overwrite }}</span>
       }
+      @if (f.caretColor; as c) {
+        <span class="item color" [attr.aria-label]="t.caretColor(c)"
+          ><span class="chip" [style.--chip]="c" aria-hidden="true"></span>{{ c }}</span
+        >
+      }
       @if (recording()) {
         <span class="item rec" [title]="rt.recTitle">● {{ rt.rec }}</span>
       }

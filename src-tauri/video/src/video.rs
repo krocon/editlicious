@@ -106,6 +106,7 @@ pub fn render_with(
             insert_spaces: Some(true),
             detect: false,
             wrap: Some(false),
+            colors: None,
         },
         &mut clip,
     )?;

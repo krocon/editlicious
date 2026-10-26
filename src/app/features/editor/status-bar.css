@@ -47,3 +47,21 @@
   color: var(--color-error);
   font-weight: 600;
 }
+
+/* the colour value at the cursor (design 018) */
+.color {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  outline: 1px solid var(--color-border);
+  background:
+    linear-gradient(var(--chip), var(--chip)),
+    repeating-conic-gradient(#c8c8c8 0% 25%, #ffffff 0% 50%) 0 0 / 4px 4px;
+}

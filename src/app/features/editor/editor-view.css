@@ -370,3 +370,18 @@
     text-decoration: underline;
   }
 }
+
+/* colour values (design 018): a swatch per line left of the numbers; transparency over a
+   checkerboard, a thin outline so white on light and black on dark stay visible */
+.swatch {
+  position: absolute;
+  top: 0;
+  left: 4px;
+  border-radius: 3px;
+  outline: 1px solid var(--ed-gutter-text);
+  outline-offset: -1px;
+  background:
+    var(--swatch),
+    repeating-conic-gradient(#c8c8c8 0% 25%, #ffffff 0% 50%) 0 0 / 8px 8px;
+  cursor: pointer;
+}

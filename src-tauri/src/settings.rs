@@ -43,6 +43,8 @@ pub struct Settings {
     pub word_wrap: bool,
     /// Search matches and markers in the scrollbar (design 010 E3).
     pub overview: bool,
+    /// Colour values as swatches in the gutter (design 018).
+    pub color_swatches: bool,
     /// An AI may drive the editor over MCP (design 016 E9) – off unless the user turns it on.
     #[serde(default)]
     pub mcp: bool,
@@ -71,6 +73,7 @@ impl Default for Settings {
             status_bar: true,
             word_wrap: false,
             overview: true,
+            color_swatches: true,
             mcp: false,
             ffmpeg_path: String::new(),
         }

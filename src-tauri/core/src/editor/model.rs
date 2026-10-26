@@ -31,6 +31,9 @@ pub enum Command {
         /// Soft wrap at the view width (design 010 E4); `None` = unchanged.
         #[serde(default)]
         wrap: Option<bool>,
+        /// Colour swatches in the gutter (design 018); `None` = unchanged.
+        #[serde(default)]
+        colors: Option<bool>,
     },
     Scroll {
         lines: f64,
@@ -162,6 +165,8 @@ pub enum Command {
     Select {
         sels: Vec<Sel>,
     },
+    /// The colour value under the caret into its next notation (design 018).
+    ConvertColor,
 }
 
 impl Command {
@@ -252,6 +257,8 @@ pub struct FrameLine {
     pub row: f64,
     /// Soft wrap: first cells of the rows after the first (runs never cross them).
     pub wraps: Vec<usize>,
+    /// Colour values `[from, to, rgba]`: characters, colour as 0xRRGGBBAA (design 018).
+    pub colors: Vec<[u32; 3]>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -312,4 +319,9 @@ pub struct Frame {
     pub wrap: bool,
     /// Changes when search or markers change (the overview asks again, design 010 E3).
     pub deco: u64,
+    /// The gutter has a column of colour swatches: once a colour showed up in this document it
+    /// stays, so the gutter does not jump while scrolling (design 018).
+    pub color_column: bool,
+    /// The colour value at the primary caret (`#rrggbb[aa]`) for the status bar.
+    pub caret_color: Option<String>,
 }

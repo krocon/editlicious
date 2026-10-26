@@ -23,6 +23,17 @@
           {{ lineLabel(line.line, f.caretLine) }}
         }
       </div>
+      @if (line.colors.length) {
+        <div
+          class="swatch"
+          [title]="swatchTitle(line.colors)"
+          [style.width.px]="metrics().lh - 8"
+          [style.height.px]="metrics().lh - 8"
+          [style.transform]="'translateY(' + (lineY(line) + 4) + 'px)'"
+          [style.--swatch]="swatchBg(line.colors)"
+          (mousedown)="onSwatch($event, line.line, line.colors[0])"
+        ></div>
+      }
     }
   </div>
   <div

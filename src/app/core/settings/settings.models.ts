@@ -17,6 +17,8 @@ export interface Settings {
   statusBar: boolean;
   wordWrap: boolean;
   overview: boolean;
+  /** Colour values as swatches in the gutter (design 018). */
+  colorSwatches: boolean;
   /** An AI may drive the editor over MCP (design 016 E9). */
   mcp: boolean;
   /** ffmpeg for the video export (design 017); empty = the one on the PATH. */
@@ -41,6 +43,7 @@ export const DEFAULT_SETTINGS: Settings = {
   statusBar: true,
   wordWrap: false,
   overview: true,
+  colorSwatches: true,
   mcp: false,
   ffmpegPath: '',
 };

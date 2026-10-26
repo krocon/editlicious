@@ -228,6 +228,10 @@ export class App {
         run: () => st.update({ overview: !st.settings().overview }),
         checked: () => st.settings().overview,
       },
+      'view.colorSwatches': {
+        run: () => st.update({ colorSwatches: !st.settings().colorSwatches }),
+        checked: () => st.settings().colorSwatches,
+      },
       'view.indentGuides': {
         run: () => st.update({ indentGuides: !st.settings().indentGuides }),
         checked: () => st.settings().indentGuides,

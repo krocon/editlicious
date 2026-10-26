@@ -2,6 +2,7 @@
 //! settings. It runs every command of the UI and answers with a [`model::Frame`] – the UI only
 //! renders (Marc, 26.10.2026; design 002 E13).
 
+pub mod colors;
 pub mod layout;
 pub mod model;
 mod ops;
@@ -129,6 +130,9 @@ pub struct Session {
     highlighter: Option<Highlighter>,
     /// Soft wrap at the view width (design 010 E4).
     wrap: bool,
+    /// Colour swatches on (design 018) and whether one ever showed (the gutter column stays).
+    colors: bool,
+    color_column: bool,
     /// The running recording (design 015) …
     recorder: Option<recording::Recorder>,
     /// … and the last finished one (save it, play it again as a macro).
@@ -164,6 +168,8 @@ impl Session {
             block_origin: None,
             highlighter,
             wrap: false,
+            colors: true,
+            color_column: false,
             recorder: None,
             last_recording: None,
         }
@@ -295,7 +301,14 @@ impl Session {
                 insert_spaces,
                 detect,
                 wrap,
+                colors,
             } => {
+                if let Some(c) = colors {
+                    self.colors = c;
+                    if !c {
+                        self.color_column = false;
+                    }
+                }
                 if let Some(w) = wrap
                     && w != self.wrap
                 {
@@ -486,6 +499,7 @@ impl Session {
                 self.highlighter = name.as_deref().and_then(Highlighter::new);
                 reveal = Reveal::No;
             }
+            Command::ConvertColor => self.convert_color()?,
             Command::Select { sels } => {
                 if !sels.is_empty() {
                     let n = sels.len();
@@ -1527,6 +1541,9 @@ impl Session {
                 fl.width = fl.width.min(self.wrap_width());
             }
             fl.wraps = breaks;
+            if !fl.colors.is_empty() {
+                self.color_column = true;
+            }
             if fl.indent == usize::MAX {
                 fl.indent = indent_above;
             } else {
@@ -1605,7 +1622,44 @@ impl Session {
             selection_text: self.selection_text(),
             wrap: self.wrap,
             deco: self.deco(),
+            color_column: self.color_column,
+            caret_color: self.color_at_caret().map(|h| colors::to_hash(h.rgba)),
         }
+    }
+
+    /// The colour value the primary caret is in or touches (design 018).
+    fn color_at_caret(&self) -> Option<colors::ColorHit> {
+        if !self.colors {
+            return None;
+        }
+        let p = self.primary().head;
+        let text = self.doc.line_slice(p.line, 0, colors::SCAN_CHARS);
+        colors::find(&text)
+            .into_iter()
+            .find(|h| h.from <= p.ch && p.ch <= h.to)
+    }
+
+    /// "Convert colour value": the next notation, as one undo step; selects the new value.
+    fn convert_color(&mut self) -> Result<(), FsError> {
+        let Some(hit) = self.color_at_caret() else {
+            self.notice = Some("no_color".into());
+            return Ok(());
+        };
+        let line = self.primary().head.line;
+        let text = colors::convert(&hit);
+        let n = text.chars().count();
+        let (from, to) = (Pos::new(line, hit.from), Pos::new(line, hit.to));
+        let sels = self.doc.apply(EditRequest {
+            changes: vec![Change { from, to, text }],
+            kind: EditKind::Other,
+            sel_before: self.sels(),
+            sel_after: Some(vec![Sel {
+                anchor: from,
+                head: Pos::new(line, hit.from + n),
+            }]),
+        })?;
+        self.cursors_from(sels);
+        Ok(())
     }
 
     /// Short single-line selections go to the UI (find field).
@@ -1734,6 +1788,19 @@ impl Session {
             indent,
             row: 0.0,
             wraps: Vec::new(),
+            colors: if self.colors {
+                let text = if long {
+                    self.doc.line_slice(line, 0, colors::SCAN_CHARS)
+                } else {
+                    self.doc.line_string(line)
+                };
+                colors::find(&text)
+                    .into_iter()
+                    .map(|h| [h.from as u32, h.to as u32, h.rgba])
+                    .collect()
+            } else {
+                Vec::new()
+            },
         }
     }
 

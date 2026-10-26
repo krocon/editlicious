@@ -80,6 +80,7 @@ describe('EditorView', () => {
       insertSpaces: true,
       detect: true,
       wrap: false,
+      colors: true,
     });
     // one guide per indent step, none at the left edge
     expect(el.querySelectorAll('.row')[2].querySelectorAll('.guide').length).toBe(1);
@@ -96,6 +97,7 @@ describe('EditorView', () => {
       insertSpaces: false,
       detect: false,
       wrap: false,
+      colors: true,
     });
     settings.update({ lineNumbers: 'off', indentGuides: false });
     await fixture.whenStable();
@@ -353,5 +355,37 @@ describe('EditorView during a playback (design 015 E10)', () => {
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await flush();
     expect(fake.calls).toContain('stop:7');
+  });
+});
+
+describe('EditorView colour swatches (design 018)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    cleanups.splice(0).forEach((f) => f());
+  });
+
+  it('draws a swatch per line with colours, widens the gutter, a click selects the value', async () => {
+    const api = new FakeEditorApi();
+    api.nextFrame = textFrame(['plain', 'bg="ffffff00"', 'a #f00 #0f0'], { colorColumn: true });
+    api.nextFrame.lines[1].colors = [[4, 12, 0xffff00ff]];
+    api.nextFrame.lines[2].colors = [
+      [2, 6, 0xff0000ff],
+      [7, 11, 0x00ff0080],
+    ];
+    const { el, fixture } = await setup(api);
+    await fixture.whenStable();
+    const sw = el.querySelectorAll<HTMLElement>('.swatch');
+    expect(sw.length).toBe(2);
+    expect(sw[0].style.getPropertyValue('--swatch')).toContain('rgb(255 255 0 / 100%)');
+    expect(sw[1].style.getPropertyValue('--swatch')).toContain('to right');
+    expect(sw[1].title).toBe('#ff0000ff  #00ff0080');
+    const before = api.commands.length;
+    sw[0].dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    await flush();
+    expect(api.commands.slice(before).map((c) => c.cmd)).toContainEqual({
+      type: 'select',
+      sels: [{ anchor: { line: 1, ch: 4 }, head: { line: 1, ch: 12 } }],
+    });
+    expect(api.sent('configure').at(-1)).toMatchObject({ colors: true });
   });
 });

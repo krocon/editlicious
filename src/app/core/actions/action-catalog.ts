@@ -103,6 +103,8 @@ export const ACTIONS: readonly ActionDef[] = [
   G('view.wordWrap', 'Wrap long lines'),
   G('view.statusBar', 'Show the status bar'),
   G('view.overview', 'Show matches in the scrollbar'),
+  // colour values (design 018)
+  G('view.colorSwatches', 'Show colour values in the gutter'),
   { id: 'file.encoding', label: 'Encoding…', context: 'editor' },
   { id: 'file.lineEnding', label: 'Line endings…', context: 'editor' },
   { id: 'edit.copyHtml', label: 'Copy as HTML', context: 'editor' },
@@ -197,6 +199,7 @@ export const ACTIONS: readonly ActionDef[] = [
     { repeat: true },
   ),
   E('edit.toggleMarker', 'Mark word', { type: 'toggleMarker' }),
+  E('edit.convertColor', 'Convert colour value (#hex / rgb / hsl)', { type: 'convertColor' }),
   E('edit.clearMarkers', 'Clear all marks', { type: 'clearMarkers' }),
   E(
     'block.left',

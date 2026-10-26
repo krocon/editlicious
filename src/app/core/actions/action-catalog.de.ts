@@ -17,6 +17,8 @@ const FIXED: Record<string, string> = {
   'view.wordWrap': 'Lange Zeilen umbrechen',
   'view.statusBar': 'Statusleiste anzeigen',
   'view.overview': 'Treffer in der Scrollleiste zeigen',
+  'view.colorSwatches': 'Farbwerte im Rand zeigen',
+  'edit.convertColor': 'Farbwert umrechnen (#hex / rgb / hsl)',
   'file.encoding': 'Zeichenkodierung …',
   'file.lineEnding': 'Zeilenenden …',
   'edit.copyHtml': 'Als HTML kopieren',

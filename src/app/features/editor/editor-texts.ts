@@ -33,6 +33,8 @@ const EN = {
   changeEncoding: 'Change the encoding',
   changeLineEndings: 'Convert the line endings',
   changeLanguage: 'Change the language',
+  noColor: 'No colour value at the cursor.',
+  caretColor: (v: string) => `Colour ${v}`,
 };
 
 export const EDITOR_TEXTS = translatable('editor', EN, {
@@ -67,6 +69,8 @@ export const EDITOR_TEXTS = translatable('editor', EN, {
     mixed: 'gemischt',
     changeEncoding: 'Zeichenkodierung ändern',
     changeLineEndings: 'Zeilenenden umwandeln',
+    noColor: 'Am Cursor steht kein Farbwert.',
+    caretColor: (v: string) => `Farbe ${v}`,
     changeLanguage: 'Sprache ändern',
   },
 });
@@ -84,6 +88,8 @@ export function noticeText(code: string): string {
       return EDITOR_TEXTS.htmlTooLarge;
     case 'sort_too_large':
       return EDITOR_TEXTS.sortTooLarge;
+    case 'no_color':
+      return EDITOR_TEXTS.noColor;
     default:
       return '';
   }

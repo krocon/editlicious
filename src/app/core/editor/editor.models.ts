@@ -78,6 +78,7 @@ export type Command =
       insertSpaces?: boolean;
       detect?: boolean;
       wrap?: boolean;
+      colors?: boolean;
     }
   | { type: 'setLineEnding'; lineEnding: LineEnding }
   | { type: 'copyHtml'; lineNumbers: boolean; styles: string[]; base: string; gutter: string }
@@ -129,7 +130,8 @@ export type Command =
   | { type: 'clearMarkers' }
   | { type: 'setLanguage'; name: string | null }
   /** One cursor per entry, the last one primary (design 015 E2). */
-  | { type: 'select'; sels: Sel[] };
+  | { type: 'select'; sels: Sel[] }
+  | { type: 'convertColor' };
 
 /** A search (`ed_core::search::Query`, design 006). */
 export interface Query {
@@ -214,6 +216,8 @@ export interface FrameLine {
   row: number;
   /** Soft wrap: first cells of the rows after the first. */
   wraps: number[];
+  /** Colour values `[from, to, rgba]`: characters, colour 0xRRGGBBAA (design 018). */
+  colors: [number, number, number][];
 }
 
 /** Where a caret is drawn: rows from the view top, cell within its row. */
@@ -260,4 +264,8 @@ export interface Frame {
   wrap: boolean;
   /** Changes with search and markers (the overview asks again). */
   deco: number;
+  /** The gutter shows colour swatches (stays once a colour showed, design 018). */
+  colorColumn: boolean;
+  /** Colour value at the primary caret, `#rrggbb[aa]`. */
+  caretColor: string | null;
 }

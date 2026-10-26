@@ -49,6 +49,7 @@ export function textFrame(lines: string[], over: Partial<Frame> = {}): Frame {
     indent: 0,
     row: line,
     wraps: [],
+    colors: [],
   }));
   return {
     seq: 1,
@@ -76,6 +77,8 @@ export function textFrame(lines: string[], over: Partial<Frame> = {}): Frame {
     selectionText: null,
     wrap: false,
     deco: 0,
+    colorColumn: false,
+    caretColor: null,
     ...over,
   };
 }

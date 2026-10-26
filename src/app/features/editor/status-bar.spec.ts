@@ -91,4 +91,14 @@ describe('StatusBar while recording and playing (design 015 E11)', () => {
     expect(el.textContent).toContain('▶ 37 %');
     expect(el.querySelector('.rec')).toBeNull();
   });
+
+  it('shows the colour value at the cursor (design 018)', async () => {
+    TestBed.configureTestingModule({ imports: [StatusBar], providers: PROVIDERS });
+    const fixture = TestBed.createComponent(StatusBar);
+    fixture.componentRef.setInput('frame', textFrame(['x'], { caretColor: '#2f98e1' }));
+    await fixture.whenStable();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.color')?.textContent).toContain('#2f98e1');
+    expect(el.querySelector('.color')?.getAttribute('aria-label')).toBe('Colour #2f98e1');
+  });
 });

@@ -249,6 +249,7 @@ fn backspace_removes_a_soft_tab() {
             insert_spaces: Some(true),
             detect: false,
             wrap: None,
+            colors: None,
         },
     );
     put(&mut s, 0, 0);
@@ -282,6 +283,7 @@ fn indent_and_outdent_lines() {
             insert_spaces: Some(true),
             detect: false,
             wrap: None,
+            colors: None,
         },
     );
     s.set_cursors(vec![Cursor {
@@ -759,6 +761,7 @@ fn whitespace_commands() {
             insert_spaces: None,
             detect: false,
             wrap: None,
+            colors: None,
         },
     );
     run(&mut s, Command::ConvertIndentation { spaces: true });
@@ -969,6 +972,7 @@ fn configure_detect_follows_the_file() {
             insert_spaces: Some(false),
             detect: true,
             wrap: None,
+            colors: None,
         },
     );
     assert!(f.insert_spaces);
@@ -982,6 +986,7 @@ fn configure_detect_follows_the_file() {
             insert_spaces: Some(false),
             detect: true,
             wrap: None,
+            colors: None,
         },
     );
     assert!(!f.insert_spaces);
@@ -995,6 +1000,7 @@ fn configure_detect_follows_the_file() {
             insert_spaces: Some(true),
             detect: true,
             wrap: None,
+            colors: None,
         },
     );
     assert!(!f.insert_spaces);
@@ -1011,6 +1017,7 @@ fn frame_lines_carry_their_indentation() {
             insert_spaces: None,
             detect: false,
             wrap: None,
+            colors: None,
         },
     );
     let f = run(&mut s, Command::Frame);
@@ -1031,6 +1038,7 @@ fn wrapped(text: &str, lines: f64, cols: f64) -> Session {
             insert_spaces: None,
             detect: false,
             wrap: Some(true),
+            colors: None,
         },
     );
     s
@@ -1146,6 +1154,7 @@ fn wrap_scrolls_and_clicks_by_rows() {
             insert_spaces: None,
             detect: false,
             wrap: Some(false),
+            colors: None,
         },
     );
     let f = run(&mut s, Command::Frame);
@@ -1288,6 +1297,7 @@ fn measure_wrap_and_line_endings() {
             insert_spaces: None,
             detect: false,
             wrap: Some(true),
+            colors: None,
         },
     );
     let t = Instant::now();
@@ -1337,6 +1347,7 @@ fn wrap_width_follows_the_view() {
             insert_spaces: None,
             detect: false,
             wrap: Some(true),
+            colors: None,
         },
         &mut clip,
     )
@@ -1430,4 +1441,108 @@ fn replace_all_can_cut_into_crlf() {
     assert_eq!(text(&s), "a\nb\nc");
     run(&mut s, Command::Undo);
     assert_eq!(text(&s), "a\r\nb\r\nc");
+}
+
+/// Design 018: colour values in the frame, the column that stays, converting under the caret.
+#[test]
+fn colour_swatches_and_converting() {
+    let mut s = session("plain\nbg=\"ffffff00\" x\na { color: #2f98e1; }");
+    let f = run(&mut s, Command::Frame);
+    assert!(f.lines[0].colors.is_empty());
+    assert_eq!(f.lines[1].colors, vec![[4, 12, 0xffff00ff]]);
+    assert_eq!(f.lines[2].colors, vec![[11, 18, 0x2f98e1ff]]);
+    assert!(f.color_column);
+    assert_eq!(f.caret_color, None);
+    put(&mut s, 2, 14);
+    let f = run(&mut s, Command::Frame);
+    assert_eq!(f.caret_color.as_deref(), Some("#2f98e1"));
+    run(&mut s, Command::ConvertColor);
+    assert_eq!(
+        text(&s).lines().nth(2),
+        Some("a { color: rgb(47, 152, 225); }")
+    );
+    run(&mut s, Command::ConvertColor);
+    assert!(text(&s).contains("hsl(205, 75%, 53%)"));
+    run(&mut s, Command::Undo);
+    assert!(text(&s).contains("rgb(47, 152, 225)"));
+    // nothing under the caret
+    put(&mut s, 0, 1);
+    assert_eq!(
+        run(&mut s, Command::ConvertColor).notice.as_deref(),
+        Some("no_color")
+    );
+    // switched off: no colours, no column
+    let f = run(
+        &mut s,
+        Command::Configure {
+            tab_width: None,
+            insert_spaces: None,
+            detect: false,
+            wrap: None,
+            colors: Some(false),
+        },
+    );
+    assert!(f.lines.iter().all(|l| l.colors.is_empty()));
+    assert!(!f.color_column);
+}
+
+/// Measures the colour scan of a full screen (ignored; `measure_` in the release run).
+#[test]
+#[ignore]
+fn measure_colours_per_frame() {
+    let line = r#"  .a { color: #2f98e1; background: rgba(0, 0, 0, 0.5); border: 1px solid hsl(10, 50%, 50%) }"#;
+    let text = vec![line; 10_000].join("\n");
+    let mut s = session(&text);
+    run(
+        &mut s,
+        Command::Resize {
+            lines: 100.0,
+            cols: 200.0,
+        },
+    );
+    let t = web_time::Instant::now();
+    for i in 0..100 {
+        s.run(
+            Command::ScrollTo {
+                top: Some(i as f64 * 50.0),
+                left: None,
+            },
+            &mut MemoryClipboard::default(),
+        )
+        .unwrap();
+    }
+    let per = t.elapsed() / 100;
+    let mut off = session(&text);
+    run(
+        &mut off,
+        Command::Configure {
+            tab_width: None,
+            insert_spaces: None,
+            detect: false,
+            wrap: None,
+            colors: Some(false),
+        },
+    );
+    run(
+        &mut off,
+        Command::Resize {
+            lines: 100.0,
+            cols: 200.0,
+        },
+    );
+    let t = web_time::Instant::now();
+    for i in 0..100 {
+        off.run(
+            Command::ScrollTo {
+                top: Some(i as f64 * 50.0),
+                left: None,
+            },
+            &mut MemoryClipboard::default(),
+        )
+        .unwrap();
+    }
+    println!(
+        "frame of 100 lines with 300 colours: {per:?} (without colours {:?})",
+        t.elapsed() / 100
+    );
 }

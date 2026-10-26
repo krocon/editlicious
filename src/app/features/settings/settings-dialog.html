@@ -134,6 +134,14 @@
         <input type="checkbox" [checked]="s.overview" (change)="set('overview', checked($event))" />
         {{ t.overview }}
       </label>
+      <label class="check">
+        <input
+          type="checkbox"
+          [checked]="s.colorSwatches"
+          (change)="set('colorSwatches', checked($event))"
+        />
+        {{ t.colorSwatches }}
+      </label>
     </fieldset>
 
     <fieldset>

@@ -106,13 +106,50 @@ export class EditorView {
 
   protected readonly lineNumbers = computed(() => this.settings.settings().lineNumbers);
 
+  /** Width of the colour swatch column (design 018): one line height, 0 without colours. */
+  protected readonly swatchWidth = computed(() =>
+    this.frame()?.colorColumn ? this.metrics().lh : 0,
+  );
+
   protected readonly gutterWidth = computed(() => {
     const mode = this.lineNumbers();
-    if (mode === 'off') return this.metrics().cw;
+    const swatches = this.swatchWidth();
+    if (mode === 'off') return this.metrics().cw + swatches;
     const lines = this.frame()?.info.lineCount ?? 1;
     const digits = Math.max(3, String(lines).length);
-    return (digits + 2) * this.metrics().cw;
+    return (digits + 2) * this.metrics().cw + swatches;
   });
+
+  /** CSS background of a swatch: one colour, or two/three side by side (design 018). */
+  protected swatchBg(colors: [number, number, number][]): string {
+    const css = (v: number) => {
+      const r = (v >>> 24) & 255;
+      const g = (v >>> 16) & 255;
+      const b = (v >>> 8) & 255;
+      const a = (v & 255) / 255;
+      return `rgb(${r} ${g} ${b} / ${Math.round(a * 1000) / 10}%)`;
+    };
+    if (colors.length === 1) return `linear-gradient(${css(colors[0][2])}, ${css(colors[0][2])})`;
+    const step = 100 / colors.length;
+    const stops = colors.map((c, i) => `${css(c[2])} ${i * step}% ${(i + 1) * step}%`).join(', ');
+    return `linear-gradient(to right, ${stops})`;
+  }
+
+  /** The colour values of a line as text (tooltip). */
+  protected swatchTitle(colors: [number, number, number][]): string {
+    return colors.map((c) => '#' + (c[2] >>> 0).toString(16).padStart(8, '0')).join('  ');
+  }
+
+  /** A click on a swatch selects the colour value in the text. */
+  protected onSwatch(e: MouseEvent, line: number, color: [number, number, number]): void {
+    e.preventDefault();
+    e.stopPropagation();
+    void this.send({
+      type: 'select',
+      sels: [{ anchor: { line, ch: color[0] }, head: { line, ch: color[1] } }],
+    });
+    this.focus();
+  }
 
   /** Gutter number of a line: absolute, or the distance to the caret line (design 009). */
   protected lineLabel(line: number, caretLine: number): string {
@@ -237,6 +274,7 @@ export class EditorView {
             insertSpaces: s.indentWith !== 'tabs',
             detect: s.indentWith === 'auto',
             wrap: s.wordWrap,
+            colors: s.colorSwatches,
           }),
       );
     });

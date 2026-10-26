@@ -95,6 +95,7 @@ export function buildMenuModel(os: Os, input: MenuInputs): TopMenuNode[] {
     sep,
     a('edit.addNextOccurrence'),
     a('edit.toggleMarker'),
+    a('edit.convertColor'),
     a('edit.clearMarkers'),
     sep,
     {
@@ -157,6 +158,7 @@ export function buildMenuModel(os: Os, input: MenuInputs): TopMenuNode[] {
     a('view.indentGuides'),
     a('view.wordWrap'),
     a('view.overview'),
+    a('view.colorSwatches'),
     a('view.statusBar'),
     sep,
     a('file.next'),
