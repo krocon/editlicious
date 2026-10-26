@@ -4,22 +4,47 @@
 //! [`command_rules`] checks this.
 
 use crate::about;
-use crate::document::model::{
-    DocInfo, EditRequest, EditResult, LineEnding, LoadEvent, Pos, SaveRequest, View, ViewRequest,
-};
+use crate::document::model::{DocInfo, LineEnding, LoadEvent, SaveRequest};
 use crate::document::registry::{Registry, lock_doc};
 use crate::document::{Document, load};
+use crate::editor::model::{Command, Frame};
+use crate::editor::{Clipboard, Session};
 use crate::error::{FsError, FsErrorCode};
 use crate::model::AppInfo;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
 
-/// App-wide state: the open documents (design 002 E9).
+/// App-wide state: the editor sessions (one per open document, design 003) and the clipboard.
 #[derive(Default)]
 pub struct AppState {
-    docs: Arc<Registry>,
+    sessions: Arc<Registry<Session>>,
+    clipboard: Arc<Mutex<SystemClipboard>>,
+}
+
+/// The system clipboard (design 003 E5): one long-lived `arboard` handle – on Linux the text
+/// lives only as long as the handle.
+#[derive(Default)]
+pub struct SystemClipboard(Option<arboard::Clipboard>);
+
+impl SystemClipboard {
+    fn handle(&mut self) -> Option<&mut arboard::Clipboard> {
+        if self.0.is_none() {
+            self.0 = arboard::Clipboard::new().ok();
+        }
+        self.0.as_mut()
+    }
+}
+
+impl Clipboard for SystemClipboard {
+    fn get(&mut self) -> Option<String> {
+        self.handle()?.get_text().ok()
+    }
+
+    fn set(&mut self, text: String) -> bool {
+        self.handle().is_some_and(|c| c.set_text(text).is_ok())
+    }
 }
 
 /// Runs blocking work off the async runtime.
@@ -49,7 +74,14 @@ fn file_path(path: &str) -> Result<PathBuf, FsError> {
     Ok(p)
 }
 
-/// Opens a text file (design 002 E4); progress goes to `on_event`, `cancel_load(load_id)` stops it.
+fn info_of(sessions: &Registry<Session>, id: u64) -> Result<DocInfo, FsError> {
+    let handle = sessions.get(id)?;
+    let s = lock_doc(&handle);
+    Ok(s.doc.info(id))
+}
+
+/// Opens a text file (design 002 E4) in a new editor session; progress goes to `on_event`,
+/// `cancel_load(load_id)` stops it.
 #[tauri::command]
 pub async fn open_document(
     state: State<'_, AppState>,
@@ -58,116 +90,67 @@ pub async fn open_document(
     on_event: Channel<LoadEvent>,
 ) -> Result<DocInfo, FsError> {
     let path = file_path(&path)?;
-    let docs = state.docs.clone();
+    let sessions = state.sessions.clone();
     blocking(move || {
-        let cancel = docs.start_load(load_id);
+        let cancel = sessions.start_load(load_id);
         let result = load::load_file(&path, &cancel, &mut |loaded, total| {
             let _ = on_event.send(LoadEvent::Progress { loaded, total });
         });
-        docs.finish_load(load_id);
+        sessions.finish_load(load_id);
         let doc = Document::from_loaded(result?, &path);
-        let id = docs.insert(doc);
-        let handle = docs.get(id)?;
-        let info = lock_doc(&handle).info(id);
-        Ok(info)
+        let id = sessions.reserve_id();
+        sessions.insert(id, Session::new(doc, id));
+        info_of(&sessions, id)
     })
     .await
 }
 
 #[tauri::command]
 pub async fn cancel_load(state: State<'_, AppState>, load_id: u64) -> Result<(), FsError> {
-    state.docs.cancel_load(load_id);
+    state.sessions.cancel_load(load_id);
     Ok(())
 }
 
-/// A new, empty document.
+/// A new, empty document in its own session.
 #[tauri::command]
 pub async fn new_document(state: State<'_, AppState>) -> Result<DocInfo, FsError> {
-    let doc = Document::new_empty(LineEnding::Lf);
-    let id = state.docs.insert(doc);
-    let handle = state.docs.get(id)?;
-    let info = lock_doc(&handle).info(id);
-    Ok(info)
+    let id = state.sessions.reserve_id();
+    let doc = Document::new_empty(if cfg!(windows) {
+        LineEnding::Crlf
+    } else {
+        LineEnding::Lf
+    });
+    state.sessions.insert(id, Session::new(doc, id));
+    info_of(&state.sessions, id)
 }
 
 #[tauri::command]
 pub async fn close_document(state: State<'_, AppState>, id: u64) -> Result<(), FsError> {
-    state.docs.remove(id);
+    state.sessions.remove(id);
     Ok(())
 }
 
 #[tauri::command]
 pub async fn document_info(state: State<'_, AppState>, id: u64) -> Result<DocInfo, FsError> {
-    let handle = state.docs.get(id)?;
-    blocking(move || Ok(lock_doc(&handle).info(id))).await
+    let sessions = state.sessions.clone();
+    blocking(move || info_of(&sessions, id)).await
 }
 
-/// The visible part of a document (design 002 E3).
+/// Runs one editor command (design 003) and returns the frame to draw.
 #[tauri::command]
-pub async fn get_view(
+pub async fn editor_command(
     state: State<'_, AppState>,
     id: u64,
-    req: ViewRequest,
-) -> Result<View, FsError> {
-    let handle = state.docs.get(id)?;
-    blocking(move || Ok(lock_doc(&handle).view(&req))).await
-}
-
-/// Applies changes (design 002 E6) and returns the new info and selections.
-#[tauri::command]
-pub async fn apply_edits(
-    state: State<'_, AppState>,
-    id: u64,
-    req: EditRequest,
-) -> Result<EditResult, FsError> {
-    let handle = state.docs.get(id)?;
+    cmd: Command,
+) -> Result<Frame, FsError> {
+    let handle = state.sessions.get(id)?;
+    let clipboard = state.clipboard.clone();
     blocking(move || {
-        let mut doc = lock_doc(&handle);
-        let selections = doc.apply(req)?;
-        Ok(EditResult {
-            info: doc.info(id),
-            selections,
-        })
+        let mut session = lock_doc(&handle);
+        let mut clip = clipboard.lock().unwrap_or_else(|e| e.into_inner());
+        session.run(cmd, &mut *clip)
     })
     .await
-}
-
-#[tauri::command]
-pub async fn undo(state: State<'_, AppState>, id: u64) -> Result<Option<EditResult>, FsError> {
-    let handle = state.docs.get(id)?;
-    blocking(move || {
-        let mut doc = lock_doc(&handle);
-        Ok(doc.undo().map(|selections| EditResult {
-            info: doc.info(id),
-            selections,
-        }))
-    })
-    .await
-}
-
-#[tauri::command]
-pub async fn redo(state: State<'_, AppState>, id: u64) -> Result<Option<EditResult>, FsError> {
-    let handle = state.docs.get(id)?;
-    blocking(move || {
-        let mut doc = lock_doc(&handle);
-        Ok(doc.redo().map(|selections| EditResult {
-            info: doc.info(id),
-            selections,
-        }))
-    })
-    .await
-}
-
-/// Text between two positions (design 002 E11, at most 64 MiB).
-#[tauri::command]
-pub async fn get_text(
-    state: State<'_, AppState>,
-    id: u64,
-    from: Pos,
-    to: Pos,
-) -> Result<String, FsError> {
-    let handle = state.docs.get(id)?;
-    blocking(move || lock_doc(&handle).text(from, to)).await
 }
 
 /// Saves (design 002 E8); "Save as" passes a path, "Save with encoding" an encoding.
@@ -180,13 +163,31 @@ pub async fn save_document(
     if let Some(p) = &req.path {
         file_path(p)?;
     }
-    let handle = state.docs.get(id)?;
+    let handle = state.sessions.get(id)?;
     blocking(move || {
-        let mut doc = lock_doc(&handle);
-        doc.save(&req)?;
-        Ok(doc.info(id))
+        let mut s = lock_doc(&handle);
+        s.doc.save(&req)?;
+        Ok(s.doc.info(id))
     })
     .await
+}
+
+/// Files given on the command line (open with …, `editlicious file.txt`).
+#[tauri::command]
+pub async fn startup_paths() -> Result<Vec<String>, FsError> {
+    Ok(std::env::args()
+        .skip(1)
+        .filter(|a| !a.starts_with('-'))
+        .filter_map(|a| {
+            let p = PathBuf::from(&a);
+            let p = if p.is_absolute() {
+                p
+            } else {
+                std::env::current_dir().ok()?.join(p)
+            };
+            p.is_file().then(|| p.to_string_lossy().into_owned())
+        })
+        .collect())
 }
 
 #[cfg(test)]
@@ -207,6 +208,6 @@ mod command_rules {
                 count += 1;
             }
         }
-        assert!(count >= 12);
+        assert!(count >= 9);
     }
 }

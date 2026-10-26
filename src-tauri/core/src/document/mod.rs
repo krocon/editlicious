@@ -156,6 +156,33 @@ impl Document {
         }
     }
 
+    /// A long line (design 002 E3): one cell per character, only windows go to the UI.
+    pub fn is_long(&self, line: usize) -> bool {
+        self.line_len(line) > FULL_LINE_LIMIT
+    }
+
+    /// The whole text of a line without its break – callers use it for normal lines only.
+    pub fn line_string(&self, line: usize) -> String {
+        if line >= self.line_count() {
+            return String::new();
+        }
+        let start = self.rope.line_to_char(line);
+        self.rope
+            .slice(start..start + self.line_len(line))
+            .to_string()
+    }
+
+    /// Characters `[from, to)` of a line (clamped).
+    pub fn line_slice(&self, line: usize, from: usize, to: usize) -> String {
+        let len = self.line_len(line);
+        let (from, to) = (from.min(len), to.min(len));
+        if from >= to {
+            return String::new();
+        }
+        let start = self.rope.line_to_char(line);
+        self.rope.slice(start + from..start + to).to_string()
+    }
+
     /// A position clamped into the document.
     pub fn clamp(&self, p: Pos) -> Pos {
         let line = p.line.min(self.line_count().saturating_sub(1));

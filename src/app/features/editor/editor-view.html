@@ -1,0 +1,127 @@
+<span class="measure" #measure aria-hidden="true"
+  >MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM</span
+>
+@if (frame(); as f) {
+  <div
+    class="gutter"
+    [style.width.px]="gutterWidth()"
+    (mousedown)="onTextMousedown($event, true)"
+    aria-hidden="true"
+  >
+    @for (line of f.lines; track line.line) {
+      <div
+        class="ln"
+        [class.active]="line.line === f.caretLine"
+        [style.transform]="'translateY(' + y(line.line) + 'px)'"
+      >
+        {{ line.line + 1 }}
+      </div>
+    }
+  </div>
+  <div
+    class="text"
+    [style.left.px]="textLeft()"
+    (mousedown)="onTextMousedown($event)"
+    aria-hidden="true"
+  >
+    @for (line of f.lines; track line.line) {
+      <div
+        class="row"
+        [class.current]="focused() && isCurrent(line)"
+        [class.long]="line.long"
+        [style.transform]="'translateY(' + y(line.line) + 'px)'"
+      >
+        @for (s of line.sel; track $index) {
+          <div class="sel" [style.left.px]="x(s[0])" [style.width.px]="x(s[1]) - x(s[0])"></div>
+        }
+        @if (line.selEol) {
+          <div
+            class="sel eol"
+            [style.left.px]="x(line.width)"
+            [style.width.px]="metrics().cw * 0.6"
+          ></div>
+        }
+        @for (run of line.runs; track $index) {
+          @switch (run.kind) {
+            @case ('tab') {
+              <span
+                class="run tab"
+                [style.left.px]="x(run.cell)"
+                [style.width.px]="run.width * metrics().cw"
+              ></span>
+            }
+            @case ('wide') {
+              <span class="run" [style.left.px]="x(run.cell)">
+                @for (c of wideChars(run); track $index) {
+                  <span class="wide" [style.width.px]="metrics().cw * 2">{{ c }}</span>
+                }
+              </span>
+            }
+            @case ('ctrl') {
+              <span class="run ctrl" [style.left.px]="x(run.cell)">{{ run.text }}</span>
+            }
+            @default {
+              <span class="run" [style.left.px]="x(run.cell)">{{ run.text }}</span>
+            }
+          }
+        }
+      </div>
+    }
+    @for (c of f.carets; track $index) {
+      <div
+        class="caret"
+        [class.overwrite]="f.overwrite"
+        [attr.data-seq]="f.seq"
+        [style.transform]="'translate(' + x(c.cell) + 'px,' + y(c.line) + 'px)'"
+        [style.width.px]="f.overwrite ? metrics().cw : null"
+      ></div>
+    }
+  </div>
+  @if (vbar(); as b) {
+    <div class="vbar" (mousedown)="onTrackDown($event, true)" aria-hidden="true">
+      <div
+        class="thumb"
+        [style.height.px]="b.thumb"
+        [style.transform]="'translateY(' + b.pos + 'px)'"
+        (mousedown)="onThumbDown($event, true)"
+      ></div>
+    </div>
+  }
+  @if (hbar(); as b) {
+    <div
+      class="hbar"
+      [style.left.px]="textLeft()"
+      (mousedown)="onTrackDown($event, false)"
+      aria-hidden="true"
+    >
+      <div
+        class="thumb"
+        [style.width.px]="b.thumb"
+        [style.transform]="'translateX(' + b.pos + 'px)'"
+        (mousedown)="onThumbDown($event, false)"
+      ></div>
+    </div>
+  }
+}
+<textarea
+  #input
+  class="input"
+  [class.composing]="composing()"
+  [style.left.px]="textLeft() + caretXY().x"
+  [style.top.px]="caretXY().y"
+  [attr.aria-label]="texts.label"
+  autocapitalize="off"
+  autocomplete="off"
+  spellcheck="false"
+  wrap="off"
+  (keydown)="onKeydown($event)"
+  (input)="onInput($event)"
+  (compositionstart)="onCompositionStart()"
+  (compositionend)="onCompositionEnd($event)"
+  (paste)="onPaste($event)"
+  (copy)="onClipboard($event, false)"
+  (cut)="onClipboard($event, true)"
+  (focus)="focused.set(true)"
+  (blur)="focused.set(false)"
+></textarea>
+<div class="sr-only" aria-live="polite">{{ status() }}</div>

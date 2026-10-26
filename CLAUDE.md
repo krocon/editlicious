@@ -43,6 +43,9 @@ src/                          Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/core/backend/call.ts    einzige Stelle mit invoke() (+ isTauri-Prüfung, Fehler → FsError)
   app/core/errors/            FsError, toFsError, describeFsError (Codes = Rust error.rs)
   app/core/about/             AppInfo, AboutApi
+  app/core/backend/desktop.ts DESKTOP-Token (Tauri da?)
+  app/core/editor/            EditorApi (open, editor_command → Frame, save …), DTOs = Rust editor/model.rs
+  app/features/editor/        EditorView (zeichnet Frames, Scrollleisten, Maus, IME-Textfeld), key-commands (rein)
   app/features/about/         About-Dialog
   app/shared/dialog/          Modal (Fokusfalle, Esc), DialogService (aus comic-commander/files-and-folders)
   testing/                    Fakes – nie im Produktivcode importieren
@@ -54,6 +57,7 @@ src-tauri/                    Rust (Tauri 2), Crate `editlicious`, Lib `ed_lib`
   core/                       Crate `ed-core` (Workspace-Mitglied): Editor-Engine ohne Tauri
     src/error.rs              FsError { code, message, path }
     src/document/             Rope, load (Encoding/BOM/Zeilenenden), save (atomar), history (Undo), registry, model
+    src/editor/               Sitzung (Cursor, Befehle, Scroll, Frames), layout (Zellen, Grapheme), words
     testdata/document.cases.json  datengetriebene Bearbeitungsfälle
   src/fs_atomic.rs, config_file.rs  atomar schreiben / Konfig laden (aus files-and-folders)
   icons/source/app-icon.svg   Quelle des App-Icons

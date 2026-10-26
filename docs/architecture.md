@@ -27,12 +27,11 @@
 | Command | Zweck | Prompt |
 |---|---|---|
 | `get_app_info` | Name, Version, OS, Architektur | 001 |
-| `open_document(path, loadId, onEvent)` / `cancel_load(loadId)` | Datei laden (gestreamt, Fortschritt, Abbruch) | 002 |
-| `new_document` / `close_document(id)` / `document_info(id)` | Dokumente verwalten | 002 |
-| `get_view(id, req)` | Zeilen und Fenster langer Zeilen | 002 |
-| `apply_edits(id, req)` / `undo(id)` / `redo(id)` | Bearbeiten mit Undo-Zusammenfassung | 002 |
-| `get_text(id, from, to)` | Text eines Bereichs (≤ 64 MiB) | 002 |
+| `open_document(path, loadId, onEvent)` / `cancel_load(loadId)` | Datei laden in eine neue Editor-Sitzung (gestreamt, Fortschritt, Abbruch) | 002/003 |
+| `new_document` / `close_document(id)` / `document_info(id)` | Sitzungen verwalten | 002/003 |
+| `editor_command(id, cmd) -> Frame` | **jede** Editor-Aktion (Bewegen, Tippen, Maus, Scrollen, Undo, Zwischenablage); Antwort = zu zeichnender Frame | 003 |
 | `save_document(id, req)` | atomar speichern, Speichern unter, mit Encoding | 002 |
+| `startup_paths` | Dateien der Kommandozeile | 003 |
 
 ## Abhängigkeiten
 
@@ -45,6 +44,8 @@
 | `encoding_rs` | Dekodieren/Kodieren aller Encodings des Encoding Standard | 002 |
 | `chardetng` | Encoding-Erkennung für Nicht-UTF-8-Dateien (Nachfolger von universalchardet der alten Version) | 002 |
 | `memchr` | schnelles Zählen der Zeilenenden, NUL-Erkennung | 002 |
+| `unicode-width`, `unicode-segmentation` | Zellen je Zeichen (breit/kombinierend), Graphem-Grenzen für Cursor-Schritte | 003 |
+| `arboard` (nur Text, Wayland) | System-Zwischenablage aus Rust – große Auswahlen gehen nicht über die IPC | 003 |
 | `@angular/*`, `@tauri-apps/api`, `rxjs`, `tslib` | Frontend | 001 |
 
 ## Messwerte

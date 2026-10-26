@@ -1,18 +1,28 @@
-//! Open documents by id (design 002 E9) and running loads that can be cancelled.
+//! Open documents (or editor sessions) by id (design 002 E9) and running loads that can be
+//! cancelled.
 
-use super::Document;
 use crate::error::{FsError, FsErrorCode};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
-pub type DocHandle = Arc<Mutex<Document>>;
+pub type Handle<T> = Arc<Mutex<T>>;
 
-#[derive(Debug, Default)]
-pub struct Registry {
+#[derive(Debug)]
+pub struct Registry<T> {
     next: AtomicU64,
-    docs: Mutex<HashMap<u64, DocHandle>>,
+    docs: Mutex<HashMap<u64, Handle<T>>>,
     loads: Mutex<HashMap<u64, Arc<AtomicBool>>>,
+}
+
+impl<T> Default for Registry<T> {
+    fn default() -> Self {
+        Self {
+            next: AtomicU64::new(0),
+            docs: Mutex::new(HashMap::new()),
+            loads: Mutex::new(HashMap::new()),
+        }
+    }
 }
 
 /// A poisoned lock only means another thread panicked – the data is still usable.
@@ -20,14 +30,17 @@ fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-impl Registry {
-    pub fn insert(&self, doc: Document) -> u64 {
-        let id = self.next.fetch_add(1, Ordering::Relaxed) + 1;
-        lock(&self.docs).insert(id, Arc::new(Mutex::new(doc)));
-        id
+impl<T> Registry<T> {
+    /// The id the next [`Registry::insert`] will use.
+    pub fn reserve_id(&self) -> u64 {
+        self.next.fetch_add(1, Ordering::Relaxed) + 1
     }
 
-    pub fn get(&self, id: u64) -> Result<DocHandle, FsError> {
+    pub fn insert(&self, id: u64, value: T) {
+        lock(&self.docs).insert(id, Arc::new(Mutex::new(value)));
+    }
+
+    pub fn get(&self, id: u64) -> Result<Handle<T>, FsError> {
         lock(&self.docs).get(&id).cloned().ok_or_else(|| {
             FsError::new(FsErrorCode::UnknownDocument, format!("document {id}"), None)
         })
@@ -63,7 +76,7 @@ impl Registry {
     }
 }
 
-/// Locks a document (see [`lock`]).
-pub fn lock_doc(doc: &DocHandle) -> MutexGuard<'_, Document> {
+/// Locks an entry (see [`lock`]).
+pub fn lock_doc<T>(doc: &Handle<T>) -> MutexGuard<'_, T> {
     lock(doc)
 }

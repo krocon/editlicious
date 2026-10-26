@@ -11,7 +11,7 @@
 pub mod about;
 pub mod commands;
 pub mod config_file;
-pub use ed_core::{document, error};
+pub use ed_core::{document, editor, error};
 pub mod fs_atomic;
 pub mod model;
 
@@ -28,12 +28,9 @@ pub fn run() {
             commands::new_document,
             commands::close_document,
             commands::document_info,
-            commands::get_view,
-            commands::apply_edits,
-            commands::undo,
-            commands::redo,
-            commands::get_text,
+            commands::editor_command,
             commands::save_document,
+            commands::startup_paths,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -25,6 +25,8 @@ tauri = { version = "2.12.4", features = [] }
 tauri-plugin-dialog = "2"
 # design 002 E12: the editor engine (document, editing, frames) – Tauri-free
 ed-core = { path = "core" }
+# design 003 E5: copy/cut/paste in Rust – big selections never cross the IPC bridge
+arboard = { version = "3.7", default-features = false, features = ["wayland-data-control"] }
 
 [dev-dependencies]
 tempfile = "3"
