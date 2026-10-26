@@ -243,10 +243,10 @@
         <h1>The calm editor for huge files.</h1>
         <p class="pitch">Millions of lines, lines with millions of characters – editlicious opens them in a blink and stays quiet while you work. Almost nothing on screen but your text; everything else is one keystroke away. Still tastier than chocolate.</p>
         <div class="actions">
-          <a class="btn btn-primary" href="#download">Download 0.1.0</a>
+          <a class="btn btn-primary" href="https://github.com/krocon/editlicious/releases/">Download 0.1.0</a>
           <a class="btn btn-secondary" href="demo/">Try it in your browser</a>
         </div>
-        <p class="note">Free and open source (MIT). Version 0.1.0 is out – the first public preview for macOS, Windows and Linux (<a href="https://github.com/krocon/editlicious/releases/tag/v0.1.0">release notes</a>).</p>
+        <p class="note">Free and open source (MIT). Version 0.1.0 is out – the first public preview for macOS, Windows and Linux (<a href="https://github.com/krocon/editlicious/releases/">GitHub Releases</a>).</p>
         <figure class="shot hero-shot"><img src="img/main.png" width="1100" height="760" alt="editlicious with a Rust file: syntax colours, indentation guides, the find bar with “6 of 20” matches, marks for every match in the scroll bar and a quiet status bar with line, column, language, encoding and line ending"></figure>
 
         <ul class="numbers" aria-label="Measured speed">
@@ -377,18 +377,18 @@
       <section id="download" aria-labelledby="download-title">
         <div class="wrap">
           <h2 id="download-title">Download</h2>
-          <p class="lead">Version <strong>0.1.0</strong> (26 October 2026, preview) – the packages come straight from <a href="https://github.com/krocon/editlicious/releases/tag/v0.1.0">GitHub Releases</a>, built by the public release workflow.</p>
+          <p class="lead">Version <strong>0.1.0</strong> (26 October 2026, preview) – download it from <a href="https://github.com/krocon/editlicious/releases/">GitHub Releases</a>; the packages are built by the public release workflow.</p>
           <div class="table-scroll">
             <table>
-              <thead><tr><th scope="col">System</th><th scope="col">Package</th><th scope="col">Notes</th></tr></thead>
+              <thead><tr><th scope="col">System</th><th scope="col">Package on GitHub Releases</th><th scope="col">Notes</th></tr></thead>
               <tbody>
-                <tr><td>macOS 12+</td><td><a href="https://github.com/krocon/editlicious/releases/download/v0.1.0/editlicious_0.1.0_universal.dmg"><code>.dmg</code></a>&nbsp;· 10.9&nbsp;MB<br><span class="fine">Apple silicon and Intel</span></td><td>Opens text files from Finder (“Open with”). Not signed yet: the first time, right-click the app → Open.</td></tr>
-                <tr><td>Windows 10/11</td><td><a href="https://github.com/krocon/editlicious/releases/download/v0.1.0/editlicious_0.1.0_x64-setup.exe">setup&nbsp;<code>.exe</code></a>&nbsp;· 3.7&nbsp;MB<br><a href="https://github.com/krocon/editlicious/releases/download/v0.1.0/editlicious_0.1.0_x64_en-US.msi"><code>.msi</code></a>&nbsp;· 5.4&nbsp;MB</td><td>Uses the WebView2 that ships with Windows. Not signed yet: SmartScreen → More info → Run anyway.</td></tr>
-                <tr><td>Linux<br><span class="fine">x86-64</span></td><td><a href="https://github.com/krocon/editlicious/releases/download/v0.1.0/editlicious_0.1.0_amd64.deb"><code>.deb</code></a>&nbsp;· 7.1&nbsp;MB<br><a href="https://github.com/krocon/editlicious/releases/download/v0.1.0/editlicious-0.1.0-1.x86_64.rpm"><code>.rpm</code></a>&nbsp;· 7.1&nbsp;MB<br><a href="https://github.com/krocon/editlicious/releases/download/v0.1.0/editlicious_0.1.0_amd64.AppImage">AppImage</a>&nbsp;· 85&nbsp;MB</td><td>Needs WebKitGTK 4.1 (present on current distributions); the AppImage brings everything along.</td></tr>
+                <tr><td>macOS 12+</td><td><code>.dmg</code>&nbsp;· 10.9&nbsp;MB<br><span class="fine">Apple silicon and Intel</span></td><td>Opens text files from Finder (“Open with”). Not signed yet: the first time, right-click the app → Open.</td></tr>
+                <tr><td>Windows 10/11</td><td>setup&nbsp;<code>.exe</code>&nbsp;· 3.7&nbsp;MB<br><code>.msi</code>&nbsp;· 5.4&nbsp;MB</td><td>Uses the WebView2 that ships with Windows. Not signed yet: SmartScreen → More info → Run anyway.</td></tr>
+                <tr><td>Linux<br><span class="fine">x86-64</span></td><td><code>.deb</code>&nbsp;· 7.1&nbsp;MB<br><code>.rpm</code>&nbsp;· 7.1&nbsp;MB<br>AppImage&nbsp;· 85&nbsp;MB</td><td>Needs WebKitGTK 4.1 (present on current distributions); the AppImage brings everything along.</td></tr>
               </tbody>
             </table>
           </div>
-          <p class="fine">Check the download with <a href="https://github.com/krocon/editlicious/releases/download/v0.1.0/SHA256SUMS.txt"><code>SHA256SUMS.txt</code></a> (<code>sha256sum -c SHA256SUMS.txt</code>). Prefer to build it yourself? Clone the repository and run <code>pnpm install</code> and <code>pnpm tauri build</code>.</p>
+          <p class="fine">Each release also contains <code>SHA256SUMS.txt</code> to check the download (<code>sha256sum -c SHA256SUMS.txt</code>). Prefer to build it yourself? Clone the repository and run <code>pnpm install</code> and <code>pnpm tauri build</code>.</p>
         </div>
       </section>
 
