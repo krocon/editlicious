@@ -193,6 +193,16 @@ jobs:
             echo "APPLE_API_KEY_PATH=$key" >> "$GITHUB_ENV"
           fi
 
+      # --- the MCP sidecar (design 016 E10): built first, bundled via tauri.sidecar.conf.json
+      - name: MCP sidecar
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "macos" ]; then
+            node scripts/mcp-sidecar.mjs universal-apple-darwin
+          else
+            node scripts/mcp-sidecar.mjs
+          fi
+
       # --- build: with a draft release, or packages only (dry-run) ---------------------
       - name: Build and attach to the draft release
         if: needs.check.outputs.publish == 'true'
@@ -208,12 +218,12 @@ jobs:
           releaseBody: ${{ needs.check.outputs.body }}
           releaseDraft: true
           prerelease: ${{ startsWith(needs.check.outputs.version, '0.') }}
-          args: ${{ matrix.args }}
+          args: ${{ matrix.args }} --config src-tauri/tauri.sidecar.conf.json
       - name: Build only (dry-run)
         if: needs.check.outputs.publish != 'true'
         uses: tauri-apps/tauri-action@v0
         with:
-          args: ${{ matrix.args }}
+          args: ${{ matrix.args }} --config src-tauri/tauri.sidecar.conf.json
 
       # --- check what was built ---------------------------------------------------------
       - name: Collect packages, checksums, summary

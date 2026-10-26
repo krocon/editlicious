@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { ActionService } from '../../core/actions/action.service';
 import { Settings } from '../../core/settings/settings.models';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { Modal } from '../../shared/dialog/modal';
+import { McpStore } from '../mcp/mcp.store';
 import { SCHEMES } from '../menus/chrome.store';
 import { SettingsStore } from './settings.store';
 import { SETTINGS_TEXTS } from './settings-texts';
@@ -22,6 +23,20 @@ export class SettingsDialog {
   protected readonly mac = inject(ActionService).os === 'mac';
   protected readonly schemes = SCHEMES;
   private readonly actions = inject(ActionService);
+  protected readonly mcp = inject(McpStore);
+  protected readonly copied = signal(false);
+
+  constructor() {
+    void this.mcp.refresh();
+  }
+
+  /** The Claude Code line to the clipboard (design 016 E9). */
+  protected copy(text: string): void {
+    void navigator.clipboard
+      ?.writeText(text)
+      .then(() => this.copied.set(true))
+      .catch(() => undefined);
+  }
 
   protected schemeLabel(s: string): string {
     const l = this.actions.label(`view.scheme.${s}`).replace(/^[^:]+:\s*/, '');

@@ -35,3 +35,6 @@ Thumbs.db
 
 # WebAssembly demo build (prompt 011): the crate's own target dir
 /src-tauri/wasm/target
+
+# MCP sidecar for the bundles (scripts/mcp-sidecar.mjs)
+/src-tauri/binaries

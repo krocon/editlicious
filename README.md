@@ -16,6 +16,8 @@ built with [Tauri 2](https://tauri.app), Angular 22 (zoneless, signals) and Rust
 - **Your encodings, your line endings** – detected on load, kept on save.
 - **Record and play back** – macros, and typing scripts for screen videos with a human rhythm
   ([`docs/scripts.md`](docs/scripts.md)).
+- **AI control (MCP)** – opt-in: Claude Code and other assistants can open, read, type and record
+  ([`docs/mcp.md`](docs/mcp.md)).
 
 > Status: in development. Progress and plan: [`prompts/README.md`](prompts/README.md).
 

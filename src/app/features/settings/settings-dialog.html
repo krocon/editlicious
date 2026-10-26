@@ -166,6 +166,31 @@
         {{ t.statusBar }}
       </label>
     </fieldset>
+
+    <fieldset>
+      <legend>{{ t.ai }}</legend>
+      <label class="check">
+        <input type="checkbox" [checked]="s.mcp" (change)="set('mcp', checked($event))" />
+        {{ t.mcp }}
+      </label>
+      <p class="hint">{{ t.mcpHint }}</p>
+      @if (s.mcp) {
+        @if (mcp.command(); as cmd) {
+          <p class="hint">{{ t.mcpCommand }}</p>
+          <div class="command">
+            <code>{{ cmd }}</code>
+            <button type="button" class="btn quiet" (click)="copy(cmd)">
+              {{ copied() ? t.mcpCopied : t.mcpCopy }}
+            </button>
+          </div>
+        } @else {
+          <p class="hint">{{ t.mcpNoSidecar }}</p>
+        }
+        @if (mcp.connections() > 0) {
+          <p class="hint" role="status">{{ t.mcpConnected(mcp.connections()) }}</p>
+        }
+      }
+    </fieldset>
   </div>
   <div class="actions">
     <span class="hint">{{ t.savedIn }}</span>

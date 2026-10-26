@@ -17,6 +17,8 @@ export interface Settings {
   statusBar: boolean;
   wordWrap: boolean;
   overview: boolean;
+  /** An AI may drive the editor over MCP (design 016 E9). */
+  mcp: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -37,6 +39,7 @@ export const DEFAULT_SETTINGS: Settings = {
   statusBar: true,
   wordWrap: false,
   overview: true,
+  mcp: false,
 };
 
 export interface LoadedSettings {

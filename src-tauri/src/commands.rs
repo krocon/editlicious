@@ -40,7 +40,10 @@ pub struct AppState {
     /// in this run (design 013 review #10).
     keep: Mutex<std::collections::HashSet<&'static str>>,
     /// Running playbacks by document (design 015 E9/E10).
-    playing: Arc<Mutex<std::collections::HashMap<u64, Arc<playback::Control>>>>,
+    playing: crate::mcp::Playing,
+    /// AI control (design 016): what the UI told the tools, and the bridge while it is on.
+    mcp_ui: Arc<Mutex<crate::mcp::UiState>>,
+    mcp_server: Mutex<Option<crate::mcp::Server>>,
 }
 
 impl AppState {
@@ -793,4 +796,161 @@ mod command_rules {
         }
         assert!(count >= 27);
     }
+}
+
+// ---------------------------------------------------------------- AI control (design 016)
+
+/// Tauri events for the UI (design 016 E8).
+struct TauriUi(AppHandle);
+
+impl crate::mcp::Ui for TauriUi {
+    fn opened(&self, info: &DocInfo, activate: bool) {
+        use tauri::Emitter;
+        let _ = self.0.emit(
+            "mcp-opened",
+            serde_json::json!({ "info": info, "activate": activate }),
+        );
+    }
+    fn activate(&self, id: u64) {
+        use tauri::Emitter;
+        let _ = self.0.emit("mcp-activate", serde_json::json!({ "id": id }));
+    }
+    fn changed(&self, id: u64) {
+        use tauri::Emitter;
+        let _ = self.0.emit("mcp-changed", serde_json::json!({ "id": id }));
+    }
+    fn action(&self, id: u64, action: &str) {
+        use tauri::Emitter;
+        let _ = self.0.emit(
+            "mcp-action",
+            serde_json::json!({ "id": id, "action": action }),
+        );
+    }
+    fn recording(&self, id: u64, on: bool) {
+        use tauri::Emitter;
+        let _ = self
+            .0
+            .emit("mcp-recording", serde_json::json!({ "id": id, "on": on }));
+    }
+    fn playback(&self, id: u64, event: PlaybackEvent) {
+        use tauri::Emitter;
+        let _ = self.0.emit(
+            "mcp-playback",
+            serde_json::json!({ "id": id, "event": event }),
+        );
+    }
+    fn status(&self, connections: usize) {
+        use tauri::Emitter;
+        let _ = self.0.emit(
+            "mcp-status",
+            serde_json::json!({ "connections": connections }),
+        );
+    }
+}
+
+/// State of AI control for the settings dialog.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpInfo {
+    pub enabled: bool,
+    pub connections: usize,
+    /// The sidecar program next to the app, `None` when it is missing.
+    pub sidecar: Option<String>,
+}
+
+fn sidecar_path() -> Option<String> {
+    let exe = std::env::current_exe().ok()?;
+    let name = if cfg!(windows) {
+        "editlicious-mcp.exe"
+    } else {
+        "editlicious-mcp"
+    };
+    let p = exe.parent()?.join(name);
+    p.is_file().then(|| p.to_string_lossy().into_owned())
+}
+
+fn mcp_info_of(state: &AppState) -> McpInfo {
+    let server = state.mcp_server.lock().unwrap_or_else(|e| e.into_inner());
+    McpInfo {
+        enabled: server.is_some(),
+        connections: server.as_ref().map_or(0, |s| s.connections()),
+        sidecar: sidecar_path(),
+    }
+}
+
+/// Turns AI control on (bridge + endpoint file) or off (both gone, connections closed).
+#[tauri::command]
+pub async fn mcp_enable(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<McpInfo, FsError> {
+    let mut server = state.mcp_server.lock().unwrap_or_else(|e| e.into_inner());
+    if enabled && server.is_none() {
+        let file = config_dir(&app)?.join(ed_mcp::bridge::ENDPOINT_FILE);
+        let tools = crate::mcp::Tools {
+            sessions: state.sessions.clone(),
+            playing: state.playing.clone(),
+            ui_state: state.mcp_ui.clone(),
+            ui: Arc::new(TauriUi(app.clone())),
+            version: app.package_info().version.to_string(),
+        };
+        *server = Some(crate::mcp::Server::start(Arc::new(tools), &file)?);
+    } else if !enabled {
+        *server = None;
+    }
+    drop(server);
+    Ok(mcp_info_of(&state))
+}
+
+#[tauri::command]
+pub async fn mcp_info(state: State<'_, AppState>) -> Result<McpInfo, FsError> {
+    Ok(mcp_info_of(&state))
+}
+
+/// The UI's actions (id, label) for `list_actions`/`run_action`.
+#[tauri::command]
+pub async fn mcp_set_actions(
+    state: State<'_, AppState>,
+    actions: Vec<(String, String)>,
+) -> Result<(), FsError> {
+    state
+        .mcp_ui
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .actions = actions;
+    Ok(())
+}
+
+/// The active document – tools without `id` work on it.
+#[tauri::command]
+pub async fn mcp_set_active(state: State<'_, AppState>, id: Option<u64>) -> Result<(), FsError> {
+    state
+        .mcp_ui
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .active = id;
+    Ok(())
+}
+
+/// Closes every AI connection and stops the playbacks the AI started.
+#[tauri::command]
+pub async fn mcp_disconnect(state: State<'_, AppState>) -> Result<(), FsError> {
+    if let Some(s) = state
+        .mcp_server
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+    {
+        s.disconnect();
+    }
+    for c in state
+        .playing
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .values()
+    {
+        c.stop();
+    }
+    Ok(())
 }

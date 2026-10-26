@@ -27,6 +27,7 @@ const FIXED: Record<string, string> = {
   'record.stop': 'Wiedergabe beenden',
   'record.save': 'Letzte Aufnahme speichern …',
   'record.saveScript': 'Letzte Aufnahme als Skript speichern …',
+  'mcp.disconnect': 'KI-Steuerung trennen',
   'edit.copyHtmlNumbers': 'Als HTML mit Zeilennummern kopieren',
   'app.focusMenu': 'Menüleiste',
   'app.about': 'Über editlicious',

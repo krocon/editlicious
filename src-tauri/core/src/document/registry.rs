@@ -50,6 +50,13 @@ impl<T> Registry<T> {
         lock(&self.docs).remove(&id).is_some()
     }
 
+    /// Ids of every entry, ascending.
+    pub fn ids(&self) -> Vec<u64> {
+        let mut ids: Vec<u64> = lock(&self.docs).keys().copied().collect();
+        ids.sort_unstable();
+        ids
+    }
+
     pub fn len(&self) -> usize {
         lock(&self.docs).len()
     }

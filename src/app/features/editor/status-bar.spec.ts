@@ -1,3 +1,5 @@
+import { McpApi } from '../../core/mcp/mcp-api';
+import { FakeMcpApi } from '../../../testing/fake-mcp-api';
 import { TestBed } from '@angular/core/testing';
 import { ActionService } from '../../core/actions/action.service';
 import { OS } from '../../core/actions/platform';
@@ -18,6 +20,7 @@ const PROVIDERS = [
   { provide: EditorApi, useClass: FakeEditorApi },
   { provide: RecordingApi, useClass: FakeRecordingApi },
   { provide: SettingsApi, useClass: FakeSettingsApi },
+  { provide: McpApi, useClass: FakeMcpApi },
   { provide: WorkspaceApi, useClass: FakeWorkspaceApi },
 ];
 

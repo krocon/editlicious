@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { ActionService } from '../../core/actions/action.service';
 import { Frame } from '../../core/editor/editor.models';
 import { locale } from '../../core/i18n/i18n';
+import { McpStore } from '../mcp/mcp.store';
 import { RecordingStore } from '../recording/recording.store';
 import { RECORDING_TEXTS } from '../recording/recording-texts';
 import { EDITOR_TEXTS } from './editor-texts';
@@ -27,6 +28,16 @@ import { EDITOR_TEXTS } from './editor-texts';
       }
       @if (playback(); as p) {
         <span class="item strong" [title]="rt.playTitle">{{ p }}</span>
+      }
+      @if (ai()) {
+        <button
+          type="button"
+          class="item btn-link strong"
+          [title]="rt.aiTitle"
+          (click)="run('mcp.disconnect')"
+        >
+          {{ rt.ai }}
+        </button>
       }
       <span class="fill"></span>
       @if (f.wrap) {
@@ -72,6 +83,10 @@ export class StatusBar {
   protected readonly rt = RECORDING_TEXTS;
   private readonly actions = inject(ActionService);
   private readonly rec = inject(RecordingStore);
+  private readonly mcp = inject(McpStore);
+
+  /** "AI" while an AI is connected (design 016 E9); a click disconnects it. */
+  protected readonly ai = computed(() => this.mcp.connections() > 0);
 
   /** "● REC" while this document records (design 015 E11). */
   protected readonly recording = computed(() => {
@@ -85,7 +100,7 @@ export class StatusBar {
     const p = this.rec.playback();
     if (!f || !p || p.docId !== f.info.id) return '';
     const pct = p.total ? Math.floor((p.done * 100) / p.total) : 0;
-    return `${p.paused ? '❚❚' : '▶'} ${this.rt.progress(pct)}`;
+    return `${p.ai ? this.rt.aiTyping + ' ' : ''}${p.paused ? '❚❚' : '▶'} ${this.rt.progress(pct)}`;
   });
 
   protected readonly position = computed(() => {

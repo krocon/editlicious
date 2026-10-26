@@ -59,6 +59,14 @@ weiterlaufen (`fail-fast: false`); erneut starten über „Re-run failed jobs“
 Lokal: `pnpm tauri:build:mac` (universal, braucht `rustup target add aarch64-apple-darwin x86_64-apple-darwin`),
 `pnpm tauri:build:mac:local` (nur die eigene Architektur), `pnpm tauri:build:linux`, `pnpm tauri:build:windows`.
 
+## MCP-Sidecar (Prompt 016)
+
+Das KI-Programm `editlicious-mcp` (Crate `ed-mcp`) gehört in jedes Paket, neben das App-Programm. Der Workflow baut es
+vor `tauri-action` mit `node scripts/mcp-sidecar.mjs` (macOS: `universal-apple-darwin` per `lipo`) nach
+`src-tauri/binaries/editlicious-mcp-<triple>` und baut mit `--config src-tauri/tauri.sidecar.conf.json`
+(`bundle.externalBin`). Lokal: `pnpm mcp:build` und dann `pnpm tauri build --config src-tauri/tauri.sidecar.conf.json`.
+Signiert wird es mit der App (macOS: im Bundle).
+
 ## Dateizuordnung („Öffnen mit editlicious“)
 
 | OS | Wie | Wirkung |

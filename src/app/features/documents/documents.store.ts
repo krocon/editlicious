@@ -439,6 +439,16 @@ export class DocumentsStore {
     if (this.docs().some((d) => d.id === id)) this.activeId.set(id);
   }
 
+  /** A document the engine opened on its own (an AI over MCP, design 016 E8): a new tab. */
+  adopt(info: DocInfo, activate: boolean): void {
+    if (this.docs().some((d) => d.id === info.id)) {
+      if (activate) this.activeId.set(info.id);
+      return;
+    }
+    if (info.path) this.remember(info.path);
+    this.add(info, activate);
+  }
+
   next(step = 1): void {
     const docs = this.docs();
     if (docs.length < 2) return;

@@ -1,5 +1,5 @@
 [workspace]
-members = ["core"]
+members = ["core", "mcp"]
 # the WebAssembly build of the engine for the website demo (prompt 011) – own lock file, built with
 # `pnpm site:demo`; outside the workspace so `ed-core` keeps Oniguruma for the app
 exclude = ["wasm"]
@@ -30,6 +30,8 @@ tauri-plugin-dialog = "2"
 tauri-plugin-single-instance = "2"
 # design 002 E12: the editor engine (document, editing, frames) – Tauri-free
 ed-core = { path = "core" }
+# design 016 E1: bridge messages and the endpoint file shared with the MCP sidecar
+ed-mcp = { path = "mcp" }
 # design 003 E5: copy/cut/paste in Rust – big selections never cross the IPC bridge
 arboard = { version = "3.7", default-features = false, features = ["wayland-data-control"] }
 

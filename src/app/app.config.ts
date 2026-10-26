@@ -2,6 +2,7 @@ import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/
 import { AboutApi, TauriAboutApi } from './core/about/about-api';
 import { EditorApi, TauriEditorApi } from './core/editor/editor-api';
 import { RecordingApi, TauriRecordingApi } from './core/recording/recording-api';
+import { McpApi, TauriMcpApi } from './core/mcp/mcp-api';
 import { SettingsApi, TauriSettingsApi } from './core/settings/settings-api';
 import { TauriWorkspaceApi, WorkspaceApi } from './core/workspace/workspace-api';
 
@@ -15,6 +16,7 @@ export const appConfig: ApplicationConfig = {
     { provide: AboutApi, useClass: TauriAboutApi },
     { provide: EditorApi, useClass: TauriEditorApi },
     { provide: RecordingApi, useClass: TauriRecordingApi },
+    { provide: McpApi, useClass: TauriMcpApi },
     { provide: SettingsApi, useClass: TauriSettingsApi },
     { provide: WorkspaceApi, useClass: TauriWorkspaceApi },
   ],

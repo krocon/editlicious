@@ -215,6 +215,19 @@ pub fn count(
     ok.then_some((total, ahead))
 }
 
+/// The first `max` matches from the start as char ranges of the rope (AI `find`, design 016).
+pub fn first_matches(rope: &Rope, re: &Regex, max: usize) -> Vec<(usize, usize)> {
+    let mut out = Vec::new();
+    if max == 0 {
+        return out;
+    }
+    each_match(rope, re, 0, rope.len_bytes(), None, &mut |s, e| {
+        out.push((s, e));
+        out.len() < max
+    });
+    out
+}
+
 /// Matches in a piece of text (a visible line): char ranges relative to the text.
 pub fn matches_in(text: &str, re: &Regex) -> Vec<(usize, usize)> {
     let mut out = Vec::new();

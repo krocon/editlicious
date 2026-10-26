@@ -16,6 +16,8 @@ export interface PlaybackState {
   done: number;
   total: number;
   paused: boolean;
+  /** Started by an AI over MCP (design 016 E7). */
+  ai?: boolean;
 }
 
 /** Engine commands that only touch the view – allowed while a playback runs (design 015 E10). */
@@ -193,12 +195,28 @@ export class RecordingStore {
     }
   }
 
+  /** A playback an AI runs over MCP (design 016 E7): shown like an own one. */
+  external(docId: number, e: PlaybackEvent): void {
+    const p = this.playback();
+    if (!p && e.kind !== 'done') {
+      this.playback.set({ docId, done: 0, total: 0, paused: false, ai: true });
+    }
+    this.onEvent(docId, e);
+  }
+
+  /** An AI started or stopped a recording. */
+  setRecording(docId: number, on: boolean): void {
+    this.setIn(this.recording, docId, on);
+    if (!on) this.setIn(this.recorded, docId, true);
+  }
+
   private onEvent(docId: number, e: PlaybackEvent): void {
     if (e.kind === 'frame') {
       this.pushed.set(e.frame);
     } else if (e.kind === 'progress') {
-      if (this.playback()?.docId === docId) {
-        this.playback.set({ docId, done: e.done, total: e.total, paused: e.paused });
+      const p = this.playback();
+      if (p?.docId === docId) {
+        this.playback.set({ ...p, done: e.done, total: e.total, paused: e.paused });
       }
     } else {
       if (this.playback()?.docId === docId) this.playback.set(null);

@@ -1,3 +1,5 @@
+import { McpApi } from './core/mcp/mcp-api';
+import { FakeMcpApi } from '../testing/fake-mcp-api';
 import { RecordingApi } from './core/recording/recording-api';
 import { FakeRecordingApi } from '../testing/fake-recording-api';
 import { SettingsApi } from './core/settings/settings-api';
@@ -21,6 +23,7 @@ function setup(desktop: boolean, paths: string[] = []): FakeEditorApi {
     imports: [App],
     providers: [
       { provide: SettingsApi, useClass: FakeSettingsApi },
+      { provide: McpApi, useClass: FakeMcpApi },
       { provide: AboutApi, useClass: FakeAboutApi },
       { provide: EditorApi, useValue: api },
       { provide: RecordingApi, useClass: FakeRecordingApi },

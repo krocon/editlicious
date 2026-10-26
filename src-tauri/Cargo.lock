@@ -919,11 +919,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ed-mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "editlicious"
 version = "0.1.0"
 dependencies = [
  "arboard",
  "ed-core",
+ "ed-mcp",
  "serde",
  "serde_json",
  "tauri",

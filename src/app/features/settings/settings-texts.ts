@@ -28,6 +28,16 @@ const EN = {
   showTabs: 'Show tabs as arrows',
   wordWrap: 'Wrap long lines',
   overview: 'Show matches and markers in the scrollbar',
+  ai: 'AI control',
+  mcp: 'Let an AI drive the editor (MCP)',
+  mcpHint:
+    'Off by default. Only programs of your user account on this computer can connect – with a key that changes at every start.',
+  mcpCommand: 'Add it to Claude Code:',
+  mcpCopy: 'Copy',
+  mcpCopied: 'Copied.',
+  mcpNoSidecar:
+    'The MCP program (editlicious-mcp) is not next to the app – install a release package.',
+  mcpConnected: (n: number) => (n === 1 ? '1 AI connected' : `${n} AIs connected`),
   scheme: 'Colour scheme',
   menuBar: 'Show the menu bar (otherwise Alt)',
   statusBar: 'Show the status bar',
@@ -64,6 +74,16 @@ export const SETTINGS_TEXTS = translatable('settings', EN, {
     showTabs: 'Tabs als Pfeile zeigen',
     wordWrap: 'Lange Zeilen umbrechen',
     overview: 'Treffer und Markierungen in der Scrollleiste zeigen',
+    ai: 'KI-Steuerung',
+    mcp: 'Eine KI darf den Editor steuern (MCP)',
+    mcpHint:
+      'Standardmäßig aus. Verbinden können sich nur Programme deines Benutzerkontos auf diesem Rechner – mit einem Schlüssel, der sich bei jedem Start ändert.',
+    mcpCommand: 'In Claude Code eintragen:',
+    mcpCopy: 'Kopieren',
+    mcpCopied: 'Kopiert.',
+    mcpNoSidecar:
+      'Das MCP-Programm (editlicious-mcp) liegt nicht neben der App – bitte ein Release-Paket installieren.',
+    mcpConnected: (n: number) => (n === 1 ? '1 KI verbunden' : `${n} KIs verbunden`),
     scheme: 'Farbschema',
     menuBar: 'Menüleiste zeigen (sonst Alt)',
     statusBar: 'Statusleiste zeigen',

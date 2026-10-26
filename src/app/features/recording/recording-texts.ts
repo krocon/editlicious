@@ -30,6 +30,9 @@ const EN = {
   paused: 'paused',
   progress: (pct: number) => `${pct} %`,
   playTitle: 'Playback',
+  ai: 'AI',
+  aiTitle: 'An AI is connected – click to disconnect',
+  aiTyping: 'AI typing',
 };
 
 export const RECORDING_TEXTS = translatable('recording', EN, {
@@ -61,5 +64,8 @@ export const RECORDING_TEXTS = translatable('recording', EN, {
     paused: 'angehalten',
     progress: (pct: number) => `${pct} %`,
     playTitle: 'Wiedergabe',
+    ai: 'KI',
+    aiTitle: 'Eine KI ist verbunden – Klick trennt sie',
+    aiTyping: 'KI tippt',
   },
 });

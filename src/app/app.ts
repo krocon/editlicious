@@ -33,6 +33,7 @@ import { DialogService } from './shared/dialog/dialog.service';
 import { SettingsDialog } from './features/settings/settings-dialog';
 import { SettingsStore } from './features/settings/settings.store';
 import { RecordingStore } from './features/recording/recording.store';
+import { McpStore } from './features/mcp/mcp.store';
 
 /**
  * Root: (hidden) menu bar, tabs only when wanted, the editor surface of the active file –
@@ -150,6 +151,7 @@ export class App {
     });
     this.registerActions();
     inject(RecordingStore).registerActions(this.actions, this.destroyRef);
+    if (this.desktop) inject(McpStore).start(this.destroyRef);
     void this.actions.loadOverrides();
     inject(MenuService).start();
     if (this.desktop) void this.start();

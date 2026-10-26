@@ -60,3 +60,29 @@ legend {
     margin: 0;
   }
 }
+
+/* AI control (design 016 E9): the line for Claude Code */
+fieldset .hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+}
+
+.command {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  code {
+    flex: 1;
+    min-width: 0;
+    padding: var(--space-1) var(--space-2);
+    overflow-x: auto;
+    white-space: nowrap;
+    font-size: var(--font-size-small);
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    user-select: all;
+  }
+}

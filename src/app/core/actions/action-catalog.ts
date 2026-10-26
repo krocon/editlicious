@@ -115,6 +115,8 @@ export const ACTIONS: readonly ActionDef[] = [
   G('record.stop', 'Stop playback'),
   G('record.save', 'Save the last recording…'),
   G('record.saveScript', 'Save the last recording as a script…'),
+  // AI control (design 016)
+  G('mcp.disconnect', 'Disconnect the AI'),
   // editing – the engine does it
   E('edit.undo', 'Undo', { type: 'undo' }, { repeat: true }),
   E('edit.redo', 'Redo', { type: 'redo' }, { repeat: true }),

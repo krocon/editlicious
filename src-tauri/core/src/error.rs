@@ -54,6 +54,10 @@ pub enum FsErrorCode {
     PlaybackRunning,
     /// There is no recording to save or play (design 015).
     NoRecording,
+    /// The document changed since the revision an AI tool call expected (design 016 E6).
+    RevisionConflict,
+    /// A tool call with missing or wrong arguments (design 016).
+    InvalidRequest,
 }
 
 /// The one error type every command returns.
