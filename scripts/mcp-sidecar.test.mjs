@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { sidecarName } from './mcp-sidecar.mjs';
+import { sidecarFiles, sidecarName } from './mcp-sidecar.mjs';
 
 test('sidecar names follow Tauri externalBin (name-<triple>[.exe])', () => {
   assert.equal(sidecarName('x86_64-unknown-linux-gnu'), 'editlicious-mcp-x86_64-unknown-linux-gnu');
@@ -17,4 +17,13 @@ test('the release workflow builds the sidecar and bundles it', () => {
     readFileSync(new URL('../src-tauri/tauri.sidecar.conf.json', import.meta.url), 'utf8'),
   );
   assert.deepEqual(conf.bundle.externalBin, ['binaries/editlicious-mcp']);
+});
+
+test('a universal macOS build needs the sidecar of each architecture too', () => {
+  assert.deepEqual(sidecarFiles('universal-apple-darwin'), [
+    'editlicious-mcp-aarch64-apple-darwin',
+    'editlicious-mcp-x86_64-apple-darwin',
+    'editlicious-mcp-universal-apple-darwin',
+  ]);
+  assert.deepEqual(sidecarFiles('x86_64-pc-windows-msvc'), ['editlicious-mcp-x86_64-pc-windows-msvc.exe']);
 });

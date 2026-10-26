@@ -17,6 +17,20 @@ export function sidecarName(triple) {
   return `editlicious-mcp-${triple}${triple.includes('windows') ? '.exe' : ''}`;
 }
 
+/** The macOS architectures of a universal build. */
+export const UNIVERSAL_PARTS = ['aarch64-apple-darwin', 'x86_64-apple-darwin'];
+
+/**
+ * Every sidecar file a build for `triple` needs. A universal macOS build compiles the app once per
+ * architecture first, and each of those builds looks for its own `…-<arch>` sidecar; the bundle
+ * then takes the `…-universal-apple-darwin` one (release 1.0.0 failed without the parts).
+ */
+export function sidecarFiles(triple) {
+  return triple === 'universal-apple-darwin'
+    ? [...UNIVERSAL_PARTS, triple].map(sidecarName)
+    : [sidecarName(triple)];
+}
+
 function hostTriple() {
   const out = execFileSync('rustc', ['-vV'], { encoding: 'utf8' });
   return /^host: (.+)$/m.exec(out)[1].trim();
@@ -38,12 +52,14 @@ function main(argv) {
   mkdirSync(dir, { recursive: true });
   const target = join(dir, sidecarName(triple));
   if (triple === 'universal-apple-darwin') {
-    const parts = ['aarch64-apple-darwin', 'x86_64-apple-darwin'].map(build);
+    const parts = UNIVERSAL_PARTS.map(build);
+    // each architecture's build needs its own file, the bundle the combined one
+    UNIVERSAL_PARTS.forEach((t, i) => copyFileSync(parts[i], join(dir, sidecarName(t))));
     run('lipo', ['-create', '-output', target, ...parts]);
   } else {
     copyFileSync(build(triple), target);
   }
-  console.log(`sidecar: ${target}`);
+  for (const f of sidecarFiles(triple)) console.log(`sidecar: ${join(dir, f)}`);
 }
 
 if (process.argv[1] === import.meta.filename) main(process.argv.slice(2));
