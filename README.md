@@ -17,6 +17,14 @@ built with [Tauri 2](https://tauri.app), Angular 22 (zoneless, signals) and Rust
 
 > Status: in development. Progress and plan: [`prompts/README.md`](prompts/README.md).
 
+![editlicious with a Rust file, the find bar and marks in the scroll bar](site/img/main.png)
+
+## Website and live demo
+
+`site/` holds the promotional page (one static HTML file, no JavaScript) and `site/demo/`, a live demo that runs the
+real editing engine (`ed-core`) in the browser as WebAssembly. See [`site/README.md`](site/README.md);
+`pnpm site:demo` rebuilds the engine, `pnpm site:test` checks the page.
+
 ## Development
 
 ```bash

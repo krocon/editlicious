@@ -37,6 +37,7 @@ jobs:
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm test
+      - run: pnpm site:test
       - run: pnpm build
 
   rust:

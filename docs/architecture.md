@@ -70,3 +70,11 @@ Release-Build im Linux-Container (26.10.2026), Details in `prompts/done/002-doku
 Suche (006): Treffer am Ende von 100 MB 30 ms · 1,4 Mio. Treffer zählen 0,44 s.
 Hervorhebung (008): Taste mit Hervorhebung ~5 ms in 100 000 Zeilen Rust, weite Sprünge sofort (ungefähr) und
 nach dem Hintergrund-Aufholen exakt.
+
+## WebAssembly-Demo (011)
+
+`src-tauri/wasm` (Crate `ed-wasm`, nicht im Workspace, eigene `Cargo.lock`) bindet `ed-core` mit Feature `fancy`
+per `wasm-bindgen` an (`Editor.command(json) → frame json`). Abhängigkeiten: `wasm-bindgen` (Bindung),
+`web-time` in `ed-core` (`Instant`, das es auf wasm32 sonst nicht gibt; nativ = std). Gebaut vom Workflow
+„Site demo“, der `site/demo/pkg` zurück auf `main` committet (im Container fehlt das wasm32-Ziel).
+

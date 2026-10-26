@@ -31,6 +31,7 @@
 | Rust | `pnpm rust:fmt`, `pnpm rust:lint` (clippy `-D warnings`), `pnpm rust:test` (ganzer Workspace inkl. `ed-core`) |
 | Messungen | `cd src-tauri && cargo test -p ed-core --release -- --ignored --nocapture measure_` |
 | Alles prüfen | `pnpm check` |
+| Webseite | `pnpm site:test`; Demo-Engine `pnpm site:demo` (braucht wasm32-Ziel) bzw. Workflow „Site demo“ |
 | Debug-App ohne Bundle | `pnpm tauri build --debug --no-bundle` → `src-tauri/target/debug/editlicious` |
 | Icons neu erzeugen | `pnpm tauri icon src-tauri/icons/source/app-icon.svg -o src-tauri/icons` (danach `android/`, `ios/` löschen) |
 
@@ -86,7 +87,8 @@ src-tauri/                    Rust (Tauri 2), Crate `editlicious`, Lib `ed_lib`
   icons/source/app-icon.svg   Quelle des App-Icons
 docs/                         architecture.md (Entscheidungen, Commands, Abhängigkeiten), legacy-analysis.md
 prompts/                      Feature-Prompts (Index README.md), done/
-site/                         Werbe-Webseite (Prompt 011)
+site/                         Werbe-Webseite (index.html ohne JS) + demo/ (Engine als WebAssembly, pkg/ vom Workflow)
+  src-tauri/wasm/             Crate `ed-wasm` (wasm-bindgen-Bindung von ed-core, außerhalb des Workspaces)
 ```
 
 ## 4. Architekturregeln (verbindlich)
