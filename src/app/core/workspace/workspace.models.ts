@@ -14,4 +14,6 @@ export interface SessionFile {
   active: number;
   recent: string[];
   tabs: TabsMode;
+  findHistory: string[];
+  replaceHistory: string[];
 }

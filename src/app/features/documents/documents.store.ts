@@ -5,6 +5,7 @@ import { describeFsError, FsError, toFsError } from '../../core/errors/fs-error'
 import { WorkspaceApi } from '../../core/workspace/workspace-api';
 import { SessionFile, TabsMode } from '../../core/workspace/workspace.models';
 import { AskService } from '../../shared/ask/ask.service';
+import { FindStore } from '../find/find.store';
 import { DOC_TEXTS as T } from './documents-texts';
 
 export interface OpenDoc {
@@ -30,6 +31,7 @@ export class DocumentsStore {
   private readonly api = inject(EditorApi);
   private readonly ws = inject(WorkspaceApi);
   private readonly ask = inject(AskService);
+  private readonly find = inject(FindStore);
 
   readonly docs = signal<OpenDoc[]>([]);
   readonly activeId = signal<number | null>(null);
@@ -62,6 +64,8 @@ export class DocumentsStore {
       this.activeId();
       this.tabsMode();
       this.recent();
+      this.find.findHistory();
+      this.find.replaceHistory();
       if (this.started) untracked(() => this.persistSoon());
     });
   }
@@ -74,6 +78,8 @@ export class DocumentsStore {
     if (session) {
       this.tabsMode.set(session.tabs);
       this.recent.set(session.recent);
+      this.find.findHistory.set(session.findHistory ?? []);
+      this.find.replaceHistory.set(session.replaceHistory ?? []);
     }
     const paths = await this.api.startupPaths().catch((): string[] => []);
     if (paths.length > 0) {
@@ -121,6 +127,8 @@ export class DocumentsStore {
         active,
         recent: this.recent(),
         tabs: this.tabsMode(),
+        findHistory: this.find.findHistory(),
+        replaceHistory: this.find.replaceHistory(),
       });
     } catch {
       // no backend or not writable: the session is a convenience

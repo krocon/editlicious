@@ -19,6 +19,10 @@ import { describeFsError, toFsError } from '../../core/errors/fs-error';
 import { ActionService } from '../../core/actions/action.service';
 import { ACTIONS } from '../../core/actions/action-catalog';
 import { EDITOR_TEXTS } from './editor-texts';
+import { FindBar } from '../find/find-bar';
+import { FindStore } from '../find/find.store';
+import { FIND_TEXTS } from '../find/find-texts';
+import { GotoBar } from '../find/goto-bar';
 
 /** Cells of padding left of the text. */
 const PAD_CELLS = 1;
@@ -40,6 +44,7 @@ interface Metrics {
  */
 @Component({
   selector: 'app-editor-view',
+  imports: [FindBar, GotoBar],
   templateUrl: './editor-view.html',
   styleUrl: './editor-view.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -63,6 +68,11 @@ export class EditorView {
   protected readonly focused = signal(false);
   protected readonly composing = signal(false);
   protected readonly status = signal('');
+  protected readonly find = inject(FindStore);
+  protected readonly gotoOpen = signal(false);
+  protected readonly findCount = signal('');
+  protected readonly findInvalid = signal(false);
+  private countTimer: ReturnType<typeof setTimeout> | null = null;
 
   private readonly api = inject(EditorApi);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -155,6 +165,115 @@ export class EditorView {
       const cmd = def.cmd;
       if (cmd) actions.register(def.id, { run: () => void this.send(cmd) }, this.destroyRef);
     }
+    this.registerFind(actions);
+  }
+
+  // ---------------------------------------------------------------- find (design 006)
+
+  private registerFind(actions: ActionService): void {
+    const f = this.find;
+    actions.registerAll(
+      {
+        'find.open': { run: () => this.openFind(false) },
+        'find.replace': { run: () => this.openFind(true) },
+        'find.next': { run: () => this.findStep(false) },
+        'find.prev': { run: () => this.findStep(true) },
+        'find.close': {
+          run: () => this.closeFind(),
+          enabled: () => f.open() || this.gotoOpen() || !!this.frame()?.search,
+        },
+        'goto.line': { run: () => this.gotoOpen.set(true) },
+      },
+      this.destroyRef,
+    );
+  }
+
+  private openFind(replace: boolean): void {
+    const f = this.find;
+    const sel = this.frame()?.selectionText;
+    if (sel) f.pattern.set(sel);
+    f.open.set(true);
+    if (replace) f.replaceOpen.set(true);
+    f.focusRequest.update((n) => n + 1);
+    if (f.pattern()) this.runFind({ backwards: false, incremental: true });
+  }
+
+  private findStep(backwards: boolean): void {
+    if (!this.find.pattern()) {
+      this.openFind(false);
+      return;
+    }
+    this.find.remember();
+    this.runFind({ backwards });
+  }
+
+  protected runFind(o: { backwards: boolean; incremental?: boolean }): void {
+    const query = this.find.query();
+    if (!query.pattern) {
+      this.findCount.set('');
+      this.findInvalid.set(false);
+      void this.send({ type: 'clearSearch' });
+      return;
+    }
+    void this.send({ type: 'find', query, backwards: o.backwards, incremental: !!o.incremental });
+    this.countSoon();
+  }
+
+  protected onReplace(all: boolean): void {
+    const query = this.find.query();
+    if (!query.pattern) return;
+    this.find.remember();
+    this.find.rememberReplacement();
+    const replacement = this.find.replacement();
+    void this.send(
+      all ? { type: 'replaceAll', query, replacement } : { type: 'replace', query, replacement },
+    );
+    this.countSoon();
+  }
+
+  protected closeFind(): void {
+    this.find.open.set(false);
+    this.gotoOpen.set(false);
+    this.findCount.set('');
+    void this.send({ type: 'clearSearch' });
+    this.focus();
+  }
+
+  protected onGoto(p: { line: number; ch: number }): void {
+    this.gotoOpen.set(false);
+    void this.send({ type: 'goTo', line: p.line, ch: p.ch });
+    this.focus();
+  }
+
+  protected closeGoto(): void {
+    this.gotoOpen.set(false);
+    this.focus();
+  }
+
+  /** Counting runs on a snapshot in Rust; after the find command has selected its match. */
+  private countSoon(): void {
+    if (this.countTimer) clearTimeout(this.countTimer);
+    this.countTimer = setTimeout(() => {
+      const id = this.docId();
+      const query = this.find.query();
+      void this.chain.then(async () => {
+        try {
+          const c = await this.api.countMatches(id, query);
+          this.findInvalid.set(false);
+          this.findCount.set(
+            c.total === 0 ? FIND_TEXTS.noMatch : FIND_TEXTS.count(c.current, c.total),
+          );
+        } catch (e) {
+          const err = toFsError(e);
+          if (err.code === 'invalid_search') {
+            this.findInvalid.set(true);
+            this.findCount.set(FIND_TEXTS.invalid);
+          } else if (err.code !== 'cancelled') {
+            this.findCount.set('');
+          }
+        }
+      });
+    }, 120);
   }
 
   focus(): void {
@@ -198,13 +317,27 @@ export class EditorView {
         if (id === this.docId()) {
           this.frame.set(f);
           this.frameChange.emit(f);
-          if (f.notice) this.status.set(this.texts.notice(f.notice));
+          if (f.notice) this.onNotice(f.notice);
         }
       } catch (e) {
         this.status.set(describeFsError(toFsError(e)));
       }
     });
     return this.chain;
+  }
+
+  private onNotice(notice: string): void {
+    if (notice.startsWith('replaced:')) {
+      this.status.set(FIND_TEXTS.replaced(Number(notice.slice(9))));
+    } else if (notice === 'no_match') {
+      this.findCount.set(FIND_TEXTS.noMatch);
+      this.status.set(FIND_TEXTS.noMatch);
+    } else if (notice === 'invalid_search') {
+      this.findInvalid.set(true);
+      this.findCount.set(FIND_TEXTS.invalid);
+    } else {
+      this.status.set(this.texts.notice(notice));
+    }
   }
 
   /** Scroll and drag events come faster than frames: one command per animation frame. */

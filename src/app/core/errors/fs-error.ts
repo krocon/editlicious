@@ -17,6 +17,8 @@ export type FsErrorCode =
   | 'selection_too_large'
   | 'invalid_edit'
   | 'cancelled'
+  | 'invalid_menu'
+  | 'invalid_search'
   /** Frontend only: no Tauri backend (e.g. `pnpm start` in a browser). */
   | 'backend_unavailable'
   /** Frontend only: something that is no `FsError` was thrown. */
@@ -43,6 +45,8 @@ const KNOWN: readonly FsErrorCode[] = [
   'selection_too_large',
   'invalid_edit',
   'cancelled',
+  'invalid_menu',
+  'invalid_search',
   'backend_unavailable',
   'unknown',
 ];
@@ -93,6 +97,10 @@ export function describeFsError(error: FsError): string {
       return 'The change could not be applied.';
     case 'cancelled':
       return 'Cancelled.';
+    case 'invalid_menu':
+      return 'The menu could not be built.';
+    case 'invalid_search':
+      return 'The search pattern is not valid.';
     case 'backend_unavailable':
       return 'The desktop backend is not available (running in a browser?).';
     case 'unknown':

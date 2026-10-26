@@ -12,8 +12,10 @@ mod tests;
 use crate::document::Document;
 use crate::document::model::{Change, EditKind, EditRequest, Pos, Sel};
 use crate::error::FsError;
+use crate::search::{self, Query};
 use layout::{LineLayout, char_width, next_grapheme, prev_grapheme};
 use model::{CaretPos, Command, Frame, FrameLine, Motion, Run, RunKind};
+use regex::Regex;
 use words::CharClass;
 
 /// The system clipboard as the session sees it; the app provides the real one, tests a fake.
@@ -102,6 +104,7 @@ pub struct Session {
     max_width: usize,
     drag: Option<DragOrigin>,
     notice: Option<String>,
+    search: Option<(Query, Regex)>,
 }
 
 impl Session {
@@ -122,6 +125,7 @@ impl Session {
             max_width: 0,
             drag: None,
             notice: None,
+            search: None,
         }
     }
 
@@ -249,12 +253,37 @@ impl Session {
                 Some(text) => self.insert(&text, EditKind::Other)?,
                 None => self.notice = Some("clipboard_empty".into()),
             },
+            Command::Find {
+                query,
+                backwards,
+                incremental,
+            } => {
+                self.find(query, backwards, incremental);
+                reveal = Reveal::Center;
+            }
+            Command::ClearSearch => {
+                self.search = None;
+                reveal = Reveal::No;
+            }
+            Command::Replace { query, replacement } => {
+                self.replace(query, &replacement)?;
+                reveal = Reveal::Center;
+            }
+            Command::ReplaceAll { query, replacement } => self.replace_all(query, &replacement)?,
         }
         self.clamp_scroll();
         match reveal {
             Reveal::No => {}
             Reveal::Margin => self.reveal(H_MARGIN),
             Reveal::Exact => self.reveal(0.0),
+            Reveal::Center => {
+                let line = self.cursors[0].head.line as f64;
+                let rows = self.view_lines.floor().max(1.0);
+                if line < self.top || line + 1.0 > self.top + rows {
+                    self.top = (line - (rows / 2.0).floor()).max(0.0);
+                }
+                self.reveal(H_MARGIN);
+            }
         }
         Ok(self.frame())
     }
@@ -891,6 +920,123 @@ impl Session {
         Ok(())
     }
 
+    // ------------------------------------------------------------------ search (design 006)
+
+    /// Compiles and keeps the query (highlights); `false` = bad pattern (notice set).
+    fn set_search(&mut self, query: Query) -> bool {
+        match search::compile(&query) {
+            Ok(re) => {
+                self.search = Some((query, re));
+                true
+            }
+            Err(_) => {
+                self.search = None;
+                self.notice = Some("invalid_search".into());
+                false
+            }
+        }
+    }
+
+    fn select_chars(&mut self, (s, e): (usize, usize)) {
+        self.cursors = vec![Cursor {
+            anchor: self.doc.char_to_pos(s),
+            head: self.doc.char_to_pos(e),
+            goal: None,
+        }];
+    }
+
+    /// The primary selection as characters.
+    fn primary_chars(&self) -> (usize, usize) {
+        let c = self.cursors[0];
+        (
+            self.doc.pos_to_char(c.start()),
+            self.doc.pos_to_char(c.end()),
+        )
+    }
+
+    fn find(&mut self, query: Query, backwards: bool, incremental: bool) {
+        if !self.set_search(query) {
+            return;
+        }
+        let Some((_, re)) = &self.search else { return };
+        let (s, e) = self.primary_chars();
+        let rope = self.doc.rope();
+        let found = if backwards {
+            search::find_prev(rope, re, s)
+        } else {
+            search::find_next(rope, re, if incremental { s } else { e })
+        };
+        match found {
+            Some(m) => self.select_chars(m),
+            None => self.notice = Some("no_match".into()),
+        }
+    }
+
+    /// Is the primary selection exactly a match?
+    fn selection_is_match(&self, re: &Regex) -> bool {
+        let (s, e) = self.primary_chars();
+        e > s && search::find_next(self.doc.rope(), re, s) == Some((s, e))
+    }
+
+    fn replace(&mut self, query: Query, replacement: &str) -> Result<(), FsError> {
+        if !self.set_search(query) {
+            return Ok(());
+        }
+        let Some((q, re)) = self.search.clone() else {
+            return Ok(());
+        };
+        if self.selection_is_match(&re) {
+            let (s, e) = self.primary_chars();
+            let matched = self.doc.rope().slice(s..e).to_string();
+            let text = search::expand(&re, &matched, replacement, q.regex);
+            self.insert(&text, EditKind::Other)?;
+        }
+        self.find(q, false, false);
+        Ok(())
+    }
+
+    fn replace_all(&mut self, query: Query, replacement: &str) -> Result<(), FsError> {
+        if !self.set_search(query) {
+            return Ok(());
+        }
+        let Some((q, re)) = self.search.clone() else {
+            return Ok(());
+        };
+        let never = std::sync::atomic::AtomicBool::new(false);
+        let found = search::replacements(self.doc.rope(), &re, replacement, q.regex, &never)
+            .unwrap_or_default();
+        if found.is_empty() {
+            self.notice = Some("no_match".into());
+            return Ok(());
+        }
+        let n = found.len();
+        let changes = found
+            .into_iter()
+            .map(|(s, e, text)| Change {
+                from: self.doc.char_to_pos(s),
+                to: self.doc.char_to_pos(e),
+                text,
+            })
+            .collect();
+        let first = self.cursors[0];
+        self.doc.apply(EditRequest {
+            changes,
+            kind: EditKind::Other,
+            sel_before: self.sels(),
+            sel_after: Some(vec![Sel::caret(first.start())]),
+        })?;
+        self.cursors = vec![Cursor::caret(self.doc.clamp(first.start()))];
+        self.notice = Some(format!("replaced:{n}"));
+        Ok(())
+    }
+
+    /// Snapshot for counting matches outside the session lock (a rope clone is O(1)):
+    /// text, query and the primary selection in characters.
+    pub fn search_snapshot(&self) -> (ropey::Rope, usize, usize) {
+        let (s, e) = self.primary_chars();
+        (self.doc.rope().clone(), s, e)
+    }
+
     // ------------------------------------------------------------------ cursors & scrolling
 
     /// Sorts cursors and merges overlapping ones (the first stays primary when nothing merges).
@@ -1015,22 +1161,44 @@ impl Session {
             tab_width: self.tab,
             insert_spaces: self.spaces,
             notice: self.notice.clone(),
+            search: self.search.is_some(),
+            selection_text: self.selection_text(),
         }
+    }
+
+    /// Short single-line selections go to the UI (find field).
+    fn selection_text(&self) -> Option<String> {
+        let c = self.cursors[0];
+        if c.is_empty() || c.start().line != c.end().line || c.end().ch - c.start().ch > 1_000 {
+            return None;
+        }
+        self.doc.text(c.start(), c.end()).ok()
     }
 
     fn frame_line(&self, line: usize, wa: usize, wb: usize) -> FrameLine {
         let len = self.doc.line_len(line);
         let long = self.doc.is_long(line);
+        let mut found: Vec<(usize, usize)> = Vec::new();
         let (runs, width, cell_of): (Vec<Run>, usize, CellOf) = if long {
             let from = wa.min(len);
             let text = self.doc.line_slice(line, from, wb);
+            if let Some((_, re)) = &self.search {
+                found = search::matches_in(&text, re)
+                    .into_iter()
+                    .map(|(a, b)| (a + from, b + from))
+                    .collect();
+            }
             (
                 runs_of(text.chars(), from, |_, _| 1),
                 len,
                 Box::new(|ch| ch),
             )
         } else {
-            let lay = LineLayout::new(&self.doc.line_string(line), self.tab);
+            let line_text = self.doc.line_string(line);
+            if let Some((_, re)) = &self.search {
+                found = search::matches_in(&line_text, re);
+            }
+            let lay = LineLayout::new(&line_text, self.tab);
             let width = lay.width();
             // characters touching the window
             let first = lay.cells.partition_point(|&c| c < wa).saturating_sub(1);
@@ -1063,6 +1231,15 @@ impl Session {
                 sel_eol = true;
             }
         }
+        let primary = self.cursors[0];
+        let marks = found
+            .into_iter()
+            .map(|(a, b)| {
+                let current =
+                    primary.start() == Pos::new(line, a) && primary.end() == Pos::new(line, b);
+                [cell_of(a), cell_of(b), usize::from(current)]
+            })
+            .collect();
         FrameLine {
             line,
             runs,
@@ -1070,6 +1247,7 @@ impl Session {
             sel_eol,
             width,
             long,
+            marks,
         }
     }
 }
@@ -1082,6 +1260,8 @@ enum Reveal {
     No,
     Margin,
     Exact,
+    /// Jumps far away (find): the target line lands in the middle of the view.
+    Center,
 }
 
 /// Groups characters into runs of one kind; `width(c, col)` gives the cells of a character.

@@ -21,8 +21,8 @@ describe('keymap', () => {
     expect(buildKeymap('other').byContext.global.get('Shift+F10')).toBe('file.prev');
   });
 
-  it('every editor action names an engine command', () => {
-    for (const a of ACTIONS.filter((x) => x.context === 'editor')) {
+  it('every editing and cursor action names an engine command', () => {
+    for (const a of ACTIONS.filter((x) => /^(edit|cursor|select)\./.test(x.id))) {
       expect(a.cmd, a.id).toBeDefined();
     }
   });

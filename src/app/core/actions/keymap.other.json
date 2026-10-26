@@ -13,6 +13,8 @@
     "Mod+ArrowDown": "view.scrollDown",
     "Mod+Backspace": "edit.deleteWordLeft",
     "Mod+Delete": "edit.deleteWordRight",
-    "Mod+y": "edit.redo"
+    "Mod+y": "edit.redo",
+    "Mod+h": "find.replace",
+    "Mod+g": "goto.line"
   }
 }

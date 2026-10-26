@@ -61,6 +61,8 @@ describe('DocumentsStore', () => {
       active: 1,
       recent: ['/s/a.txt'],
       tabs: 'show',
+      findHistory: ['x'],
+      replaceHistory: [],
     };
     await store.start();
     expect(store.docs().length).toBe(2);

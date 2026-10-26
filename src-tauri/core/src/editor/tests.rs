@@ -510,3 +510,153 @@ fn detects_indentation() {
     assert!(f.insert_spaces);
     assert_eq!(f.tab_width, 2);
 }
+
+// ---------------------------------------------------------------- search (design 006)
+
+fn query(p: &str) -> crate::search::Query {
+    crate::search::Query {
+        pattern: p.into(),
+        ..Default::default()
+    }
+}
+
+#[test]
+fn find_selects_and_highlights() {
+    let mut s = session(
+        "one two one
+three one",
+    );
+    let f = run(
+        &mut s,
+        Command::Find {
+            query: query("one"),
+            backwards: false,
+            incremental: true,
+        },
+    );
+    assert_eq!(f.sel_chars, 3);
+    assert_eq!(f.lines[0].marks, vec![[0, 3, 1], [8, 11, 0]]);
+    assert_eq!(f.lines[1].marks, vec![[6, 9, 0]]);
+    assert!(f.search);
+    assert_eq!(f.selection_text.as_deref(), Some("one"));
+    let next = Command::Find {
+        query: query("one"),
+        backwards: false,
+        incremental: false,
+    };
+    run(&mut s, next.clone());
+    run(&mut s, next.clone());
+    assert_eq!(caret(&s), (1, 9));
+    run(&mut s, next);
+    assert_eq!(caret(&s), (0, 3), "wraps");
+    run(
+        &mut s,
+        Command::Find {
+            query: query("one"),
+            backwards: true,
+            incremental: false,
+        },
+    );
+    assert_eq!(caret(&s), (1, 9));
+    let f = run(&mut s, Command::ClearSearch);
+    assert!(f.lines[0].marks.is_empty());
+}
+
+#[test]
+fn find_reports_no_match_and_bad_patterns() {
+    let mut s = session("abc");
+    let f = run(
+        &mut s,
+        Command::Find {
+            query: query("zzz"),
+            backwards: false,
+            incremental: true,
+        },
+    );
+    assert_eq!(f.notice.as_deref(), Some("no_match"));
+    let f = run(
+        &mut s,
+        Command::Find {
+            query: crate::search::Query {
+                pattern: "[".into(),
+                regex: true,
+                ..Default::default()
+            },
+            backwards: false,
+            incremental: true,
+        },
+    );
+    assert_eq!(f.notice.as_deref(), Some("invalid_search"));
+    assert!(!f.search);
+}
+
+#[test]
+fn replace_one_and_all() {
+    let mut s = session(
+        "cat cat
+cat",
+    );
+    let r = |s: &mut Session| {
+        run(
+            s,
+            Command::Replace {
+                query: query("cat"),
+                replacement: "dog".into(),
+            },
+        )
+    };
+    r(&mut s); // selects the first match
+    assert_eq!(
+        text(&s),
+        "cat cat
+cat"
+    );
+    r(&mut s);
+    assert_eq!(
+        text(&s),
+        "dog cat
+cat"
+    );
+    assert_eq!(caret(&s), (0, 7), "next match selected");
+    let f = run(
+        &mut s,
+        Command::ReplaceAll {
+            query: crate::search::Query {
+                pattern: "(c)at".into(),
+                regex: true,
+                ..Default::default()
+            },
+            replacement: "${1}ow".into(),
+        },
+    );
+    assert_eq!(
+        text(&s),
+        "dog cow
+cow"
+    );
+    assert_eq!(f.notice.as_deref(), Some("replaced:2"));
+    run(&mut s, Command::Undo);
+    assert_eq!(
+        text(&s),
+        "dog cat
+cat",
+        "one undo step"
+    );
+}
+
+#[test]
+fn find_far_away_centres_the_match() {
+    let mut text: String = (0..200).map(|i| format!("line {i}\n")).collect();
+    text.push_str("target\n");
+    let mut s = session(&text);
+    let f = run(
+        &mut s,
+        Command::Find {
+            query: query("target"),
+            backwards: false,
+            incremental: true,
+        },
+    );
+    assert_eq!(caret(&s), (200, 6));
+    assert_eq!(f.top, 195.0, "middle of 10 rows");
+}

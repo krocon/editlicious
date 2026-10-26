@@ -2,6 +2,7 @@
 //! `src/app/core/editor/editor.models.ts`.
 
 use crate::document::model::DocInfo;
+use crate::search::Query;
 use serde::{Deserialize, Serialize};
 
 /// What the UI asks the session to do. Positions from the mouse come as line + cell (float:
@@ -80,6 +81,26 @@ pub enum Command {
     Cut,
     /// Paste from the system clipboard (read in Rust – nothing big crosses the bridge).
     Paste,
+    /// Selects the next (previous) match and highlights all visible ones (design 006).
+    /// `incremental`: search from the start of the selection (typing in the find field).
+    Find {
+        query: Query,
+        #[serde(default)]
+        backwards: bool,
+        #[serde(default)]
+        incremental: bool,
+    },
+    ClearSearch,
+    /// Replaces the selected match (if it is one) and selects the next.
+    Replace {
+        query: Query,
+        replacement: String,
+    },
+    /// Replaces every match as one undo step.
+    ReplaceAll {
+        query: Query,
+        replacement: String,
+    },
 }
 
 fn one() -> u8 {
@@ -140,6 +161,8 @@ pub struct FrameLine {
     pub width: usize,
     /// Long line (design 002 E3): one cell per character, shown as a window.
     pub long: bool,
+    /// Search matches `[from, to, kind]` in cells; kind 1 = the selected one (design 006).
+    pub marks: Vec<[usize; 3]>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -172,6 +195,10 @@ pub struct Frame {
     pub overwrite: bool,
     pub tab_width: usize,
     pub insert_spaces: bool,
-    /// The last command changed the clipboard (UI can show a hint) – or why it could not.
+    /// A hint for the UI: `clipboard_empty`, `no_match`, `replaced:N`, `invalid_search` …
     pub notice: Option<String>,
+    /// A search is active (matches are highlighted).
+    pub search: bool,
+    /// The primary selection when it is short and on one line (to prefill the find field).
+    pub selection_text: Option<String>,
 }

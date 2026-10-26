@@ -86,7 +86,25 @@ export type Command =
   | { type: 'redo' }
   | { type: 'copy' }
   | { type: 'cut' }
-  | { type: 'paste' };
+  | { type: 'paste' }
+  | { type: 'find'; query: Query; backwards?: boolean; incremental?: boolean }
+  | { type: 'clearSearch' }
+  | { type: 'replace'; query: Query; replacement: string }
+  | { type: 'replaceAll'; query: Query; replacement: string };
+
+/** A search (`ed_core::search::Query`, design 006). */
+export interface Query {
+  pattern: string;
+  regex: boolean;
+  caseSensitive: boolean;
+  wholeWord: boolean;
+}
+
+/** `count_matches`: all matches and the number of the selected one (0 = none). */
+export interface MatchCount {
+  total: number;
+  current: number;
+}
 
 export type RunKind = 'text' | 'wide' | 'tab' | 'ctrl';
 
@@ -106,6 +124,8 @@ export interface FrameLine {
   selEol: boolean;
   width: number;
   long: boolean;
+  /** Search matches `[from, to, kind]` in cells; kind 1 = the selected one. */
+  marks: [number, number, number][];
 }
 
 export interface CaretPos {
@@ -130,4 +150,6 @@ export interface Frame {
   tabWidth: number;
   insertSpaces: boolean;
   notice: string | null;
+  search: boolean;
+  selectionText: string | null;
 }

@@ -59,6 +59,10 @@
     "Mod+Shift+z": "edit.redo",
     "Mod+c": "edit.copy",
     "Mod+x": "edit.cut",
-    "Mod+v": "edit.paste"
+    "Mod+v": "edit.paste",
+    "Mod+f": "find.open",
+    "F3": "find.next",
+    "Shift+F3": "find.prev",
+    "Escape": "find.close"
   }
 }

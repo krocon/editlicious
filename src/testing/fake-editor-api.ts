@@ -7,6 +7,8 @@ import {
   Frame,
   FrameLine,
   LoadEvent,
+  MatchCount,
+  Query,
   SaveRequest,
 } from '../app/core/editor/editor.models';
 
@@ -41,6 +43,7 @@ export function textFrame(lines: string[], over: Partial<Frame> = {}): Frame {
     selEol: false,
     width: text.length,
     long: false,
+    marks: [],
   }));
   return {
     seq: 1,
@@ -59,6 +62,8 @@ export function textFrame(lines: string[], over: Partial<Frame> = {}): Frame {
     tabWidth: 4,
     insertSpaces: true,
     notice: null,
+    search: false,
+    selectionText: null,
     ...over,
   };
 }
@@ -140,6 +145,14 @@ export class FakeEditorApi extends EditorApi {
 
   diskState(id: number): Promise<DiskState> {
     return Promise.resolve(this.disk.get(id) ?? { changed: false, missing: false });
+  }
+
+  matchCount: MatchCount = { total: 0, current: 0 };
+  counted: Query[] = [];
+
+  countMatches(_id: number, query: Query): Promise<MatchCount> {
+    this.counted.push(query);
+    return Promise.resolve(this.matchCount);
   }
 
   /** Commands of a type, for assertions. */

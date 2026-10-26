@@ -34,6 +34,14 @@
         @for (s of line.sel; track $index) {
           <div class="sel" [style.left.px]="x(s[0])" [style.width.px]="x(s[1]) - x(s[0])"></div>
         }
+        @for (m of line.marks; track $index) {
+          <div
+            class="mark"
+            [class.current]="m[2] === 1"
+            [style.left.px]="x(m[0])"
+            [style.width.px]="x(m[1]) - x(m[0])"
+          ></div>
+        }
         @if (line.selEol) {
           <div
             class="sel eol"
@@ -102,6 +110,24 @@
       ></div>
     </div>
   }
+}
+@if (find.open()) {
+  <app-find-bar
+    [count]="findCount()"
+    [invalid]="findInvalid()"
+    (findStep)="runFind($event)"
+    (replace)="onReplace(false)"
+    (replaceAll)="onReplace(true)"
+    (closed)="closeFind()"
+    (mousedown)="$event.stopPropagation()"
+  />
+}
+@if (gotoOpen()) {
+  <app-goto-bar
+    (go)="onGoto($event)"
+    (closed)="closeGoto()"
+    (mousedown)="$event.stopPropagation()"
+  />
 }
 <textarea
   #input

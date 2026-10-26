@@ -31,6 +31,9 @@ pub struct SessionFile {
     pub recent: Vec<String>,
     /// `auto` (tabs from the second file on), `show` or `hide` (legacy §5).
     pub tabs: String,
+    /// Search and replace history, newest first (design 006 E6).
+    pub find_history: Vec<String>,
+    pub replace_history: Vec<String>,
 }
 
 impl Default for SessionFile {
@@ -41,8 +44,17 @@ impl Default for SessionFile {
             active: 0,
             recent: Vec::new(),
             tabs: "auto".into(),
+            find_history: Vec::new(),
+            replace_history: Vec::new(),
         }
     }
+}
+
+pub const MAX_HISTORY: usize = 20;
+
+fn clean_history(h: &mut Vec<String>) {
+    h.retain(|s| !s.is_empty() && s.len() <= 4096);
+    h.truncate(MAX_HISTORY);
 }
 
 fn valid_path(p: &str) -> bool {
@@ -62,6 +74,8 @@ pub fn sanitize(mut s: SessionFile) -> SessionFile {
     s.recent.retain(|p| valid_path(p));
     s.recent.dedup();
     s.recent.truncate(MAX_RECENT);
+    clean_history(&mut s.find_history);
+    clean_history(&mut s.replace_history);
     if s.active >= s.files.len() {
         s.active = 0;
     }

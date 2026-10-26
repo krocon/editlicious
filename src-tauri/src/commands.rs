@@ -27,6 +27,15 @@ pub struct AppState {
     clipboard: Arc<Mutex<SystemClipboard>>,
     /// The frontend asks about unsaved files before the window closes (design 004 E4).
     pub close_handled: AtomicBool,
+    /// The running match count – a new one cancels it (design 006 E4).
+    counting: Mutex<Option<Arc<AtomicBool>>>,
+}
+
+/// Answer of `count_matches`: all matches and the number of the selected one (0 = none).
+#[derive(serde::Serialize)]
+pub struct MatchCount {
+    pub total: usize,
+    pub current: usize,
 }
 
 /// The system clipboard (design 003 E5): one long-lived `arboard` handle – on Linux the text
@@ -155,6 +164,41 @@ pub async fn editor_command(
         let mut session = lock_doc(&handle);
         let mut clip = clipboard.lock().unwrap_or_else(|e| e.into_inner());
         session.run(cmd, &mut *clip)
+    })
+    .await
+}
+
+/// Counts the matches of a query on a snapshot of the text (O(1) clone) – typing goes on while
+/// a big file is counted; a newer count cancels this one (`cancelled`).
+#[tauri::command]
+pub async fn count_matches(
+    state: State<'_, AppState>,
+    id: u64,
+    query: crate::search::Query,
+) -> Result<MatchCount, FsError> {
+    let re = crate::search::compile(&query)?;
+    let (rope, start, end) = lock_doc(&state.sessions.get(id)?).search_snapshot();
+    let cancel = Arc::new(AtomicBool::new(false));
+    if let Some(old) = state
+        .counting
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .replace(cancel.clone())
+    {
+        old.store(true, Ordering::Relaxed);
+    }
+    blocking(move || {
+        // the selected match counts as "before" so its number is `ahead`
+        let before = if end > start { start + 1 } else { start };
+        let (total, ahead) = crate::search::count(&rope, &re, before, &cancel)
+            .ok_or_else(|| FsError::new(FsErrorCode::Cancelled, "cancelled", None))?;
+        let current =
+            if end > start && crate::search::find_next(&rope, &re, start) == Some((start, end)) {
+                ahead
+            } else {
+                0
+            };
+        Ok(MatchCount { total, current })
     })
     .await
 }
@@ -391,6 +435,6 @@ mod command_rules {
                 count += 1;
             }
         }
-        assert!(count >= 21);
+        assert!(count >= 22);
     }
 }

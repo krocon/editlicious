@@ -20,6 +20,8 @@ memchr = "2"
 # design 003 E2: cells of characters (wide, combining) and grapheme boundaries
 unicode-width = "0.2"
 unicode-segmentation = "1.12"
+# design 006: search (linear time, no backtracking blow-ups)
+regex = "1.11"
 
 [dev-dependencies]
 tempfile = "3"

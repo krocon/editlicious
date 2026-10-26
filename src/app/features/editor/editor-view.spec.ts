@@ -109,4 +109,54 @@ describe('EditorView', () => {
     expect(el.querySelectorAll('.sel').length).toBe(2);
     expect(el.querySelectorAll('.row.long').length).toBe(1);
   });
+
+  it('find: Mod+F takes the selection, typing searches and counts, Escape clears', async () => {
+    const api = new FakeEditorApi();
+    api.nextFrame = textFrame(['one two one'], { selectionText: 'one' });
+    api.matchCount = { total: 2, current: 1 };
+    const { el, fixture } = await setup(api);
+    const input = el.querySelector('textarea')!;
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true }));
+    await flush();
+    await fixture.whenStable();
+    const field = el.querySelector<HTMLInputElement>('app-find-bar input')!;
+    expect(field.value).toBe('one');
+    expect(api.sent('find')[0]).toMatchObject({ incremental: true, query: { pattern: 'one' } });
+    await new Promise((r) => setTimeout(r, 150));
+    await flush();
+    await fixture.whenStable();
+    expect(api.counted.length).toBe(1);
+    expect(el.querySelector('app-find-bar .count')?.textContent).toContain('1 of 2');
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await flush();
+    await fixture.whenStable();
+    expect(el.querySelector('app-find-bar')).toBeNull();
+    expect(api.sent('clearSearch').length).toBe(1);
+  });
+
+  it('go to line sends a position', async () => {
+    const { el, fixture, api } = await setup();
+    el.querySelector('textarea')!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'g', ctrlKey: true, bubbles: true }),
+    );
+    await fixture.whenStable();
+    const field = el.querySelector<HTMLInputElement>('app-goto-bar input')!;
+    field.value = '20:4';
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    await flush();
+    expect(api.sent('goTo')).toEqual([{ type: 'goTo', line: 19, ch: 3 }]);
+  });
+
+  it('draws search marks', async () => {
+    const api = new FakeEditorApi();
+    const f = textFrame(['abcabc']);
+    f.lines[0].marks = [
+      [0, 3, 1],
+      [3, 6, 0],
+    ];
+    api.nextFrame = f;
+    const { el } = await setup(api);
+    expect(el.querySelectorAll('.mark').length).toBe(2);
+    expect(el.querySelectorAll('.mark.current').length).toBe(1);
+  });
 });

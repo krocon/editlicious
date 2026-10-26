@@ -118,6 +118,13 @@ export const ACTIONS: readonly ActionDef[] = [
       palette: false,
     },
   ),
+  // find & go to (design 006) – the editor view runs them (bars, counting)
+  { id: 'find.open', label: 'Find…', context: 'editor' },
+  { id: 'find.replace', label: 'Replace…', context: 'editor' },
+  { id: 'find.next', label: 'Find next', context: 'editor', repeat: true },
+  { id: 'find.prev', label: 'Find previous', context: 'editor', repeat: true },
+  { id: 'find.close', label: 'Close search', context: 'editor', palette: false },
+  { id: 'goto.line', label: 'Go to line…', context: 'editor' },
   ...MOTIONS.flatMap(([to, text]) => [
     E(
       `cursor.${to}`,

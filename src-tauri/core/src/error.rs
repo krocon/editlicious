@@ -36,6 +36,8 @@ pub enum FsErrorCode {
     Cancelled,
     /// The menu sent to `set_app_menu` is not valid (design 005).
     InvalidMenu,
+    /// A search pattern that does not compile (design 006); the message has the details.
+    InvalidSearch,
 }
 
 /// The one error type every command returns.

@@ -17,6 +17,10 @@
     "Mod+Shift+ArrowUp": "select.docStart",
     "Mod+Shift+ArrowDown": "select.docEnd",
     "Alt+Backspace": "edit.deleteWordLeft",
-    "Alt+Delete": "edit.deleteWordRight"
+    "Alt+Delete": "edit.deleteWordRight",
+    "Mod+Alt+f": "find.replace",
+    "Mod+g": "find.next",
+    "Mod+Shift+g": "find.prev",
+    "Mod+l": "goto.line"
   }
 }

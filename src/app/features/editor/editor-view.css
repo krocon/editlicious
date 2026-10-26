@@ -96,6 +96,18 @@
   }
 }
 
+.mark {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  border-radius: 2px;
+  background: var(--ed-search-match);
+
+  &.current {
+    background: var(--ed-search-current);
+  }
+}
+
 .caret {
   position: absolute;
   top: 0;

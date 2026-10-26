@@ -745,6 +745,7 @@ dependencies = [
  "chardetng",
  "encoding_rs",
  "memchr",
+ "regex",
  "ropey",
  "serde",
  "serde_json",

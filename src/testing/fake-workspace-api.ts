@@ -5,7 +5,15 @@ import { SessionFile } from '../app/core/workspace/workspace.models';
 /** Test double of {@link WorkspaceApi}. Never imported by app code. */
 @Injectable()
 export class FakeWorkspaceApi extends WorkspaceApi {
-  session: SessionFile = { version: 1, files: [], active: 0, recent: [], tabs: 'auto' };
+  session: SessionFile = {
+    version: 1,
+    files: [],
+    active: 0,
+    recent: [],
+    tabs: 'auto',
+    findHistory: [],
+    replaceHistory: [],
+  };
   savedSessions: SessionFile[] = [];
   openAnswer: string[] | null = null;
   saveAnswer: string | null = null;

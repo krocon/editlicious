@@ -3,8 +3,10 @@
 //!
 //! - [`error`]    structured, serialisable errors (`FsError { code, message, path }`)
 //! - [`document`] the document model: rope, load (encodings), view, edits, undo, save (design 002)
+//! - [`search`]   search and replace in blocks of lines (design 006)
 //! - [`editor`]   the editor session: cursors, commands, layout in cells, frames (design 003)
 
 pub mod document;
 pub mod editor;
 pub mod error;
+pub mod search;

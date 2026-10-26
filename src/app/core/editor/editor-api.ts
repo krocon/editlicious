@@ -1,7 +1,16 @@
 import { Injectable } from '@angular/core';
 import { Channel } from '@tauri-apps/api/core';
 import { call } from '../backend/call';
-import { Command, DiskState, DocInfo, Frame, LoadEvent, SaveRequest } from './editor.models';
+import {
+  Command,
+  DiskState,
+  DocInfo,
+  Frame,
+  LoadEvent,
+  MatchCount,
+  Query,
+  SaveRequest,
+} from './editor.models';
 
 /** A running load: cancel it with {@link EditorApi.cancelLoad}. */
 export interface Loading {
@@ -24,6 +33,8 @@ export abstract class EditorApi {
   abstract startupPaths(): Promise<string[]>;
   abstract reload(id: number): Promise<DocInfo>;
   abstract diskState(id: number): Promise<DiskState>;
+  /** Counts on a snapshot; a newer count cancels an older one (`cancelled`). */
+  abstract countMatches(id: number, query: Query): Promise<MatchCount>;
 }
 
 let loadSeq = 0;
@@ -71,5 +82,9 @@ export class TauriEditorApi extends EditorApi {
 
   diskState(id: number): Promise<DiskState> {
     return call<DiskState>('disk_state', { id });
+  }
+
+  countMatches(id: number, query: Query): Promise<MatchCount> {
+    return call<MatchCount>('count_matches', { id, query });
   }
 }
