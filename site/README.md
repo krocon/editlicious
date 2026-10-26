@@ -2,7 +2,7 @@
 
 Eine statische Seite auf Englisch (Prompt 011): `index.html` mit CSS inline, **ohne JavaScript, ohne Webfonts,
 ohne Tracker, ohne Anfragen an fremde Server**, hell/dunkel nach System. Schriftzug inline (= `public/logo.svg`,
-Yellowtail-Pfade, OFL), `favicon.svg` = App-Icon, Bilder in `img/`. Akzentrot `#e00034` aus der alten Seite (2013).
+Yellowtail-Pfade, Apache-2.0), `favicon.svg` = App-Icon, Bilder in `img/`. Akzentrot `#e00034` aus der alten Seite (2013).
 
 Dazu die **Live-Demo** in `demo/`: die Editor-Engine `ed-core` als WebAssembly (`demo/pkg/`), eine schlanke Ansicht
 in `demo.js` (nur Tasten/Maus → Befehle, Frames zeichnen – wie die App). Die Demo braucht JavaScript und läuft

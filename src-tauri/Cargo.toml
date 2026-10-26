@@ -26,6 +26,8 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tauri = { version = "2.12.4", features = [] }
 tauri-plugin-dialog = "2"
+# design 012 E3: a second start ("open with" on Windows/Linux) hands its files to the running app
+tauri-plugin-single-instance = "2"
 # design 002 E12: the editor engine (document, editing, frames) – Tauri-free
 ed-core = { path = "core" }
 # design 003 E5: copy/cut/paste in Rust – big selections never cross the IPC bridge

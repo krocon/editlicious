@@ -31,6 +31,7 @@
 | Rust | `pnpm rust:fmt`, `pnpm rust:lint` (clippy `-D warnings`), `pnpm rust:test` (ganzer Workspace inkl. `ed-core`) |
 | Messungen | `cd src-tauri && cargo test -p ed-core --release -- --ignored --nocapture measure_` |
 | Alles prüfen | `pnpm check` |
+| Release | `pnpm version:set X.Y.Z`, `pnpm release:notes`, `pnpm notices` (nach Abhängigkeitsänderungen!) – Ablauf `docs/release.md` |
 | Webseite | `pnpm site:test`; Demo-Engine `pnpm site:demo` (braucht wasm32-Ziel) bzw. Workflow „Site demo“ |
 | Debug-App ohne Bundle | `pnpm tauri build --debug --no-bundle` → `src-tauri/target/debug/editlicious` |
 | Icons neu erzeugen | `pnpm tauri icon src-tauri/icons/source/app-icon.svg -o src-tauri/icons` (danach `android/`, `ios/` löschen) |
@@ -85,6 +86,8 @@ src-tauri/                    Rust (Tauri 2), Crate `editlicious`, Lib `ed_lib`
     testdata/document.cases.json  datengetriebene Bearbeitungsfälle
   src/fs_atomic.rs, config_file.rs  atomar schreiben / Konfig laden (aus files-and-folders)
   icons/source/app-icon.svg   Quelle des App-Icons
+  tauri.windows.conf.json, windows/open-with.nsh   Windows: „Öffnen mit“ per NSIS-Hook statt Standard-Zuordnung
+  linux/editlicious.desktop   .desktop-Vorlage (Exec mit %F, MimeType text/plain)
 docs/                         architecture.md (Entscheidungen, Commands, Abhängigkeiten), legacy-analysis.md
 prompts/                      Feature-Prompts (Index README.md), done/
 site/                         Werbe-Webseite (index.html ohne JS) + demo/ (Engine als WebAssembly, pkg/ vom Workflow)
@@ -147,7 +150,7 @@ site/                         Werbe-Webseite (index.html ohne JS) + demo/ (Engin
 - Eigene Lizenz: **MIT**.
 - **comic-commander-tauri**, **files-and-folders-tauri** (MIT, gleicher Autor): Code darf übernommen werden – mit
   Herkunftsvermerk im Modulkopf und den zugehörigen Tests.
-- Schriftzug im Logo: Pfade aus *Yellowtail* (Astigmatic, SIL Open Font License 1.1).
+- Schriftzug im Logo: Pfade aus *Yellowtail* (Astigmatic, Apache License 2.0 – google/fonts `apache/yellowtail`; Text in THIRD-PARTY-NOTICES.txt).
 
 ## 8. Arbeitsumgebung für Claude (Remote-Sitzung)
 

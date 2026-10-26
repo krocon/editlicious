@@ -55,4 +55,12 @@ export class FakeWorkspaceApi extends WorkspaceApi {
   onFilesDropped(): Promise<() => void> {
     return Promise.resolve(() => undefined);
   }
+
+  /** The listener of `open-files` (tests call it). */
+  openFiles: ((paths: string[]) => void) | null = null;
+
+  onOpenFiles(fn: (paths: string[]) => void): Promise<() => void> {
+    this.openFiles = fn;
+    return Promise.resolve(() => (this.openFiles = null));
+  }
 }

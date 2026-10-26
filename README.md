@@ -36,6 +36,11 @@ pnpm check          # format, lint, tests, build, cargo fmt/clippy/test
 Requirements: Node ≥ 22.22.3, pnpm 10, Rust stable ≥ 1.93 and the
 [Tauri prerequisites](https://tauri.app/start/prerequisites/) of your OS.
 
+## Release
+
+Packages for macOS, Windows and Linux are built by the *Release* workflow (tag `v*`) as a draft release –
+see [`docs/release.md`](docs/release.md). Third-party licences: [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt).
+
 ## License
 
-MIT © 2026 Marc Kronberg. The wordmark uses outlines of *Yellowtail* by Astigmatic (SIL Open Font License 1.1).
+MIT © 2026 Marc Kronberg. The wordmark uses outlines of *Yellowtail* by Astigmatic (Apache License 2.0, see THIRD-PARTY-NOTICES.txt).

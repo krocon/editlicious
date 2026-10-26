@@ -26,14 +26,27 @@
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src ipc: http://ipc.localhost",
       "devCsp": null,
-      "dangerousDisableAssetCspModification": ["style-src"]
+      "dangerousDisableAssetCspModification": [
+        "style-src"
+      ]
     }
   },
   "bundle": {
     "active": true,
     "license": "MIT",
     "licenseFile": "../LICENSE",
-    "targets": ["deb", "rpm", "appimage", "dmg", "app", "msi", "nsis"],
+    "resources": {
+      "../THIRD-PARTY-NOTICES.txt": "THIRD-PARTY-NOTICES.txt"
+    },
+    "targets": [
+      "deb",
+      "rpm",
+      "appimage",
+      "dmg",
+      "app",
+      "msi",
+      "nsis"
+    ],
     "publisher": "Marc Kronberg",
     "copyright": "© 2026 Marc Kronberg",
     "homepage": "https://github.com/krocon/editlicious",
@@ -50,23 +63,118 @@
     "macOS": {
       "minimumSystemVersion": "12.0",
       "hardenedRuntime": true,
-      "signingIdentity": null
+      "signingIdentity": null,
+      "dmg": {
+        "windowSize": {
+          "width": 660,
+          "height": 400
+        }
+      }
     },
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
       "timestampUrl": "http://timestamp.digicert.com",
-      "webviewInstallMode": { "type": "downloadBootstrapper" },
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
       "nsis": {
         "installMode": "currentUser",
-        "languages": ["English", "German"],
+        "languages": [
+          "English",
+          "German"
+        ],
         "displayLanguageSelector": false
+      },
+      "wix": {
+        "upgradeCode": "0caa1787-1c4b-4135-9849-889571ad0f40"
       }
     },
     "linux": {
-      "deb": { "section": "editors" },
-      "rpm": { "release": "1" },
-      "appimage": { "bundleMediaFramework": false }
-    }
+      "deb": {
+        "section": "editors",
+        "desktopTemplate": "linux/editlicious.desktop"
+      },
+      "rpm": {
+        "release": "1",
+        "desktopTemplate": "linux/editlicious.desktop"
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    },
+    "fileAssociations": [
+      {
+        "ext": [
+          "txt",
+          "text",
+          "log",
+          "md",
+          "markdown",
+          "csv",
+          "tsv",
+          "json",
+          "jsonl",
+          "xml",
+          "yaml",
+          "yml",
+          "toml",
+          "ini",
+          "cfg",
+          "conf",
+          "properties",
+          "env"
+        ],
+        "name": "Text document",
+        "description": "Text document",
+        "role": "Editor",
+        "mimeType": "text/plain",
+        "rank": "Alternate"
+      },
+      {
+        "ext": [
+          "rs",
+          "ts",
+          "tsx",
+          "js",
+          "mjs",
+          "cjs",
+          "jsx",
+          "java",
+          "kt",
+          "py",
+          "rb",
+          "go",
+          "c",
+          "h",
+          "cpp",
+          "hpp",
+          "cs",
+          "swift",
+          "php",
+          "sh",
+          "bash",
+          "zsh",
+          "ps1",
+          "sql",
+          "html",
+          "htm",
+          "css",
+          "scss",
+          "vue",
+          "lua",
+          "pl",
+          "r",
+          "scala",
+          "dart",
+          "gradle"
+        ],
+        "name": "Source code",
+        "description": "Source code",
+        "role": "Editor",
+        "mimeType": "text/plain",
+        "rank": "Alternate"
+      }
+    ]
   }
 }

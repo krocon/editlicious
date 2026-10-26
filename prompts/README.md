@@ -34,7 +34,7 @@ Kritischer Pfad zum ersten nutzbaren Editor: **001 → 002 → 003 → 004**. Da
 | 009 | [009-einstellungen-i18n.md](done/009-einstellungen-i18n.md) | Einstellungen (Schrift, Größe/Zoom, Tabweite, Zeilennummern-Stil, Einrückungslinien, Umbruch, Autosave-Fragen, letzte Dateien) + Dialog, Deutsch/Englisch zur Laufzeit | 005 | M | ✅ 26.10.2026 |
 | 010 | [010-statusleiste-extras.md](done/010-statusleiste-extras.md) | Statusleiste (Zeile/Spalte, Auswahl, Encoding, Zeilenende, Größe) mit Umschalten von Encoding/Zeilenende, Kopieren als HTML, Übersichtsleiste (Mini-Map light), Weicher Umbruch für normale Zeilen | 004, 008 | M | ✅ 26.10.2026 |
 | 011 | [011-webseite.md](done/011-webseite.md) | Werbe-Webseite `/site` (statisch, light/dark, Screenshots, Features, Tastenkürzel, Download, Live-Demo mit `ed-core` als WebAssembly) | 004 | M | ✅ 26.10.2026 |
-| 012 | [012-release-distribution.md](012-release-distribution.md) | Version, Release-Notes, Lizenzhinweise, Pakete je OS, CI- und Release-Workflows | 001 | M | offen |
+| 012 | [012-release-distribution.md](done/012-release-distribution.md) | Version, Release-Notes, Lizenzhinweise, Pakete je OS, CI- und Release-Workflows | 001 | M | ✅ 26.10.2026 |
 | 013 | [013-performance-haertung.md](013-performance-haertung.md) | Messungen mit 1 GB / 10 Mio. Zeilen / 100-MB-Zeile, Engpässe beheben, Review durch separaten Agenten, Feature-Parität gegen legacy | 002–010 | M | offen |
 
 ## Folge-Ideen (noch ohne Prompt)

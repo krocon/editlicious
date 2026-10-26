@@ -13,7 +13,7 @@ use crate::editor::{Clipboard, Session};
 use crate::error::{FsError, FsErrorCode};
 use crate::model::AppInfo;
 use crate::session_file::{self, SessionFile};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tauri::ipc::Channel;
@@ -31,6 +31,41 @@ pub struct AppState {
     counting: Mutex<Option<Arc<AtomicBool>>>,
     /// The running overview (design 010 E3) – a new one cancels it.
     overviewing: Mutex<Option<Arc<AtomicBool>>>,
+    /// Files handed to the app ("open with", a second start): `(frontend ready, waiting files)`
+    /// – before the frontend asked for its start files they wait here (design 012 E3).
+    opened: Mutex<(bool, Vec<String>)>,
+}
+
+/// Event with paths to open while the app runs (design 012 E3).
+pub const OPEN_FILES_EVENT: &str = "open-files";
+
+/// Files the system hands over (macOS "open with", a second start on Windows/Linux): queued
+/// until the frontend has started, then sent as [`OPEN_FILES_EVENT`].
+pub fn files_opened(app: &AppHandle, paths: Vec<String>) {
+    if paths.is_empty() {
+        return;
+    }
+    let state = app.state::<AppState>();
+    let mut q = state.opened.lock().unwrap_or_else(|e| e.into_inner());
+    if q.0 {
+        drop(q);
+        use tauri::Emitter;
+        let _ = app.emit(OPEN_FILES_EVENT, paths);
+    } else {
+        q.1.extend(paths);
+    }
+}
+
+/// Existing files among command-line arguments (`-` options skipped, relative to `cwd`).
+pub fn paths_from_args(args: impl IntoIterator<Item = String>, cwd: Option<&Path>) -> Vec<String> {
+    args.into_iter()
+        .filter(|a| !a.starts_with('-'))
+        .filter_map(|a| {
+            let p = PathBuf::from(&a);
+            let p = if p.is_absolute() { p } else { cwd?.join(p) };
+            p.is_file().then(|| p.to_string_lossy().into_owned())
+        })
+        .collect()
 }
 
 /// Answer of `count_matches`: all matches and the number of the selected one (0 = none).
@@ -276,22 +311,16 @@ pub async fn save_document(
     .await
 }
 
-/// Files given on the command line (open with …, `editlicious file.txt`).
+/// Files given on the command line (open with …, `editlicious file.txt`) and those the system
+/// handed over before the frontend was ready; from now on new ones come as events.
 #[tauri::command]
-pub async fn startup_paths() -> Result<Vec<String>, FsError> {
-    Ok(std::env::args()
-        .skip(1)
-        .filter(|a| !a.starts_with('-'))
-        .filter_map(|a| {
-            let p = PathBuf::from(&a);
-            let p = if p.is_absolute() {
-                p
-            } else {
-                std::env::current_dir().ok()?.join(p)
-            };
-            p.is_file().then(|| p.to_string_lossy().into_owned())
-        })
-        .collect())
+pub async fn startup_paths(state: State<'_, AppState>) -> Result<Vec<String>, FsError> {
+    let cwd = std::env::current_dir().ok();
+    let mut paths = paths_from_args(std::env::args().skip(1), cwd.as_deref());
+    let mut q = state.opened.lock().unwrap_or_else(|e| e.into_inner());
+    q.0 = true;
+    paths.append(&mut q.1);
+    Ok(paths)
 }
 
 /// Reloads a document from disk (changed outside, design 004 E6); caret and scroll stay.
@@ -502,6 +531,29 @@ pub fn close_handled(app: &AppHandle) -> bool {
     app.state::<AppState>()
         .close_handled
         .load(Ordering::Relaxed)
+}
+
+#[cfg(test)]
+mod args_tests {
+    use super::paths_from_args;
+
+    #[test]
+    fn paths_from_args_keeps_existing_files() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("a.txt"), "x").unwrap();
+        let abs = dir.path().join("a.txt").to_string_lossy().into_owned();
+        let got = paths_from_args(
+            [
+                "-psn_0_1".into(),
+                "a.txt".into(),
+                "missing.txt".into(),
+                abs.clone(),
+            ],
+            Some(dir.path()),
+        );
+        assert_eq!(got, vec![abs.clone(), abs]);
+        assert!(paths_from_args(["a.txt".to_string()], None).is_empty());
+    }
 }
 
 #[cfg(test)]

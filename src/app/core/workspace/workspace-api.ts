@@ -22,6 +22,8 @@ export abstract class WorkspaceApi {
   abstract toggleFullscreen(): Promise<boolean>;
   abstract onCloseRequested(fn: () => void): Promise<() => void>;
   abstract onFilesDropped(fn: (paths: string[]) => void): Promise<() => void>;
+  /** Files the system hands over while the app runs ("open with", a second start). */
+  abstract onOpenFiles(fn: (paths: string[]) => void): Promise<() => void>;
 }
 
 @Injectable()
@@ -60,6 +62,10 @@ export class TauriWorkspaceApi extends WorkspaceApi {
 
   onCloseRequested(fn: () => void): Promise<() => void> {
     return listen('close-requested', () => fn());
+  }
+
+  onOpenFiles(fn: (paths: string[]) => void): Promise<() => void> {
+    return listen<string[]>('open-files', (e) => fn(e.payload));
   }
 
   onFilesDropped(fn: (paths: string[]) => void): Promise<() => void> {

@@ -156,12 +156,25 @@ export class App {
 
   private async start(): Promise<void> {
     await this.settings.load();
+    // files from "open with" / a second start (design 012 E3): listen before the start files
+    // are fetched, open them once the start is done
+    let started = false;
+    const early: string[] = [];
+    const offOpen = await this.ws
+      .onOpenFiles((paths) => {
+        if (started) void this.store.openPaths(paths);
+        else early.push(...paths);
+      })
+      .catch(() => null);
     await this.store.start();
+    started = true;
+    if (early.length) await this.store.openPaths(early);
     const offClose = await this.ws.onCloseRequested(() => void this.store.quit()).catch(() => null);
     const offDrop = await this.ws
       .onFilesDropped((paths) => void this.store.openPaths(paths))
       .catch(() => null);
     this.destroyRef.onDestroy(() => {
+      offOpen?.();
       offClose?.();
       offDrop?.();
     });

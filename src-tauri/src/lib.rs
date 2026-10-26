@@ -26,6 +26,19 @@ pub mod settings;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // a second start (Windows/Linux "open with") hands its files to the running app
+        // (design 012 E3) – must be the first plugin
+        .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
+            let paths = commands::paths_from_args(
+                argv.into_iter().skip(1),
+                Some(std::path::Path::new(&cwd)),
+            );
+            commands::files_opened(app, paths);
+            if let Some(w) = tauri::Manager::get_webview_window(app, "main") {
+                let _ = w.unminimize();
+                let _ = w.set_focus();
+            }
+        }))
         // only the Rust API is used (open/save dialogs) – the WebView gets no `dialog:` permission
         .plugin(tauri_plugin_dialog::init())
         .manage(commands::AppState::default())
@@ -79,6 +92,18 @@ pub fn run() {
             commands::set_app_menu,
             commands::load_keymap_overrides,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app, _event| {
+            // macOS hands files from Finder ("open with", double click) as an event
+            #[cfg(any(target_os = "macos", target_os = "ios"))]
+            if let tauri::RunEvent::Opened { urls } = _event {
+                let paths = urls
+                    .into_iter()
+                    .filter_map(|u| u.to_file_path().ok())
+                    .map(|p| p.to_string_lossy().into_owned())
+                    .collect();
+                commands::files_opened(_app, paths);
+            }
+        });
 }

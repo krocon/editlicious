@@ -49,6 +49,17 @@ describe('App', () => {
     expect(fixture.nativeElement.querySelector('app-editor-view')).not.toBeNull();
   });
 
+  it('opens files the system hands over while running (design 012 E3)', async () => {
+    const api = setup(true);
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    const ws = TestBed.inject(WorkspaceApi) as FakeWorkspaceApi;
+    ws.openFiles?.(['/x/b.log']);
+    await fixture.whenStable();
+    await new Promise((r) => setTimeout(r));
+    expect(api.opened).toEqual(['/x/b.log']);
+  });
+
   it('starts with an empty document', async () => {
     setup(true);
     const fixture = TestBed.createComponent(App);

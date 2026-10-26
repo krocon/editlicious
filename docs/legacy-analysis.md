@@ -13,7 +13,7 @@
 - Schlanker, **tastaturgesteuerter** Editor mit sehr wenig sichtbarer Oberfläche: Menü, Icon-Leiste, Tabs und
   Statusleiste lassen sich einzeln und gemeinsam ausblenden (F1) oder ein-/ausfaden.
 - Logo: Schreibschrift-Schriftzug „Editlicious“ (Metroscript-artig) und ein Füllfederhalter – die Neuauflage nimmt
-  beides auf (Schriftzug aus der OFL-Schrift *Yellowtail* als Pfad, App-Icon: goldene Feder, die eine Linie schreibt).
+  beides auf (Schriftzug aus der Schrift *Yellowtail* (Apache-2.0) als Pfad, App-Icon: goldene Feder, die eine Linie schreibt).
 - Notizen in `Todos.java` zeigen das Vorbild: Sublime Text, TextMate, BBEdit, Notepad++ (Funktionen wie „Save Copy
   As“, Suche/Ersetzen-Verlauf, Zeilenende-Anzeige).
 
