@@ -16,6 +16,7 @@ export interface Settings {
   menuBar: boolean;
   statusBar: boolean;
   wordWrap: boolean;
+  overview: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -35,6 +36,7 @@ export const DEFAULT_SETTINGS: Settings = {
   menuBar: false,
   statusBar: true,
   wordWrap: false,
+  overview: true,
 };
 
 export interface LoadedSettings {

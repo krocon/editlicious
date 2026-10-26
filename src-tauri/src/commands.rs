@@ -29,6 +29,8 @@ pub struct AppState {
     pub close_handled: AtomicBool,
     /// The running match count – a new one cancels it (design 006 E4).
     counting: Mutex<Option<Arc<AtomicBool>>>,
+    /// The running overview (design 010 E3) – a new one cancels it.
+    overviewing: Mutex<Option<Arc<AtomicBool>>>,
 }
 
 /// Answer of `count_matches`: all matches and the number of the selected one (0 = none).
@@ -59,6 +61,11 @@ impl Clipboard for SystemClipboard {
 
     fn set(&mut self, text: String) -> bool {
         self.handle().is_some_and(|c| c.set_text(text).is_ok())
+    }
+
+    fn set_html(&mut self, html: String, alt: String) -> bool {
+        self.handle()
+            .is_some_and(|c| c.set_html(html, Some(alt)).is_ok())
     }
 }
 
@@ -207,6 +214,43 @@ pub async fn count_matches(
     .await
 }
 
+/// Where search matches and markers are, for the scrollbar (design 010 E3): one byte per
+/// slice of the lines (bit 1 = match, bit 2 = marker). A newer call cancels this one.
+#[tauri::command]
+pub async fn overview(
+    state: State<'_, AppState>,
+    id: u64,
+    buckets: usize,
+) -> Result<Vec<u8>, FsError> {
+    let (rope, layers) = lock_doc(&state.sessions.get(id)?).overview_snapshot();
+    let cancel = Arc::new(AtomicBool::new(false));
+    if let Some(old) = state
+        .overviewing
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .replace(cancel.clone())
+    {
+        old.store(true, Ordering::Relaxed);
+    }
+    if layers.is_empty() {
+        return Ok(Vec::new());
+    }
+    blocking(move || {
+        crate::search::overview(&rope, &layers, buckets, &cancel)
+            .ok_or_else(|| FsError::new(FsErrorCode::Cancelled, "cancelled", None))
+    })
+    .await
+}
+
+/// Encodings the status bar offers (design 010 E2).
+#[tauri::command]
+pub async fn list_encodings() -> Result<Vec<String>, FsError> {
+    Ok(crate::document::ENCODINGS
+        .iter()
+        .map(|e| (*e).to_owned())
+        .collect())
+}
+
 /// All languages of the highlighter (design 008).
 #[tauri::command]
 pub async fn list_languages() -> Result<Vec<String>, FsError> {
@@ -252,15 +296,28 @@ pub async fn startup_paths() -> Result<Vec<String>, FsError> {
 
 /// Reloads a document from disk (changed outside, design 004 E6); caret and scroll stay.
 #[tauri::command]
-pub async fn reload_document(state: State<'_, AppState>, id: u64) -> Result<DocInfo, FsError> {
+pub async fn reload_document(
+    state: State<'_, AppState>,
+    id: u64,
+    encoding: Option<String>,
+) -> Result<DocInfo, FsError> {
     let handle = state.sessions.get(id)?;
+    let encoding = encoding
+        .as_deref()
+        .map(crate::document::encoding_for_label)
+        .transpose()?;
     blocking(move || {
         let path = lock_doc(&handle)
             .doc
             .path
             .clone()
             .ok_or_else(|| FsError::new(FsErrorCode::InvalidPath, "no path", None))?;
-        let loaded = load::load_file(&path, &AtomicBool::new(false), &mut |_, _| {})?;
+        let never = AtomicBool::new(false);
+        let loaded = match encoding {
+            // "reopen with encoding" (design 010 E2)
+            Some(enc) => load::load_file_as(&path, enc, &never, &mut |_, _| {})?,
+            None => load::load_file(&path, &never, &mut |_, _| {})?,
+        };
         let mut s = lock_doc(&handle);
         s.replace_document(Document::from_loaded(loaded, &path));
         Ok(s.doc.info(id))
@@ -465,6 +522,6 @@ mod command_rules {
                 count += 1;
             }
         }
-        assert!(count >= 25);
+        assert!(count >= 27);
     }
 }

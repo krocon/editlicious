@@ -311,9 +311,90 @@ pub fn replacements(
     Some(out)
 }
 
+/// Overview of the document for the scrollbar (design 010 E3): the lines are cut into
+/// `buckets` equal slices; a slice gets the bits of every layer with a match in it.
+/// `None` = cancelled.
+pub fn overview(
+    rope: &Rope,
+    layers: &[(Regex, u8)],
+    buckets: usize,
+    cancel: &AtomicBool,
+) -> Option<Vec<u8>> {
+    let buckets = buckets.clamp(1, 4096);
+    let mut out = vec![0u8; buckets];
+    let lines = rope.len_lines().max(1);
+    let bucket_of = |line: usize| (line * buckets / lines).min(buckets - 1);
+    let len = rope.len_bytes();
+    let mut a = 0usize;
+    while a < len {
+        if cancel.load(Ordering::Relaxed) {
+            return None;
+        }
+        let b = block_end(rope, a);
+        let text = text_of(rope, a, b);
+        for (re, bit) in layers {
+            // one hit per bucket is enough: jump to the next bucket's first byte
+            let mut from = 0;
+            while from <= text.len() {
+                let Some(m) = re.find_at(&text, from) else {
+                    break;
+                };
+                let line = rope.byte_to_line(a + m.start());
+                let k = bucket_of(line);
+                out[k] |= bit;
+                // first line of the next bucket
+                let next_line = ((k + 1) * lines).div_ceil(buckets);
+                if next_line >= lines {
+                    break;
+                }
+                let next_byte = rope.line_to_byte(next_line);
+                if next_byte >= b {
+                    break;
+                }
+                from = (next_byte - a).max(m.end().max(from + 1));
+                while from < text.len() && !text.is_char_boundary(from) {
+                    from += 1;
+                }
+            }
+        }
+        if b == a {
+            break;
+        }
+        a = b;
+    }
+    Some(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn overview_marks_buckets_per_layer() {
+        let text: String = (0..100)
+            .map(|i| {
+                if i == 10 || i == 95 {
+                    "foo\n"
+                } else if i == 50 {
+                    "bar\n"
+                } else {
+                    "x\n"
+                }
+            })
+            .collect();
+        let rope = Rope::from_str(&text);
+        let layers = [
+            (Regex::new("foo").unwrap(), 1u8),
+            (Regex::new("bar").unwrap(), 2u8),
+        ];
+        let o = overview(&rope, &layers, 10, &AtomicBool::new(false)).unwrap();
+        // 101 lines (the last one empty) in 10 buckets
+        assert_eq!(o[0] | o[1], 1);
+        assert_eq!(o[4] | o[5], 2);
+        assert_eq!(o[9], 1);
+        assert_eq!(o.iter().filter(|&&b| b != 0).count(), 3);
+        assert!(overview(&rope, &layers, 10, &AtomicBool::new(true)).is_none());
+    }
 
     fn q(p: &str) -> Query {
         Query {

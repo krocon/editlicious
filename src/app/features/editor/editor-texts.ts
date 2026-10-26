@@ -7,6 +7,31 @@ const EN = {
   clipboardEmpty: 'The clipboard holds no text.',
   clipboardFailed: 'The clipboard could not be used.',
   noMoreMatches: 'No more occurrences.',
+  htmlTooLarge: 'Too much for “copy as HTML” – select at most 20,000 lines.',
+  copiedHtml: 'Copied as HTML.',
+  encoding: 'Encoding',
+  encodingPlaceholder: 'Type to filter encodings',
+  lineEndings: 'Line endings',
+  lineEndingsPlaceholder: 'Convert every line break to …',
+  lf: 'LF – Unix, macOS',
+  crlf: 'CRLF – Windows',
+  cr: 'CR – classic Mac OS',
+  // status bar (design 010 E1)
+  status: 'Status',
+  position: (line: number, col: number) => `Ln ${line}, Col ${col}`,
+  selected: (chars: number, lines: number) =>
+    lines > 1 ? `${chars} selected (${lines} lines)` : `${chars} selected`,
+  carets: (n: number) => `${n} carets`,
+  lines: (n: string) => `${n} lines`,
+  overwrite: 'OVR',
+  wrap: 'Wrap',
+  longUnwrapped: 'long lines not wrapped',
+  plainText: 'Plain text',
+  bom: 'with BOM',
+  mixed: 'mixed',
+  changeEncoding: 'Change the encoding',
+  changeLineEndings: 'Convert the line endings',
+  changeLanguage: 'Change the language',
 };
 
 export const EDITOR_TEXTS = translatable('editor', EN, {
@@ -17,6 +42,30 @@ export const EDITOR_TEXTS = translatable('editor', EN, {
     clipboardEmpty: 'Die Zwischenablage enthält keinen Text.',
     clipboardFailed: 'Die Zwischenablage konnte nicht benutzt werden.',
     noMoreMatches: 'Keine weiteren Vorkommen.',
+    htmlTooLarge: 'Zu viel für „Als HTML kopieren“ – höchstens 20.000 Zeilen auswählen.',
+    copiedHtml: 'Als HTML kopiert.',
+    encoding: 'Zeichenkodierung',
+    encodingPlaceholder: 'Tippen, um Kodierungen zu filtern',
+    lineEndings: 'Zeilenenden',
+    lineEndingsPlaceholder: 'Alle Zeilenumbrüche umwandeln in …',
+    lf: 'LF – Unix, macOS',
+    crlf: 'CRLF – Windows',
+    cr: 'CR – klassisches Mac OS',
+    status: 'Status',
+    position: (line: number, col: number) => `Z ${line}, Sp ${col}`,
+    selected: (chars: number, lines: number) =>
+      lines > 1 ? `${chars} ausgewählt (${lines} Zeilen)` : `${chars} ausgewählt`,
+    carets: (n: number) => `${n} Cursor`,
+    lines: (n: string) => `${n} Zeilen`,
+    overwrite: 'ÜB',
+    wrap: 'Umbruch',
+    longUnwrapped: 'lange Zeilen nicht umbrochen',
+    plainText: 'Nur Text',
+    bom: 'mit BOM',
+    mixed: 'gemischt',
+    changeEncoding: 'Zeichenkodierung ändern',
+    changeLineEndings: 'Zeilenenden umwandeln',
+    changeLanguage: 'Sprache ändern',
   },
 });
 
@@ -29,6 +78,8 @@ export function noticeText(code: string): string {
       return EDITOR_TEXTS.clipboardFailed;
     case 'no_more_matches':
       return EDITOR_TEXTS.noMoreMatches;
+    case 'html_too_large':
+      return EDITOR_TEXTS.htmlTooLarge;
     default:
       return '';
   }

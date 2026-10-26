@@ -4,7 +4,7 @@
   overflow: hidden;
   font-family: var(--font-editor);
   font-size: var(--editor-font-size);
-  line-height: var(--editor-line-height);
+  line-height: var(--lh, calc(var(--editor-font-size) * var(--editor-line-height)));
   color: var(--ed-text);
   background: var(--ed-bg);
   cursor: text;
@@ -14,6 +14,10 @@
   font-feature-settings:
     'liga' 0,
     'calt' 0;
+}
+
+.probes {
+  display: none;
 }
 
 .measure {
@@ -33,7 +37,7 @@
   position: absolute;
   top: 0;
   right: 1ch;
-  height: calc(var(--editor-font-size) * var(--editor-line-height));
+  height: var(--lh);
   color: var(--ed-gutter-text);
   font-variant-numeric: tabular-nums;
   will-change: transform;
@@ -54,7 +58,7 @@
   top: 0;
   left: 0;
   right: 0;
-  height: calc(var(--editor-font-size) * var(--editor-line-height));
+  height: var(--lh);
   white-space: pre;
   will-change: transform;
 
@@ -186,7 +190,7 @@
 .sel {
   position: absolute;
   top: 0;
-  bottom: 0;
+  height: var(--lh);
   background: var(--ed-selection-inactive);
 
   :host(.focused) & {
@@ -196,8 +200,9 @@
 
 .marker {
   position: absolute;
-  top: 1px;
-  bottom: 1px;
+  top: 0;
+  height: calc(var(--lh) - 2px);
+  margin-top: 1px;
   border-radius: 2px;
   background: var(--ed-marker-0);
 
@@ -232,8 +237,9 @@
 
 .mark {
   position: absolute;
-  top: 1px;
-  bottom: 1px;
+  top: 0;
+  height: calc(var(--lh) - 2px);
+  margin-top: 1px;
   border-radius: 2px;
   background: var(--ed-search-match);
 
@@ -247,7 +253,7 @@
   top: 0;
   left: 0;
   width: 2px;
-  height: calc(var(--editor-font-size) * var(--editor-line-height));
+  height: var(--lh);
   background: var(--ed-caret);
   opacity: 0;
 
@@ -286,6 +292,29 @@
   }
 }
 
+.vbar .tick {
+  position: absolute;
+  right: 0;
+  width: 4px;
+  height: 2px;
+  pointer-events: none;
+
+  &.match {
+    background: var(--ed-search-current);
+  }
+
+  &.marker {
+    left: 0;
+    width: 4px;
+    background: var(--ed-marker-0);
+  }
+
+  &.match.marker {
+    left: 0;
+    width: 10px;
+  }
+}
+
 .hbar {
   right: 10px;
   bottom: 0;
@@ -319,7 +348,7 @@
   position: absolute;
   z-index: 3;
   width: 1px;
-  height: calc(var(--editor-font-size) * var(--editor-line-height));
+  height: var(--lh);
   padding: 0;
   margin: 0;
   border: 0;

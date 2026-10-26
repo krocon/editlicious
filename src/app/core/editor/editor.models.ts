@@ -64,7 +64,15 @@ export type Motion =
 export type Command =
   | { type: 'frame' }
   | { type: 'resize'; lines: number; cols: number }
-  | { type: 'configure'; tabWidth?: number; insertSpaces?: boolean; detect?: boolean }
+  | {
+      type: 'configure';
+      tabWidth?: number;
+      insertSpaces?: boolean;
+      detect?: boolean;
+      wrap?: boolean;
+    }
+  | { type: 'setLineEnding'; lineEnding: LineEnding }
+  | { type: 'copyHtml'; lineNumbers: boolean; styles: string[]; base: string; gutter: string }
   | { type: 'scroll'; lines: number; cells: number }
   | { type: 'scrollTo'; top?: number; left?: number }
   | { type: 'move'; to: Motion; select?: boolean }
@@ -192,6 +200,16 @@ export interface FrameLine {
   markers: [number, number, number][];
   /** Width of the leading whitespace in cells; blank lines: the line above's. */
   indent: number;
+  /** Rows from the top of the view to this line (negative: partly scrolled away). */
+  row: number;
+  /** Soft wrap: first cells of the rows after the first. */
+  wraps: number[];
+}
+
+/** Where a caret is drawn: rows from the view top, cell within its row. */
+export interface CaretXY {
+  row: number;
+  x: number;
 }
 
 export interface CaretPos {
@@ -208,6 +226,10 @@ export interface Frame {
   lines: FrameLine[];
   maxWidth: number;
   carets: CaretPos[];
+  /** Where each caret is drawn (same order). */
+  caretXy: CaretXY[];
+  /** Index of the primary caret. */
+  primary: number;
   caretLine: number;
   caretCh: number;
   selChars: number;
@@ -224,4 +246,8 @@ export interface Frame {
   /** The highlighting of the view is approximate (far jump; exact soon). */
   approxHighlight: boolean;
   selectionText: string | null;
+  /** Soft wrap is on. */
+  wrap: boolean;
+  /** Changes with search and markers (the overview asks again). */
+  deco: number;
 }

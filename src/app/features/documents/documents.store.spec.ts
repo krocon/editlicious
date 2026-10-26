@@ -96,6 +96,25 @@ describe('DocumentsStore', () => {
     expect(store.active()?.info.lineEnding).toBe('crlf');
   });
 
+  it('reads again or converts in another encoding (design 010 E2)', async () => {
+    const { store, api, answers, asked } = setup();
+    await store.start();
+    await store.openPaths(['/e/a.txt']);
+    const id = store.activeId()!;
+    answers.push('reopen');
+    await store.changeEncoding(id, 'windows-1252');
+    expect(api.reloads).toEqual([id]);
+    expect(api.reloadEncodings).toEqual(['windows-1252']);
+    expect(store.reloaded()).toBe(1);
+    answers.push('convert');
+    await store.changeEncoding(id, 'UTF-16LE');
+    expect(api.saved.at(-1)).toEqual({ id, req: { encoding: 'UTF-16LE' } });
+    answers.push('cancel');
+    await store.changeEncoding(id, 'KOI8-R');
+    expect(api.saved.length).toBe(1);
+    expect(asked.length).toBe(3);
+  });
+
   it('asks before closing unsaved changes', async () => {
     const { store, answers, asked } = setup();
     await store.start();

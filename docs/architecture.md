@@ -32,12 +32,14 @@
 | `editor_command(id, cmd) -> Frame` | **jede** Editor-Aktion (Bewegen, Tippen, Maus, Scrollen, Undo, Zwischenablage); Antwort = zu zeichnender Frame | 003 |
 | `save_document(id, req)` | atomar speichern, Speichern unter, mit Encoding | 002 |
 | `startup_paths` | Dateien der Kommandozeile | 003 |
-| `reload_document(id)` / `disk_state(id)` | Änderungen von außen erkennen und neu laden | 004 |
+| `reload_document(id, encoding?)` / `disk_state(id)` | Änderungen von außen erkennen und neu laden | 004 |
 | `pick_open_files(near)` / `pick_save_path(name, near)` | native Dateidialoge (nur Rust-API) | 004 |
 | `load_session` / `save_session` | `session.json` | 004 |
 | `set_title` / `take_over_close` / `quit_app`, Ereignis `close-requested` | Fenster, Beenden mit Frage | 004 |
 | `count_matches(id, query)` | Treffer zählen auf einem Schnappschuss (abbrechbar) | 006 |
 | `list_languages` | Sprachen der Hervorhebung | 008 |
+| `overview(id, buckets)` | Treffer/Marker je Abschnitt für die Scrollleiste (Schnappschuss, abbrechbar) | 010 |
+| `list_encodings` | wählbare Zeichenkodierungen | 010 |
 | `toggle_fullscreen` | Vollbild | 005 |
 | `set_app_menu(spec)`, Ereignis `menu-action` | natives Menü (macOS) | 005 |
 | `load_keymap_overrides` | `keymap.json` | 005 |

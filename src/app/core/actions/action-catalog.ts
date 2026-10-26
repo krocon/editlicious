@@ -99,6 +99,14 @@ export const ACTIONS: readonly ActionDef[] = [
   G('view.zoomReset', 'Reset font size'),
   G('view.lineNumbers', 'Line numbers: absolute / relative / off'),
   G('view.indentGuides', 'Show indentation guides'),
+  // status bar and extras (design 010)
+  G('view.wordWrap', 'Wrap long lines'),
+  G('view.statusBar', 'Show the status bar'),
+  G('view.overview', 'Show matches in the scrollbar'),
+  { id: 'file.encoding', label: 'Encoding…', context: 'editor' },
+  { id: 'file.lineEnding', label: 'Line endings…', context: 'editor' },
+  { id: 'edit.copyHtml', label: 'Copy as HTML', context: 'editor' },
+  { id: 'edit.copyHtmlNumbers', label: 'Copy as HTML with line numbers', context: 'editor' },
   // editing – the engine does it
   E('edit.undo', 'Undo', { type: 'undo' }, { repeat: true }),
   E('edit.redo', 'Redo', { type: 'redo' }, { repeat: true }),

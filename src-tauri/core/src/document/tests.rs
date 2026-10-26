@@ -595,3 +595,37 @@ fn disk_state_sees_changes_from_outside() {
     assert!(d.disk_state().missing);
     assert_eq!(Document::from_text("x").disk_state(), DiskState::default());
 }
+
+#[test]
+fn encodings_offered_can_be_written() {
+    for e in ENCODINGS {
+        assert!(encoding_for_label(e).is_ok(), "{e}");
+    }
+}
+
+#[test]
+fn reopen_with_an_encoding() {
+    let dir = tempfile::tempdir().unwrap();
+    let p = dir.path().join("x.txt");
+    // "Grüße" in windows-1252, but read as UTF-8 at first it is broken
+    fs::write(&p, b"Gr\xfc\xdfe").unwrap();
+    let l = super::load::load_file_as(
+        &p,
+        encoding_for_label("ISO-8859-2").unwrap(),
+        &AtomicBool::new(false),
+        &mut |_, _| {},
+    )
+    .unwrap();
+    assert_eq!(l.rope.to_string(), "Grüße");
+    // a matching BOM is skipped and kept
+    fs::write(&p, b"\xef\xbb\xbfhi").unwrap();
+    let l = super::load::load_file_as(
+        &p,
+        encoding_rs::UTF_8,
+        &AtomicBool::new(false),
+        &mut |_, _| {},
+    )
+    .unwrap();
+    assert_eq!(l.rope.to_string(), "hi");
+    assert!(l.bom);
+}

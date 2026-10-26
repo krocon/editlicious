@@ -127,3 +127,65 @@ fn char_to_byte(text: &str, ch: usize) -> Option<usize> {
         .map(|(b, _)| b)
         .or_else(|| (text.chars().count() == ch).then_some(text.len()))
 }
+
+/// Cells where the rows of a wrapped line start, without the first row (design 010 E4).
+/// A row breaks after the last space that fits, else at the last character that fits (at
+/// least one grapheme per row).
+pub fn wrap_points(lay: &LineLayout, width: usize) -> Vec<usize> {
+    let width = width.max(1);
+    let mut out = Vec::new();
+    let mut start = 0; // first character of the row
+    let n = lay.len();
+    while start < n {
+        let base = lay.cells[start];
+        // characters [start, end) fit into the row
+        let mut end = start;
+        while end < n && lay.cells[end + 1] - base <= width {
+            end += 1;
+        }
+        if end >= n {
+            break;
+        }
+        let mut brk = end;
+        // after the last space of the row (not at its start)
+        if let Some(k) = (start + 1..=end)
+            .rev()
+            .find(|&k| lay.chars[k - 1] == ' ' || lay.chars[k - 1] == '\t')
+        {
+            brk = k;
+        }
+        if brk <= start {
+            brk = start + 1;
+        }
+        let brk = lay.snap(brk).max(start + 1);
+        if brk >= n {
+            break;
+        }
+        out.push(lay.cells[brk]);
+        start = brk;
+    }
+    out
+}
+
+#[cfg(test)]
+mod wrap_tests {
+    use super::*;
+
+    #[test]
+    fn wraps_after_spaces_else_hard() {
+        let lay = LineLayout::new("aaa bbb ccc", 4);
+        assert_eq!(wrap_points(&lay, 5), vec![4, 8]);
+        let lay = LineLayout::new("abcdefghij", 4);
+        assert_eq!(wrap_points(&lay, 4), vec![4, 8]);
+        // fits: no break
+        assert!(wrap_points(&LineLayout::new("abc", 4), 3).is_empty());
+        // wide characters never split
+        let lay = LineLayout::new("日本語です", 4);
+        assert_eq!(wrap_points(&lay, 5), vec![4, 8]);
+        // a combining mark stays with its base
+        let lay = LineLayout::new("abe\u{301}fg", 4);
+        assert_eq!(wrap_points(&lay, 3), vec![3]);
+        // narrower than one wide character: still progress
+        assert_eq!(wrap_points(&LineLayout::new("日本", 4), 1), vec![2]);
+    }
+}

@@ -1,8 +1,8 @@
 //! Line and text operations of the session (design 007): sort, case, duplicate/move/delete/join
 //! lines, whitespace, column selection, more cursors and markers. Each edit is one undo step.
 
-use super::{Cursor, Session};
-use crate::document::model::{Change, EditKind, EditRequest, Pos, Sel};
+use super::{Clipboard, Cursor, Session};
+use crate::document::model::{Change, EditKind, EditRequest, LineEnding, Pos, Sel};
 use crate::error::FsError;
 use crate::search::{self, Query};
 use serde::{Deserialize, Serialize};
@@ -198,6 +198,24 @@ pub fn change_case(text: &str, how: CaseChange) -> String {
     }
 }
 
+/// Lines "copy as HTML" takes at most (it is meant for snippets, design 010 E5).
+pub const MAX_HTML_LINES: usize = 20_000;
+
+/// Escapes text and attribute values for HTML.
+fn esc(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            c => out.push(c),
+        }
+    }
+    out
+}
+
 // ---------------------------------------------------------------- session operations
 
 impl Session {
@@ -235,6 +253,105 @@ impl Session {
             sel_after: Some(after),
         })?;
         self.cursors_from(sels);
+        Ok(())
+    }
+
+    /// The primary selection (or its line) as HTML with inline styles, plain text as the
+    /// alternative (design 010 E5).
+    pub(super) fn copy_html(
+        &mut self,
+        clip: &mut dyn Clipboard,
+        line_numbers: bool,
+        styles: &[String],
+        base: &str,
+        gutter: &str,
+    ) -> Result<(), FsError> {
+        let c = self.primary();
+        let (a, b) = if c.is_empty() {
+            let l = c.head.line;
+            (Pos::new(l, 0), Pos::new(l, self.doc.line_len(l)))
+        } else {
+            (c.start(), c.end())
+        };
+        // the end at the start of a line: that line is not part of it
+        let last = if b.ch == 0 && b.line > a.line {
+            b.line - 1
+        } else {
+            b.line
+        };
+        if last - a.line >= MAX_HTML_LINES {
+            self.notice = Some("html_too_large".into());
+            return Ok(());
+        }
+        let line_styles = match &mut self.highlighter {
+            Some(h) => h.styles(&self.doc, a.line, last + 1).0,
+            None => Vec::new(),
+        };
+        let width = (last + 1).to_string().len();
+        let mut html = format!(
+            "<pre style=\"{};tab-size:{};-moz-tab-size:{}\">",
+            esc(base),
+            self.tab,
+            self.tab
+        );
+        let mut plain = String::new();
+        for line in a.line..=last {
+            let len = self.doc.line_len(line);
+            let from = if line == a.line { a.ch } else { 0 };
+            let to = if line == b.line { b.ch.min(len) } else { len };
+            if line_numbers {
+                html.push_str(&format!(
+                    "<span style=\"{};user-select:none\">{:>width$} </span>",
+                    esc(gutter),
+                    line + 1
+                ));
+            }
+            if self.doc.is_long(line) {
+                let t = self.doc.line_slice(line, from, to);
+                html.push_str(&esc(&t));
+                plain.push_str(&t);
+            } else {
+                let text = self.doc.line_string(line);
+                let spans = line_styles.get(line - a.line).cloned().flatten();
+                let st = super::char_styles(&text, spans.as_deref(), from, to);
+                let chars: Vec<char> = text.chars().skip(from).take(to - from).collect();
+                let mut i = 0;
+                while i < chars.len() {
+                    let k = st.get(i).copied().unwrap_or(0);
+                    let mut j = i;
+                    while j < chars.len() && st.get(j).copied().unwrap_or(0) == k {
+                        j += 1;
+                    }
+                    let piece: String = chars[i..j].iter().collect();
+                    match styles.get(k as usize).filter(|s| k > 0 && !s.is_empty()) {
+                        Some(css) => html.push_str(&format!(
+                            "<span style=\"{}\">{}</span>",
+                            esc(css),
+                            esc(&piece)
+                        )),
+                        None => html.push_str(&esc(&piece)),
+                    }
+                    plain.push_str(&piece);
+                    i = j;
+                }
+            }
+            if line < last {
+                html.push('\n');
+                plain.push_str(self.doc.line_ending.as_str());
+            }
+        }
+        html.push_str("</pre>");
+        if !clip.set_html(html, plain) {
+            self.notice = Some("clipboard_failed".into());
+        }
+        Ok(())
+    }
+
+    /// Every line break becomes `le` (status bar, design 010 E2) – one undo step.
+    pub(super) fn convert_line_endings(&mut self, le: LineEnding) -> Result<(), FsError> {
+        let sels = self.sels();
+        let after = self.doc.convert_line_endings(le, sels);
+        self.cursors_from(after);
         Ok(())
     }
 

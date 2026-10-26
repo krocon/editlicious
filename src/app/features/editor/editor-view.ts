@@ -7,6 +7,7 @@ import {
   effect,
   ElementRef,
   inject,
+  Injector,
   input,
   output,
   signal,
@@ -14,7 +15,8 @@ import {
   viewChild,
 } from '@angular/core';
 import { EditorApi } from '../../core/editor/editor-api';
-import { Command, Frame, FrameLine, Run } from '../../core/editor/editor.models';
+import { Command, Frame, FrameLine, LineEnding, Run } from '../../core/editor/editor.models';
+import { DocumentsStore } from '../documents/documents.store';
 import { describeFsError, toFsError } from '../../core/errors/fs-error';
 import { ActionService } from '../../core/actions/action.service';
 import { ACTIONS } from '../../core/actions/action-catalog';
@@ -53,6 +55,7 @@ interface Metrics {
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[class.focused]': 'focused()',
+    '[style.--lh.px]': 'metrics().lh',
     '[class.no-current]': '!settings.settings().highlightCurrentLine',
     '[class.no-tabs]': '!settings.settings().showTabs',
     '(wheel)': 'onWheel($event)',
@@ -145,8 +148,11 @@ export class EditorView {
     const f = this.frame();
     const w = this.size().width - this.textLeft() - BAR;
     const cols = this.viewCols();
-    const caretCell = f?.carets[0]?.cell ?? 0;
-    const extent = Math.max(f?.maxWidth ?? 0, caretCell + 1);
+    const caretCell = f?.carets[f.primary]?.cell ?? 0;
+    const caretLong = !!f?.lines.find((l) => l.line === f.carets[f.primary]?.line)?.long;
+    // soft wrap: only long lines scroll sideways
+    const extent =
+      f?.wrap && !caretLong ? (f?.maxWidth ?? 0) : Math.max(f?.maxWidth ?? 0, caretCell + 1);
     if (!f || extent <= cols - 1) return null;
     const range = Math.max(1, extent - cols + 2);
     const thumb = Math.max(MIN_THUMB, (w * cols) / (extent + 2));
@@ -156,10 +162,25 @@ export class EditorView {
   /** Primary caret in px – the textarea sits there (IME window near the caret). */
   protected readonly caretXY = computed(() => {
     const f = this.frame();
-    const c = f?.carets[0];
-    if (!f || !c) return { x: 0, y: 0 };
-    return { x: this.x(c.cell), y: this.y(c.line) };
+    if (!f || !f.carets[f.primary]) return { x: 0, y: 0 };
+    return this.caretPx(f.primary);
   });
+
+  /** Search matches and markers in the scrollbar (design 010 E3). */
+  protected readonly overview = signal<number[]>([]);
+  protected readonly overviewTicks = computed(() => {
+    const o = this.overview();
+    const b = this.vbar();
+    if (!b || o.length === 0) return [];
+    const out: { top: number; match: boolean; marker: boolean }[] = [];
+    o.forEach((bits, i) => {
+      if (bits) {
+        out.push({ top: (i * b.track) / o.length, match: !!(bits & 1), marker: !!(bits & 2) });
+      }
+    });
+    return out;
+  });
+  private overviewTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     afterNextRender(() => {
@@ -193,6 +214,15 @@ export class EditorView {
         if (key && this.size().height > 0) setTimeout(() => this.measureFont());
       });
     });
+    // the overview follows search, markers and edits – a little later (design 010 E3)
+    effect(() => {
+      const f = this.frame();
+      const on = this.settings.settings().overview;
+      const track = this.vbar()?.track ?? 0;
+      const key =
+        f && on && f.deco !== 0 && track > 0 ? `${f.info.revision}/${f.deco}/${track}` : '';
+      untracked(() => this.overviewSoon(key, track));
+    });
     // tab width and indentation for every session (design 009)
     effect(() => {
       this.docId();
@@ -204,6 +234,7 @@ export class EditorView {
             tabWidth: s.tabWidth,
             insertSpaces: s.indentWith !== 'tabs',
             detect: s.indentWith === 'auto',
+            wrap: s.wordWrap,
           }),
       );
     });
@@ -237,6 +268,10 @@ export class EditorView {
         },
         'goto.line': { run: () => this.gotoOpen.set(true) },
         'view.language': { run: () => void this.chooseLanguage() },
+        'file.encoding': { run: () => void this.chooseEncoding() },
+        'file.lineEnding': { run: () => void this.chooseLineEnding() },
+        'edit.copyHtml': { run: () => void this.copyHtml(false) },
+        'edit.copyHtmlNumbers': { run: () => void this.copyHtml(true) },
       },
       this.destroyRef,
     );
@@ -257,6 +292,72 @@ export class EditorView {
     if (id !== null) void this.send({ type: 'setLanguage', name: id || null });
     this.focus();
   }
+
+  private readonly injector = inject(Injector);
+
+  /** Status bar / palette: read again or convert in another encoding (design 010 E2). */
+  private async chooseEncoding(): Promise<void> {
+    const f = this.frame();
+    if (!f) return;
+    const names = await this.api.listEncodings().catch((): string[] => []);
+    const enc = await this.picker.pick({
+      title: this.texts.encoding,
+      placeholder: this.texts.encodingPlaceholder,
+      options: names.map((n) => ({ id: n, label: n })),
+      current: f.info.encoding,
+    });
+    if (enc) await this.injector.get(DocumentsStore).changeEncoding(f.info.id, enc);
+    this.focus();
+  }
+
+  /** Converts every line break (one undo step). */
+  private async chooseLineEnding(): Promise<void> {
+    const f = this.frame();
+    if (!f) return;
+    const t = this.texts;
+    const le = await this.picker.pick({
+      title: t.lineEndings,
+      placeholder: t.lineEndingsPlaceholder,
+      options: [
+        { id: 'lf', label: t.lf },
+        { id: 'crlf', label: t.crlf },
+        { id: 'cr', label: t.cr },
+      ],
+      current: f.info.mixedLineEndings ? '' : f.info.lineEnding,
+    });
+    if (le) void this.send({ type: 'setLineEnding', lineEnding: le as LineEnding });
+    this.focus();
+  }
+
+  private readonly probes = viewChild<ElementRef<HTMLElement>>('probes');
+
+  /** "Copy as HTML": the colours of the view go along as inline styles (design 010 E5). */
+  private async copyHtml(lineNumbers: boolean): Promise<void> {
+    const box = this.probes()?.nativeElement;
+    const css = (el: Element) => {
+      const c = getComputedStyle(el);
+      const parts = [`color:${c.color}`];
+      if (c.fontStyle && c.fontStyle !== 'normal') parts.push(`font-style:${c.fontStyle}`);
+      if (Number(c.fontWeight) >= 600) parts.push(`font-weight:${c.fontWeight}`);
+      return parts.join(';');
+    };
+    const styles = box ? Array.from(box.children, (el) => css(el)) : [];
+    const host = getComputedStyle(this.host.nativeElement);
+    const root = getComputedStyle(this.host.nativeElement.ownerDocument.documentElement);
+    const base = [
+      `color:${host.color}`,
+      `background:${host.backgroundColor}`,
+      `font-family:${host.fontFamily.replace(/"/g, "'")}`,
+      `font-size:${host.fontSize}`,
+      'padding:8px',
+    ].join(';');
+    const gutter = `color:${root.getPropertyValue('--ed-gutter-text').trim() || 'gray'}`;
+    await this.send({ type: 'copyHtml', lineNumbers, styles, base, gutter });
+    if (!this.frame()?.notice) this.status.set(this.texts.copiedHtml);
+  }
+
+  /** Style classes of the highlighter (`highlight::CLASSES`) – probes for "copy as HTML". */
+  protected readonly styleIds = Array.from({ length: 26 }, (_, i) => i);
 
   private openFind(replace: boolean): void {
     const f = this.find;
@@ -357,19 +458,85 @@ export class EditorView {
 
   // ---------------------------------------------------------------- rendering helpers
 
-  protected x(cell: number): number {
+  /** Horizontal scroll of a line: wrapped lines never scroll sideways (design 010 E4). */
+  private offset(line: FrameLine | undefined): number {
     const f = this.frame();
-    return (cell - (f?.left ?? 0)) * this.metrics().cw;
+    if (!f) return 0;
+    return f.wrap && line && !line.long ? 0 : f.left;
   }
 
-  protected y(line: number): number {
+  /** Row of a cell in a (wrapped) line. */
+  private rowOf(line: FrameLine, cell: number): number {
+    let r = 0;
+    while (r < line.wraps.length && line.wraps[r] <= cell) r++;
+    return r;
+  }
+
+  /** Position of a cell within its line box (x, and y of its row). */
+  protected px(line: FrameLine, cell: number): { x: number; y: number } {
+    const { cw, lh } = this.metrics();
+    const r = this.rowOf(line, cell);
+    const start = r ? line.wraps[r - 1] : 0;
+    return { x: (cell - start - this.offset(line)) * cw, y: r * lh };
+  }
+
+  /** A cell range `[a, b)` as boxes, one per row. */
+  protected segs(line: FrameLine, a: number, b: number): { x: number; y: number; w: number }[] {
+    const cw = this.metrics().cw;
+    const out: { x: number; y: number; w: number }[] = [];
+    let from = a;
+    while (from < b) {
+      const r = this.rowOf(line, from);
+      const end = Math.min(b, r < line.wraps.length ? line.wraps[r] : b);
+      const p = this.px(line, from);
+      out.push({ x: p.x, y: p.y, w: (end - from) * cw });
+      from = end;
+    }
+    return out;
+  }
+
+  protected lineY(line: FrameLine): number {
+    return line.row * this.metrics().lh;
+  }
+
+  protected lineHeight(line: FrameLine): number {
+    return (line.wraps.length + 1) * this.metrics().lh;
+  }
+
+  /** Where caret `i` is drawn. */
+  protected caretPx(i: number): { x: number; y: number } {
     const f = this.frame();
-    return (line - (f?.top ?? 0)) * this.metrics().lh;
+    const xy = f?.caretXy[i];
+    if (!f || !xy) return { x: 0, y: 0 };
+    const line = f.lines.find((l) => l.line === f.carets[i].line);
+    const { cw, lh } = this.metrics();
+    return { x: (xy.x - this.offset(line)) * cw, y: xy.row * lh };
   }
 
   protected isCurrent(line: FrameLine): boolean {
     const f = this.frame();
     return !!f && f.selChars === 0 && f.carets.some((c) => c.line === line.line);
+  }
+
+  private overviewKey = '';
+
+  private overviewSoon(key: string, track: number): void {
+    if (key === this.overviewKey) return;
+    this.overviewKey = key;
+    if (this.overviewTimer) clearTimeout(this.overviewTimer);
+    if (!key) {
+      this.overview.set([]);
+      return;
+    }
+    const id = this.docId();
+    this.overviewTimer = setTimeout(() => {
+      this.api
+        .overview(id, Math.max(1, Math.floor(track / 3)))
+        .then((o) => {
+          if (id === this.docId() && key === this.overviewKey) this.overview.set(o);
+        })
+        .catch(() => undefined);
+    }, 300);
   }
 
   /** Wide characters are drawn one by one in boxes of two cells. */
@@ -496,13 +663,16 @@ export class EditorView {
 
   // ---------------------------------------------------------------- mouse
 
+  /** A point as the engine wants it: top + rows down, cell (in the row when wrapped). */
   private pointAt(clientX: number, clientY: number): { line: number; cell: number } {
     const r = this.host.nativeElement.getBoundingClientRect();
     const f = this.frame();
     const { cw, lh } = this.metrics();
+    const rows = (clientY - r.top) / lh;
+    const at = f?.lines.find((l) => rows >= l.row && rows < l.row + l.wraps.length + 1);
     return {
-      line: (f?.top ?? 0) + (clientY - r.top) / lh,
-      cell: (f?.left ?? 0) + (clientX - r.left - this.textLeft()) / cw,
+      line: (f?.top ?? 0) + rows,
+      cell: this.offset(at ?? f?.lines.at(-1)) + (clientX - r.left - this.textLeft()) / cw,
     };
   }
 

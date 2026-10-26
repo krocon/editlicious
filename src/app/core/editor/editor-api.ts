@@ -33,11 +33,15 @@ export abstract class EditorApi {
   abstract command(id: number, cmd: Command): Promise<Frame>;
   abstract save(id: number, req?: SaveRequest): Promise<DocInfo>;
   abstract startupPaths(): Promise<string[]>;
-  abstract reload(id: number): Promise<DocInfo>;
+  /** Loads the file again; `encoding` = "reopen with encoding". */
+  abstract reload(id: number, encoding?: string): Promise<DocInfo>;
   abstract diskState(id: number): Promise<DiskState>;
   /** Counts on a snapshot; a newer count cancels an older one (`cancelled`). */
   abstract countMatches(id: number, query: Query): Promise<MatchCount>;
   abstract listLanguages(): Promise<string[]>;
+  abstract listEncodings(): Promise<string[]>;
+  /** Matches (bit 1) and markers (bit 2) per slice of the lines; a newer call cancels. */
+  abstract overview(id: number, buckets: number): Promise<number[]>;
 }
 
 let loadSeq = 0;
@@ -79,8 +83,8 @@ export class TauriEditorApi extends EditorApi {
     return call<string[]>('startup_paths');
   }
 
-  reload(id: number): Promise<DocInfo> {
-    return call<DocInfo>('reload_document', { id });
+  reload(id: number, encoding?: string): Promise<DocInfo> {
+    return call<DocInfo>('reload_document', { id, encoding: encoding ?? null });
   }
 
   diskState(id: number): Promise<DiskState> {
@@ -89,6 +93,14 @@ export class TauriEditorApi extends EditorApi {
 
   countMatches(id: number, query: Query): Promise<MatchCount> {
     return call<MatchCount>('count_matches', { id, query });
+  }
+
+  listEncodings(): Promise<string[]> {
+    return call<string[]>('list_encodings');
+  }
+
+  overview(id: number, buckets: number): Promise<number[]> {
+    return call<number[]>('overview', { id, buckets });
   }
 
   listLanguages(): Promise<string[]> {

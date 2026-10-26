@@ -41,6 +41,8 @@ pub struct Settings {
     pub status_bar: bool,
     /// Soft wrap of lines up to the long-line limit (design 010).
     pub word_wrap: bool,
+    /// Search matches and markers in the scrollbar (design 010 E3).
+    pub overview: bool,
 }
 
 impl Default for Settings {
@@ -62,6 +64,7 @@ impl Default for Settings {
             menu_bar: false,
             status_bar: true,
             word_wrap: false,
+            overview: true,
         }
     }
 }

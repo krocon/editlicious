@@ -236,7 +236,7 @@ export class DocumentsStore {
     return this.write(d, {});
   }
 
-  async saveAs(id = this.activeId()): Promise<boolean> {
+  async saveAs(id = this.activeId(), encoding?: string): Promise<boolean> {
     const d = this.docs().find((x) => x.id === id);
     if (!d) return false;
     let path: string | null;
@@ -250,7 +250,7 @@ export class DocumentsStore {
       return false;
     }
     if (!path) return false;
-    const ok = await this.write(d, { path });
+    const ok = await this.write(d, encoding ? { path, encoding } : { path });
     if (ok) this.remember(path);
     return ok;
   }
@@ -288,6 +288,43 @@ export class DocumentsStore {
       cancel: 'cancel',
     });
     return answer === 'utf8' ? this.write(d, { ...req, encoding: 'UTF-8' }) : false;
+  }
+
+  /**
+   * Status bar: another encoding (design 010 E2) – read the file again in it, or save it in it
+   * (convert). A new file is saved with it.
+   */
+  async changeEncoding(id: number, encoding: string): Promise<void> {
+    const d = this.docs().find((x) => x.id === id);
+    if (!d || encoding === d.info.encoding) return;
+    if (!d.info.path) {
+      await this.saveAs(id, encoding);
+      return;
+    }
+    const answer = await this.ask.ask({
+      title: T.encodingTitle(encoding),
+      message: d.info.dirty
+        ? T.encodingDirty(d.info.name, encoding)
+        : T.encodingQuestion(d.info.name, encoding),
+      buttons: [
+        { id: 'cancel', label: T.cancel },
+        { id: 'reopen', label: T.reopenWith },
+        { id: 'convert', label: T.convertTo, primary: true },
+      ],
+      cancel: 'cancel',
+    });
+    if (answer === 'convert') {
+      await this.write(d, { encoding });
+    } else if (answer === 'reopen') {
+      try {
+        const info = await this.api.reload(id, encoding);
+        this.updateInfo(info);
+        this.message.set(T.reopened(info.name, info.encoding));
+        this.reloaded.update((n) => n + 1);
+      } catch (e) {
+        this.fail(e);
+      }
+    }
   }
 
   // ---------------------------------------------------------------- close & quit

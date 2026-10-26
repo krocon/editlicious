@@ -4,6 +4,9 @@ import { TestBed } from '@angular/core/testing';
 import { EditorApi } from '../../core/editor/editor-api';
 import { FakeEditorApi, textFrame } from '../../../testing/fake-editor-api';
 import { EditorView } from './editor-view';
+import { PickService } from '../../shared/pick/pick.service';
+import { ActionService } from '../../core/actions/action.service';
+import { Command } from '../../core/editor/editor.models';
 import { SettingsStore } from '../settings/settings.store';
 import { KeyboardDispatcher } from '../../core/actions/keyboard-dispatcher';
 import { OS } from '../../core/actions/platform';
@@ -70,6 +73,7 @@ describe('EditorView', () => {
       tabWidth: 4,
       insertSpaces: true,
       detect: true,
+      wrap: false,
     });
     // one guide per indent step, none at the left edge
     expect(el.querySelectorAll('.row')[2].querySelectorAll('.guide').length).toBe(1);
@@ -85,11 +89,88 @@ describe('EditorView', () => {
       tabWidth: 8,
       insertSpaces: false,
       detect: false,
+      wrap: false,
     });
     settings.update({ lineNumbers: 'off', indentGuides: false });
     await fixture.whenStable();
     expect(el.querySelector('.ln')?.textContent?.trim()).toBe('');
     expect(el.querySelectorAll('.guide').length).toBe(0);
+  });
+
+  it('draws wrapped lines row by row (design 010 E4)', async () => {
+    const api = new FakeEditorApi();
+    api.nextFrame = textFrame(['aaaa bbbb cccc', 'x'], { wrap: true });
+    const l0 = api.nextFrame.lines[0];
+    l0.wraps = [5, 10];
+    l0.runs = [
+      { cell: 0, width: 5, kind: 'text', text: 'aaaa ', style: 0 },
+      { cell: 5, width: 5, kind: 'text', text: 'bbbb ', style: 0 },
+      { cell: 10, width: 4, kind: 'text', text: 'cccc', style: 0 },
+    ];
+    l0.sel = [[3, 12]];
+    api.nextFrame.lines[1].row = 3;
+    api.nextFrame.carets = [{ line: 0, cell: 12 }];
+    api.nextFrame.caretXy = [{ row: 2, x: 2 }];
+    const { el, fixture } = await setup(api);
+    await fixture.whenStable();
+    const lh = parseFloat(el.style.getPropertyValue('--lh'));
+    const runs = [
+      ...el.querySelectorAll<HTMLElement>('.row')[0].querySelectorAll<HTMLElement>('.run'),
+    ];
+    expect(runs.map((r) => parseFloat(r.style.top))).toEqual([0, lh, 2 * lh]);
+    expect(runs.map((r) => parseFloat(r.style.left))).toEqual([0, 0, 0]);
+    // the selection splits into one box per row
+    expect(el.querySelectorAll('.row')[0].querySelectorAll('.sel').length).toBe(3);
+    // the second line starts below the three rows
+    expect(el.querySelectorAll<HTMLElement>('.row')[1].style.transform).toBe(
+      `translateY(${3 * lh}px)`,
+    );
+    const caret = el.querySelector<HTMLElement>('.caret')!;
+    expect(caret.style.transform).toContain(`${2 * lh}px`);
+    // wrapping follows the setting
+    TestBed.inject(SettingsStore).update({ wordWrap: true });
+    await fixture.whenStable();
+    await flush();
+    expect(api.sent('configure').at(-1)).toMatchObject({ wrap: true });
+  });
+
+  it('asks for the overview when search or markers are active (design 010 E3)', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const api = new FakeEditorApi();
+    api.nextFrame = textFrame(
+      Array.from({ length: 30 }, (_, i) => `line ${i}`),
+      { deco: 7 },
+    );
+    api.nextFrame.info.lineCount = 10_000;
+    api.overviewAnswer = [1, 0, 2, 3];
+    const setupP = setup(api);
+    await vi.advanceTimersByTimeAsync(10);
+    const { el, fixture } = await setupP;
+    await vi.advanceTimersByTimeAsync(400);
+    await fixture.whenStable();
+    vi.useRealTimers();
+    expect(api.overviews.length).toBe(1);
+    const ticks = el.querySelectorAll('.vbar .tick');
+    expect(ticks.length).toBe(3);
+    expect(el.querySelectorAll('.vbar .tick.marker').length).toBe(2);
+  });
+
+  it('converts line endings and copies as HTML through the engine', async () => {
+    const { api, fixture } = await setup();
+    const picker = TestBed.inject(PickService);
+    vi.spyOn(picker, 'pick').mockResolvedValue('crlf');
+    const actions = TestBed.inject(ActionService);
+    actions.run('file.lineEnding');
+    await flush();
+    await fixture.whenStable();
+    await flush();
+    expect(api.sent('setLineEnding')).toEqual([{ type: 'setLineEnding', lineEnding: 'crlf' }]);
+    actions.run('edit.copyHtmlNumbers');
+    await flush();
+    const html = api.sent('copyHtml')[0] as Extract<Command, { type: 'copyHtml' }>;
+    expect(html.lineNumbers).toBe(true);
+    expect(html.styles.length).toBe(26);
+    expect(html.base).toContain('padding');
   });
 
   it('turns keys into engine commands', async () => {

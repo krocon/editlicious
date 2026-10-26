@@ -6,6 +6,7 @@ import {
   DestroyRef,
   effect,
   inject,
+  signal,
   viewChild,
 } from '@angular/core';
 import { MAX_RECENT_ACTIONS, MAX_SWITCH_ACTIONS } from './core/actions/action-catalog';
@@ -19,6 +20,8 @@ import { ABOUT_TEXTS } from './features/about/about-texts';
 import { DocumentsStore } from './features/documents/documents.store';
 import { TabBar } from './features/documents/tab-bar';
 import { EditorView } from './features/editor/editor-view';
+import { StatusBar } from './features/editor/status-bar';
+import { Frame } from './core/editor/editor.models';
 import { ChromeStore, Scheme, SCHEMES, schemeAttributes } from './features/menus/chrome.store';
 import { PickDialog } from './shared/pick/pick-dialog';
 import { CommandPalette } from './features/menus/command-palette';
@@ -45,6 +48,7 @@ import { SettingsStore } from './features/settings/settings.store';
     MenuBar,
     PickDialog,
     SettingsDialog,
+    StatusBar,
     ShortcutsDialog,
     TabBar,
   ],
@@ -64,8 +68,11 @@ import { SettingsStore } from './features/settings/settings.store';
           class="editor"
           [docId]="id"
           [refresh]="store.reloaded()"
-          (frameChange)="store.onFrame($event)"
+          (frameChange)="onFrame($event)"
         />
+        @if (statusVisible()) {
+          <app-status-bar [frame]="lastFrame()" />
+        }
       }
     } @else {
       <main class="welcome">
@@ -112,6 +119,11 @@ export class App {
   private readonly actions = inject(ActionService);
   protected readonly mac = this.actions.os === 'mac';
   protected readonly tabsVisible = computed(() => this.store.tabsVisible() && !this.chrome.bare());
+  protected readonly statusVisible = computed(
+    () => this.chrome.statusBar() && !this.chrome.bare() && !!this.lastFrame(),
+  );
+  /** The last frame of the active editor (status bar). */
+  protected readonly lastFrame = signal<Frame | null>(null);
   private readonly editor = viewChild(EditorView);
   private readonly menuBar = viewChild(MenuBar);
   private readonly ws = inject(WorkspaceApi);
@@ -187,6 +199,18 @@ export class App {
       'view.zoomOut': { run: () => st.zoom(-1) },
       'view.zoomReset': { run: () => st.zoom(0) },
       'view.lineNumbers': { run: () => st.cycleLineNumbers() },
+      'view.wordWrap': {
+        run: () => st.update({ wordWrap: !st.settings().wordWrap }),
+        checked: () => st.settings().wordWrap,
+      },
+      'view.statusBar': {
+        run: () => c.statusBar.update((v) => !v),
+        checked: () => c.statusBar(),
+      },
+      'view.overview': {
+        run: () => st.update({ overview: !st.settings().overview }),
+        checked: () => st.settings().overview,
+      },
       'view.indentGuides': {
         run: () => st.update({ indentGuides: !st.settings().indentGuides }),
         checked: () => st.settings().indentGuides,
@@ -239,6 +263,11 @@ export class App {
       };
     }
     this.actions.registerAll(handlers, this.destroyRef);
+  }
+
+  protected onFrame(f: Frame): void {
+    this.store.onFrame(f);
+    this.lastFrame.set(f);
   }
 
   protected closeTab(id: number): void {

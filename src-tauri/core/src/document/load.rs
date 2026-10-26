@@ -183,6 +183,51 @@ pub fn load_file(
     })
 }
 
+/// Reads `path` in the given encoding ("reopen with encoding", design 010 E2): no guessing,
+/// no binary check; a BOM of that encoding is skipped and kept.
+pub fn load_file_as(
+    path: &Path,
+    encoding: &'static Encoding,
+    cancel: &AtomicBool,
+    progress: &mut dyn FnMut(u64, u64),
+) -> Result<Loaded, FsError> {
+    let io_err = |e: io::Error| FsError::from_io(&e, path);
+    let meta = fs::metadata(path).map_err(io_err)?;
+    if meta.is_dir() {
+        return Err(FsError::new(
+            FsErrorCode::IsADirectory,
+            "is a directory",
+            Some(path),
+        ));
+    }
+    let total = meta.len();
+    if total > MAX_FILE_BYTES {
+        return Err(FsError::new(
+            FsErrorCode::FileTooLarge,
+            format!("{total} bytes"),
+            Some(path),
+        ));
+    }
+    let mut head = [0u8; 4];
+    let n = read_up_to(&mut File::open(path).map_err(io_err)?, &mut head).map_err(io_err)?;
+    let bom_len = match Encoding::for_bom(&head[..n]) {
+        Some((enc, len)) if enc == encoding => len,
+        _ => 0,
+    };
+    match decode(path, encoding, bom_len, false, total, cancel, progress)? {
+        Decoded::Done(rope, stats, decode_errors) => Ok(Loaded {
+            rope,
+            encoding,
+            bom: bom_len > 0,
+            stats,
+            decode_errors,
+            file_size: total,
+            mtime: meta.modified().ok(),
+        }),
+        Decoded::NotUtf8 => unreachable!("not strict"),
+    }
+}
+
 /// The legacy encoding `chardetng` finds most likely (never UTF-8: that failed already).
 pub fn guess_encoding(head: &[u8], whole_file: bool) -> &'static Encoding {
     let mut det = chardetng::EncodingDetector::new(chardetng::Iso2022JpDetection::Deny);

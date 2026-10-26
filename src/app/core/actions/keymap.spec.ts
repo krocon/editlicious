@@ -23,7 +23,11 @@ describe('keymap', () => {
 
   it('every editing and cursor action names an engine command', () => {
     for (const a of ACTIONS.filter(
-      (x) => /^(edit|cursor|select|block)\./.test(x.id) && x.id !== 'edit.escape',
+      // escape and "copy as HTML" need the view (find bar, colours)
+      (x) =>
+        /^(edit|cursor|select|block)\./.test(x.id) &&
+        x.id !== 'edit.escape' &&
+        !x.id.startsWith('edit.copyHtml'),
     )) {
       expect(a.cmd, a.id).toBeDefined();
     }

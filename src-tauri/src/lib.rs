@@ -59,6 +59,8 @@ pub fn run() {
             commands::document_info,
             commands::editor_command,
             commands::count_matches,
+            commands::overview,
+            commands::list_encodings,
             commands::list_languages,
             commands::save_document,
             commands::startup_paths,

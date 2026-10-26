@@ -126,6 +126,14 @@
         <input type="checkbox" [checked]="s.showTabs" (change)="set('showTabs', checked($event))" />
         {{ t.showTabs }}
       </label>
+      <label class="check">
+        <input type="checkbox" [checked]="s.wordWrap" (change)="set('wordWrap', checked($event))" />
+        {{ t.wordWrap }}
+      </label>
+      <label class="check">
+        <input type="checkbox" [checked]="s.overview" (change)="set('overview', checked($event))" />
+        {{ t.overview }}
+      </label>
     </fieldset>
 
     <fieldset>

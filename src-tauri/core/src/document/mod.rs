@@ -14,7 +14,8 @@ use crate::error::{FsError, FsErrorCode};
 use encoding_rs::{Encoding, UTF_8, UTF_16BE, UTF_16LE};
 use history::{History, RawChange, Step};
 use model::{
-    Change, DocInfo, EditRequest, LineEnding, Pos, SaveRequest, Sel, View, ViewLine, ViewRequest,
+    Change, DocInfo, EditKind, EditRequest, LineEnding, Pos, SaveRequest, Sel, View, ViewLine,
+    ViewRequest,
 };
 use ropey::Rope;
 use std::path::{Path, PathBuf};
@@ -28,6 +29,8 @@ pub const MAX_WINDOW: usize = 64_000;
 pub const MAX_VIEW_LINES: usize = 2_000;
 /// Largest text `get_text` hands out (design 002 E11), in bytes of UTF-8.
 pub const MAX_TEXT_BYTES: usize = 64 << 20;
+/// From this many changes in one edit the rope is rebuilt instead of edited in place.
+const REBUILD_FROM: usize = 256;
 
 #[derive(Debug)]
 pub struct Document {
@@ -314,11 +317,71 @@ impl Document {
                 ));
             }
         }
+        Ok(self.record(raw, req.sel_before, req.sel_after, req.kind))
+    }
+
+    /// Every line break becomes `le` (design 010 E2) as one undo step; new lines get `le`.
+    /// Scans the text once – a million lines take well under a second.
+    pub fn convert_line_endings(&mut self, le: LineEnding, sels: Vec<Sel>) -> Vec<Sel> {
+        let mut raw = Vec::new();
+        let mut idx = 0usize;
+        let mut cr_at: Option<usize> = None;
+        let push = |from: usize, to: usize, is: LineEnding, raw: &mut Vec<RawChange>| {
+            if is != le {
+                raw.push(RawChange {
+                    from,
+                    to,
+                    text: le.as_str().to_owned(),
+                });
+            }
+        };
+        for chunk in self.rope.chunks() {
+            for c in chunk.chars() {
+                match c {
+                    '\n' => match cr_at.take() {
+                        Some(i) if i + 1 == idx => push(i, idx + 1, LineEnding::Crlf, &mut raw),
+                        Some(i) => {
+                            push(i, i + 1, LineEnding::Cr, &mut raw);
+                            push(idx, idx + 1, LineEnding::Lf, &mut raw);
+                        }
+                        None => push(idx, idx + 1, LineEnding::Lf, &mut raw),
+                    },
+                    '\r' => {
+                        if let Some(i) = cr_at.replace(idx) {
+                            push(i, i + 1, LineEnding::Cr, &mut raw);
+                        }
+                    }
+                    _ => {
+                        if let Some(i) = cr_at.take() {
+                            push(i, i + 1, LineEnding::Cr, &mut raw);
+                        }
+                    }
+                }
+                idx += 1;
+            }
+        }
+        if let Some(i) = cr_at {
+            push(i, i + 1, LineEnding::Cr, &mut raw);
+        }
+        self.line_ending = le;
+        self.mixed_line_endings = false;
+        self.record(raw, sels.clone(), Some(sels), EditKind::Other)
+    }
+
+    /// Applies sorted, non-overlapping changes (char offsets) and records the undo step.
+    fn record(
+        &mut self,
+        raw: Vec<RawChange>,
+        sel_before: Vec<Sel>,
+        sel_after: Option<Vec<Sel>>,
+        kind: EditKind,
+    ) -> Vec<Sel> {
+        let req_sel_after = sel_after;
         if raw.is_empty() {
-            return Ok(req.sel_after.unwrap_or(req.sel_before));
+            return req_sel_after.unwrap_or(sel_before);
         }
         let inverse = self.apply_raw(&raw);
-        let sel_after: Vec<Sel> = match req.sel_after {
+        let sel_after: Vec<Sel> = match req_sel_after {
             Some(s) => s.into_iter().map(|s| self.clamp_sel(s)).collect(),
             None => inverse
                 .iter()
@@ -331,14 +394,14 @@ impl Document {
         self.history.push(Step {
             forward: raw,
             inverse,
-            sel_before: req.sel_before,
+            sel_before,
             sel_after: sel_after.clone(),
-            kind: req.kind,
+            kind,
             at: Instant::now(),
             state_before,
             state_after: self.state,
         });
-        Ok(sel_after)
+        sel_after
     }
 
     fn clamp_sel(&self, s: Sel) -> Sel {
@@ -368,13 +431,31 @@ impl Document {
             });
             delta += inserted as isize - (c.to - c.from) as isize;
         }
-        // apply back to front so earlier offsets stay valid
-        for c in changes.iter().rev() {
-            if c.to > c.from {
-                self.rope.remove(c.from..c.to);
+        if changes.len() > REBUILD_FROM {
+            // many changes (replace all, line endings): one pass building a new rope is far
+            // faster than editing in place
+            let mut b = ropey::RopeBuilder::new();
+            let mut pos = 0;
+            for c in changes {
+                for chunk in self.rope.slice(pos..c.from).chunks() {
+                    b.append(chunk);
+                }
+                b.append(&c.text);
+                pos = c.to;
             }
-            if !c.text.is_empty() {
-                self.rope.insert(c.from, &c.text);
+            for chunk in self.rope.slice(pos..).chunks() {
+                b.append(chunk);
+            }
+            self.rope = b.finish();
+        } else {
+            // apply back to front so earlier offsets stay valid
+            for c in changes.iter().rev() {
+                if c.to > c.from {
+                    self.rope.remove(c.from..c.to);
+                }
+                if !c.text.is_empty() {
+                    self.rope.insert(c.from, &c.text);
+                }
             }
         }
         self.revision += 1;
@@ -481,6 +562,31 @@ impl Document {
         Ok(())
     }
 }
+
+/// Encodings offered in the status bar (design 010 E2) – all of them can be read and written.
+pub const ENCODINGS: &[&str] = &[
+    "UTF-8",
+    "UTF-16LE",
+    "UTF-16BE",
+    "windows-1252",
+    "ISO-8859-2",
+    "ISO-8859-15",
+    "windows-1250",
+    "windows-1251",
+    "windows-1253",
+    "windows-1254",
+    "windows-1257",
+    "KOI8-R",
+    "KOI8-U",
+    "IBM866",
+    "macintosh",
+    "Shift_JIS",
+    "EUC-JP",
+    "EUC-KR",
+    "GBK",
+    "gb18030",
+    "Big5",
+];
 
 /// An encoding the app can write: UTF-8, UTF-16 or one whose encoder writes itself.
 pub fn encoding_for_label(label: &str) -> Result<&'static Encoding, FsError> {

@@ -45,6 +45,9 @@ export function buildMenuModel(os: Os, input: MenuInputs): TopMenuNode[] {
     sep,
     a('file.close'),
     a('file.closeAll'),
+    sep,
+    a('file.encoding'),
+    a('file.lineEnding'),
     ...(os === 'mac' ? [] : [sep, a('app.settings'), sep, a('app.quit')]),
   ];
   const edit: MenuNode[] = [
@@ -55,6 +58,8 @@ export function buildMenuModel(os: Os, input: MenuInputs): TopMenuNode[] {
     a('edit.copy'),
     a('edit.paste'),
     a('edit.selectAll'),
+    a('edit.copyHtml'),
+    a('edit.copyHtmlNumbers'),
     sep,
     a('edit.indent'),
     a('edit.outdent'),
@@ -132,6 +137,9 @@ export function buildMenuModel(os: Os, input: MenuInputs): TopMenuNode[] {
     a('view.zoomReset'),
     a('view.lineNumbers'),
     a('view.indentGuides'),
+    a('view.wordWrap'),
+    a('view.overview'),
+    a('view.statusBar'),
     sep,
     a('file.next'),
     a('file.prev'),

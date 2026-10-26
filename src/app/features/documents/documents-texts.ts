@@ -26,6 +26,14 @@ const EN = {
   openFailed: (name: string, why: string) => `“${name}” could not be opened: ${why}`,
   saveFailed: (name: string, why: string) => `“${name}” could not be saved: ${why}`,
   saved: (name: string) => `Saved ${name}.`,
+  encodingTitle: (enc: string) => `Encoding ${enc}`,
+  encodingQuestion: (name: string, enc: string) =>
+    `Read “${name}” again as ${enc} (if it shows wrong characters), or save it in ${enc} (convert)?`,
+  encodingDirty: (name: string, enc: string) =>
+    `Read “${name}” again as ${enc} – your unsaved changes are lost –, or save it in ${enc} (convert)?`,
+  reopenWith: 'Read again',
+  convertTo: 'Save converted',
+  reopened: (name: string, enc: string) => `“${name}” read again as ${enc}.`,
 };
 
 export const DOC_TEXTS = translatable('documents', EN, {
@@ -54,5 +62,13 @@ export const DOC_TEXTS = translatable('documents', EN, {
     openFailed: (name: string, why: string) => `„${name}“ konnte nicht geöffnet werden: ${why}`,
     saveFailed: (name: string, why: string) => `„${name}“ konnte nicht gespeichert werden: ${why}`,
     saved: (name: string) => `${name} gespeichert.`,
+    encodingTitle: (enc: string) => `Zeichenkodierung ${enc}`,
+    encodingQuestion: (name: string, enc: string) =>
+      `„${name}“ neu als ${enc} lesen (wenn Zeichen falsch aussehen) oder in ${enc} speichern (umwandeln)?`,
+    encodingDirty: (name: string, enc: string) =>
+      `„${name}“ neu als ${enc} lesen – die ungespeicherten Änderungen gehen verloren – oder in ${enc} speichern (umwandeln)?`,
+    reopenWith: 'Neu lesen',
+    convertTo: 'Umgewandelt speichern',
+    reopened: (name: string, enc: string) => `„${name}“ neu als ${enc} gelesen.`,
   },
 });

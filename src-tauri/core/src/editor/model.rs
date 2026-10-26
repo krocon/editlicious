@@ -2,7 +2,7 @@
 //! `src/app/core/editor/editor.models.ts`.
 
 pub use super::ops::{CaseChange, SortMode, SortOptions};
-use crate::document::model::DocInfo;
+use crate::document::model::{DocInfo, LineEnding};
 use crate::search::Query;
 use serde::{Deserialize, Serialize};
 
@@ -28,6 +28,9 @@ pub enum Command {
         insert_spaces: Option<bool>,
         #[serde(default)]
         detect: bool,
+        /// Soft wrap at the view width (design 010 E4); `None` = unchanged.
+        #[serde(default)]
+        wrap: Option<bool>,
     },
     Scroll {
         lines: f64,
@@ -139,6 +142,18 @@ pub enum Command {
     ToggleMarker,
     ClearMarkers,
     /// Language by name (`None` = plain text), design 008.
+    /// Converts every line break (design 010 E2).
+    SetLineEnding {
+        line_ending: LineEnding,
+    },
+    /// Copies the selection (or the whole line) as HTML with the colours of the view
+    /// (design 010 E5). `styles[i]` = CSS declarations of style class i, `base` = of the text.
+    CopyHtml {
+        line_numbers: bool,
+        styles: Vec<String>,
+        base: String,
+        gutter: String,
+    },
     SetLanguage {
         name: Option<String>,
     },
@@ -191,7 +206,7 @@ pub struct Run {
     pub style: u8,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FrameLine {
     pub line: usize,
@@ -211,12 +226,24 @@ pub struct FrameLine {
     /// Width of the leading whitespace in cells (indentation guides, design 009); blank lines
     /// take the indentation of the line above.
     pub indent: usize,
+    /// Rows from the top of the view to this line (negative: partly scrolled away).
+    pub row: f64,
+    /// Soft wrap: first cells of the rows after the first (runs never cross them).
+    pub wraps: Vec<usize>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct CaretPos {
     pub line: usize,
+    /// Absolute cell in the line.
     pub cell: usize,
+}
+
+/// Where a caret is drawn: rows from the top of the view, cell within its row.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+pub struct CaretXY {
+    pub row: f64,
+    pub x: usize,
 }
 
 /// Everything the UI needs to draw the editor (design 003 E1).
@@ -233,8 +260,12 @@ pub struct Frame {
     pub lines: Vec<FrameLine>,
     /// Widest line seen so far (horizontal scroll range).
     pub max_width: usize,
-    /// Carets; the first one is the primary (status bar, IME).
+    /// Carets in document order.
     pub carets: Vec<CaretPos>,
+    /// Where each caret is drawn (same order as `carets`).
+    pub caret_xy: Vec<CaretXY>,
+    /// Index of the primary caret (IME window, status bar).
+    pub primary: usize,
     /// Primary caret as line/character (0-based) for the status bar.
     pub caret_line: usize,
     pub caret_ch: usize,
@@ -255,4 +286,8 @@ pub struct Frame {
     pub approx_highlight: bool,
     /// The primary selection when it is short and on one line (to prefill the find field).
     pub selection_text: Option<String>,
+    /// Soft wrap is on (no horizontal scrolling except for long lines).
+    pub wrap: bool,
+    /// Changes when search or markers change (the overview asks again, design 010 E3).
+    pub deco: u64,
 }

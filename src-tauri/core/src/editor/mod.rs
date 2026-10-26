@@ -15,8 +15,8 @@ use crate::document::model::{Change, EditKind, EditRequest, Pos, Sel};
 use crate::error::FsError;
 use crate::highlight::{self, Highlighter};
 use crate::search::{self, Query};
-use layout::{LineLayout, char_width, next_grapheme, prev_grapheme};
-use model::{CaretPos, Command, Frame, FrameLine, Motion, Run, RunKind};
+use layout::{LineLayout, char_width, next_grapheme, prev_grapheme, wrap_points};
+use model::{CaretPos, CaretXY, Command, Frame, FrameLine, Motion, Run, RunKind};
 use regex::Regex;
 use words::CharClass;
 
@@ -24,6 +24,10 @@ use words::CharClass;
 pub trait Clipboard {
     fn get(&mut self) -> Option<String>;
     fn set(&mut self, text: String) -> bool;
+    /// Rich text with a plain alternative; without HTML support only the text.
+    fn set_html(&mut self, _html: String, alt: String) -> bool {
+        self.set(alt)
+    }
 }
 
 /// A clipboard that only lives in memory (tests, WebAssembly demo).
@@ -116,7 +120,12 @@ pub struct Session {
     /// Line and cell of the last click – the corner of an Alt-drag block.
     block_origin: Option<(usize, usize)>,
     highlighter: Option<Highlighter>,
+    /// Soft wrap at the view width (design 010 E4).
+    wrap: bool,
 }
+
+/// A place in the view: document line and row within the line (fraction = part of a row).
+type VPos = (usize, f64);
 
 impl Session {
     pub fn new(doc: Document, id: u64) -> Self {
@@ -143,6 +152,7 @@ impl Session {
             markers: Vec::new(),
             block_origin: None,
             highlighter,
+            wrap: false,
         }
     }
 
@@ -206,7 +216,17 @@ impl Session {
                 tab_width,
                 insert_spaces,
                 detect,
+                wrap,
             } => {
+                if let Some(w) = wrap
+                    && w != self.wrap
+                {
+                    self.wrap = w;
+                    self.max_width = 0;
+                    if w {
+                        self.left = 0.0;
+                    }
+                }
                 if let Some(t) = tab_width {
                     self.tab = t.clamp(1, 16);
                 }
@@ -226,7 +246,12 @@ impl Session {
                 reveal = Reveal::No;
             }
             Command::Scroll { lines, cells } => {
-                self.top += lines;
+                if self.wrap {
+                    let v = self.advance(self.top_vpos(), lines);
+                    self.set_top_vpos(v);
+                } else {
+                    self.top += lines;
+                }
                 self.left += cells;
                 reveal = Reveal::No;
             }
@@ -367,6 +392,16 @@ impl Session {
                 self.clear_markers();
                 reveal = Reveal::No;
             }
+            Command::SetLineEnding { line_ending } => self.convert_line_endings(line_ending)?,
+            Command::CopyHtml {
+                line_numbers,
+                styles,
+                base,
+                gutter,
+            } => {
+                self.copy_html(clip, line_numbers, &styles, &base, &gutter)?;
+                reveal = Reveal::No;
+            }
             Command::SetLanguage { name } => {
                 self.highlighter = name.as_deref().and_then(Highlighter::new);
                 reveal = Reveal::No;
@@ -381,10 +416,20 @@ impl Session {
             Reveal::Margin => self.reveal(H_MARGIN),
             Reveal::Exact => self.reveal(0.0),
             Reveal::Center => {
-                let line = self.primary().head.line as f64;
                 let rows = self.view_lines.floor().max(1.0);
-                if line < self.top || line + 1.0 > self.top + rows {
-                    self.top = (line - (rows / 2.0).floor()).max(0.0);
+                if self.wrap {
+                    let c = self.caret_vpos(self.primary().head);
+                    let top = self.top_vpos();
+                    let bottom = self.advance(c, -(rows - 1.0));
+                    if vless(c, top) || vless(top, bottom) {
+                        let v = self.advance(c, -(rows / 2.0).floor());
+                        self.set_top_vpos(v);
+                    }
+                } else {
+                    let line = self.primary().head.line as f64;
+                    if line < self.top || line + 1.0 > self.top + rows {
+                        self.top = (line - (rows / 2.0).floor()).max(0.0);
+                    }
                 }
                 self.reveal(H_MARGIN);
             }
@@ -413,7 +458,33 @@ impl Session {
         }
     }
 
+    /// The position at a point of the view: `line` = top + rows down (soft wrap: rows, not
+    /// lines), `cell` = cell in the row.
     fn pos_at(&self, line: f64, cell: f64) -> Pos {
+        if self.wrap {
+            let max_line = self.doc.line_count().saturating_sub(1);
+            if line < 0.0 {
+                return Pos::new(0, 0);
+            }
+            let (l, r) = self.advance(self.top_vpos(), line - self.top);
+            let breaks = self.breaks(l);
+            let row = (r.max(0.0).floor() as usize).min(breaks.len());
+            if l == max_line && line - self.top > 0.0 && r >= self.rows(l) as f64 {
+                return Pos::new(max_line, self.doc.line_len(max_line));
+            }
+            let start = if row == 0 { 0 } else { breaks[row - 1] };
+            let next = breaks.get(row).copied();
+            let mut abs = start as f64 + cell.max(0.0);
+            if let Some(n) = next {
+                // a click right of a row's end lands before the row break
+                abs = abs.min(n as f64 - 0.5);
+            }
+            let ch = match self.layout(l) {
+                Some(lay) => lay.ch_at(abs),
+                None => (abs.round() as usize).min(self.doc.line_len(l)),
+            };
+            return Pos::new(l, ch);
+        }
         let max_line = self.doc.line_count().saturating_sub(1);
         if line < 0.0 {
             return Pos::new(0, 0);
@@ -564,6 +635,9 @@ impl Session {
     }
 
     fn vertical(&self, c: &Cursor, down: bool, n: usize) -> (Pos, usize) {
+        if self.wrap {
+            return self.vertical_wrapped(c, down, n);
+        }
         let goal = c.goal.unwrap_or_else(|| self.cell_of(c.head));
         let last = self.doc.line_count().saturating_sub(1);
         let p = c.head;
@@ -581,10 +655,62 @@ impl Session {
         (Pos::new(line, self.ch_for_goal(line, goal)), goal)
     }
 
+    /// Up/down by rows of wrapped lines; the goal is the cell within the row.
+    fn vertical_wrapped(&self, c: &Cursor, down: bool, n: usize) -> (Pos, usize) {
+        let p = c.head;
+        let breaks = self.breaks(p.line);
+        let cell = self.cell_of(p);
+        let row = breaks.partition_point(|&b| b <= cell);
+        let row_start = if row == 0 { 0 } else { breaks[row - 1] };
+        let goal = c.goal.unwrap_or(cell - row_start);
+        let last = self.doc.line_count().saturating_sub(1);
+        let (mut line, mut row) = (p.line, row);
+        let mut rows_here = breaks.len() + 1;
+        for _ in 0..n {
+            if down {
+                if row + 1 < rows_here {
+                    row += 1;
+                } else if line < last {
+                    line += 1;
+                    row = 0;
+                    rows_here = self.rows(line);
+                } else {
+                    return (Pos::new(last, self.doc.line_len(last)), goal);
+                }
+            } else if row > 0 {
+                row -= 1;
+            } else if line > 0 {
+                line -= 1;
+                rows_here = self.rows(line);
+                row = rows_here - 1;
+            } else {
+                return (Pos::new(0, 0), goal);
+            }
+        }
+        let b = self.breaks(line);
+        let start = if row == 0 { 0 } else { b[row - 1] };
+        let mut target = start + goal;
+        if let Some(&next) = b.get(row) {
+            target = target.min(next.saturating_sub(1).max(start));
+        }
+        let mut ch = self.ch_for_goal(line, target);
+        // never before the row (a wide character at its start)
+        if self.cell_of(Pos::new(line, ch)) < start {
+            ch = self.ch_for_goal(line, start + 1).max(ch);
+        }
+        (Pos::new(line, ch), goal)
+    }
+
     fn move_cursors(&mut self, to: Motion, select: bool) {
         if matches!(to, Motion::PageUp | Motion::PageDown) {
             let n = self.page() as f64;
-            self.top += if to == Motion::PageDown { n } else { -n };
+            let d = if to == Motion::PageDown { n } else { -n };
+            if self.wrap {
+                let v = self.advance(self.top_vpos(), d);
+                self.set_top_vpos(v);
+            } else {
+                self.top += d;
+            }
         }
         let cursors = self.cursors.clone();
         self.cursors = cursors
@@ -1134,6 +1260,18 @@ impl Session {
         Ok(())
     }
 
+    /// Snapshot for the overview (design 010 E3): text, search (bit 1) and markers (bit 2).
+    pub fn overview_snapshot(&self) -> (ropey::Rope, Vec<(Regex, u8)>) {
+        let mut layers = Vec::new();
+        if let Some((_, re)) = &self.search {
+            layers.push((re.clone(), 1));
+        }
+        for m in self.markers.iter().flatten() {
+            layers.push((m.1.clone(), 2));
+        }
+        (self.doc.rope().clone(), layers)
+    }
+
     /// Snapshot for counting matches outside the session lock (a rope clone is O(1)):
     /// text, query and the primary selection in characters.
     pub fn search_snapshot(&self) -> (ropey::Rope, usize, usize) {
@@ -1191,6 +1329,10 @@ impl Session {
         let max_top = self.doc.line_count().saturating_sub(1) as f64;
         self.top = self.top.clamp(0.0, max_top);
         let max_left = (self.max_width as f64 - self.view_cols + 2.0).max(0.0);
+        if self.wrap && !self.doc.is_long(self.primary().head.line) {
+            self.left = 0.0;
+            return;
+        }
         // the caret may sit right of everything seen so far (end of a long line)
         let caret = self.cell_of(self.primary().head) as f64;
         self.left = self.left.clamp(0.0, max_left.max(caret));
@@ -1201,10 +1343,25 @@ impl Session {
         let head = self.primary().head;
         let line = head.line as f64;
         let rows = self.view_lines.floor().max(1.0);
-        if line < self.top {
+        if self.wrap {
+            let c = self.caret_vpos(head);
+            let top = self.top_vpos();
+            if vless(c, top) {
+                self.set_top_vpos(c);
+            } else {
+                let bottom = self.advance(c, -(rows - 1.0));
+                if vless(top, bottom) {
+                    self.set_top_vpos(bottom);
+                }
+            }
+        } else if line < self.top {
             self.top = line;
         } else if line + 1.0 > self.top + rows {
             self.top = line + 1.0 - rows;
+        }
+        if self.wrap && !self.doc.is_long(head.line) {
+            self.left = 0.0;
+            return;
         }
         let cell = self.cell_of(head) as f64;
         let cols = self.view_cols.floor().max(1.0);
@@ -1226,7 +1383,19 @@ impl Session {
         let count = self.doc.line_count();
         let first = (self.top.floor() as usize).min(count.saturating_sub(1));
         let rows = self.view_lines.ceil() as usize + 1;
-        let end = (first + rows).min(count);
+        // soft wrap: lines until the rows are filled (each line at least one row)
+        let (first_row, end) = if self.wrap {
+            let (_, r) = self.top_vpos();
+            let mut filled = -r;
+            let mut l = first;
+            while l < count && filled < rows as f64 {
+                filled += self.rows(l) as f64;
+                l += 1;
+            }
+            (-r, l)
+        } else {
+            (first as f64 - self.top, (first + rows).min(count))
+        };
         let wa = (self.left.floor() as usize).saturating_sub(WINDOW_SLACK);
         let wb = (self.left + self.view_cols).ceil() as usize + WINDOW_SLACK;
         let mut lines = Vec::with_capacity(end - first);
@@ -1241,9 +1410,27 @@ impl Session {
             None => (Vec::new(), false),
         };
         let mut indent_above = 0;
+        let mut row = first_row;
+        if self.wrap {
+            // wrapped: only the lines in view count (long ones scroll sideways)
+            self.max_width = 0;
+        }
         for line in first..end {
             let st = styles.get(line - first).cloned().flatten();
-            let mut fl = self.frame_line(line, wa, wb, st.as_deref());
+            let breaks = self.breaks(line);
+            let (a, b) = if breaks.is_empty() && !self.wrap || self.doc.is_long(line) {
+                (wa, wb)
+            } else {
+                (0, usize::MAX)
+            };
+            let mut fl = self.frame_line(line, a, b, st.as_deref(), &breaks);
+            fl.row = row;
+            row += (breaks.len() + 1) as f64;
+            if self.wrap && !fl.long {
+                // wrapped lines never scroll sideways
+                fl.width = fl.width.min(self.wrap_width());
+            }
+            fl.wraps = breaks;
             if fl.indent == usize::MAX {
                 fl.indent = indent_above;
             } else {
@@ -1253,12 +1440,37 @@ impl Session {
             lines.push(fl);
         }
         let primary = self.primary();
-        let carets = self
+        let carets: Vec<CaretPos> = self
             .cursors
             .iter()
             .map(|c| CaretPos {
                 line: c.head.line,
                 cell: self.cell_of(c.head),
+            })
+            .collect();
+        let caret_xy = carets
+            .iter()
+            .map(|c| match lines.iter().find(|l| l.line == c.line) {
+                Some(l) => {
+                    let r = l.wraps.partition_point(|&b| b <= c.cell);
+                    let start = if r == 0 { 0 } else { l.wraps[r - 1] };
+                    CaretXY {
+                        row: l.row + r as f64,
+                        x: c.cell - start,
+                    }
+                }
+                None => CaretXY {
+                    row: if self.wrap {
+                        if c.line < first {
+                            -2.0
+                        } else {
+                            rows as f64 + 2.0
+                        }
+                    } else {
+                        c.line as f64 - self.top
+                    },
+                    x: c.cell,
+                },
             })
             .collect();
         let sel_chars = self
@@ -1280,6 +1492,8 @@ impl Session {
             lines,
             max_width: self.max_width,
             carets,
+            caret_xy,
+            primary: self.primary.min(self.cursors.len() - 1),
             caret_line: primary.head.line,
             caret_ch: primary.head.ch,
             sel_chars,
@@ -1293,6 +1507,8 @@ impl Session {
             language: self.highlighter.as_ref().map(|h| h.language.clone()),
             approx_highlight: approx,
             selection_text: self.selection_text(),
+            wrap: self.wrap,
+            deco: self.deco(),
         }
     }
 
@@ -1311,6 +1527,7 @@ impl Session {
         wa: usize,
         wb: usize,
         styles: Option<&[(usize, u8)]>,
+        breaks: &[usize],
     ) -> FrameLine {
         let len = self.doc.line_len(line);
         let long = self.doc.is_long(line);
@@ -1330,7 +1547,7 @@ impl Session {
                     .collect();
             }
             (
-                runs_of(text.chars(), from, |_, _| 1, |_| 0),
+                runs_of(text.chars(), from, |_, _| 1, |_| 0, &[]),
                 len,
                 Box::new(|ch| ch),
             )
@@ -1372,6 +1589,7 @@ impl Session {
                 start_cell,
                 |c, col| char_width(c, col, tab),
                 |i| style.get(i).copied().unwrap_or(0),
+                breaks,
             );
             (runs, width, Box::new(move |ch| lay.cell_of(ch)))
         };
@@ -1418,8 +1636,115 @@ impl Session {
             marks,
             markers,
             indent,
+            row: 0.0,
+            wraps: Vec::new(),
         }
     }
+
+    // ------------------------------------------------------------------ soft wrap (design 010 E4)
+
+    /// Width of a wrapped row in cells.
+    fn wrap_width(&self) -> usize {
+        (self.view_cols.floor() as usize).saturating_sub(1).max(8)
+    }
+
+    /// Row starts of a line after the first; empty without wrap and for long lines.
+    fn breaks(&self, line: usize) -> Vec<usize> {
+        if !self.wrap || line >= self.doc.line_count() {
+            return Vec::new();
+        }
+        match self.layout(line) {
+            Some(lay) if lay.width() > self.wrap_width() => wrap_points(&lay, self.wrap_width()),
+            _ => Vec::new(),
+        }
+    }
+
+    fn rows(&self, line: usize) -> usize {
+        self.breaks(line).len() + 1
+    }
+
+    fn top_vpos(&self) -> VPos {
+        let line = (self.top.floor() as usize).min(self.doc.line_count().saturating_sub(1));
+        let frac = (self.top - line as f64).clamp(0.0, 0.999_999);
+        let r = frac * self.rows(line) as f64;
+        // the fraction loses a little: whole rows stay whole
+        (
+            line,
+            if (r - r.round()).abs() < 1e-6 {
+                r.round()
+            } else {
+                r
+            },
+        )
+    }
+
+    fn set_top_vpos(&mut self, (line, row): VPos) {
+        let rows = self.rows(line) as f64;
+        self.top = line as f64 + (row / rows).clamp(0.0, 0.999_999);
+        if row <= 0.0 {
+            self.top = line as f64;
+        }
+    }
+
+    fn caret_vpos(&self, p: Pos) -> VPos {
+        let cell = self.cell_of(p);
+        let row = self.breaks(p.line).partition_point(|&b| b <= cell);
+        (p.line, row as f64)
+    }
+
+    /// `d` rows down (negative: up) from `v`, within the document.
+    fn advance(&self, (mut line, mut row): VPos, d: f64) -> VPos {
+        let last = self.doc.line_count().saturating_sub(1);
+        if d >= 0.0 {
+            let mut d = d;
+            loop {
+                let r = self.rows(line) as f64;
+                if row + d < r {
+                    return (line, row + d);
+                }
+                if line >= last {
+                    return (last, (r - 1.0).max(0.0));
+                }
+                d -= r - row;
+                line += 1;
+                row = 0.0;
+            }
+        } else {
+            let mut d = -d;
+            loop {
+                if row - d >= 0.0 {
+                    return (line, row - d);
+                }
+                if line == 0 {
+                    return (0, 0.0);
+                }
+                d -= row;
+                line -= 1;
+                row = self.rows(line) as f64;
+            }
+        }
+    }
+
+    /// Identity of search and markers (the overview asks again when it changes).
+    fn deco(&self) -> u64 {
+        use std::hash::{Hash, Hasher};
+        if self.search.is_none() && self.markers.iter().all(Option::is_none) {
+            return 0;
+        }
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        if let Some((_, re)) = &self.search {
+            re.as_str().hash(&mut h);
+        }
+        for m in self.markers.iter().flatten() {
+            m.1.as_str().hash(&mut h);
+        }
+        h.finish()
+    }
+}
+
+/// `a` comes before `b` in the view.
+fn vless(a: VPos, b: VPos) -> bool {
+    a.0 < b.0 || (a.0 == b.0 && a.1 < b.1 - 1e-9)
 }
 
 /// Character index in a line → cell.
@@ -1465,11 +1790,13 @@ fn runs_of(
     start_cell: usize,
     width: impl Fn(char, usize) -> usize,
     style: impl Fn(usize) -> u8,
+    breaks: &[usize],
 ) -> Vec<Run> {
     let mut runs: Vec<Run> = Vec::new();
     let mut col = start_cell;
     for (i, c) in chars.enumerate() {
         let st = style(i);
+        let row_start = breaks.binary_search(&col).is_ok();
         let w = width(c, col);
         let kind = match c {
             '\t' => RunKind::Tab,
@@ -1490,7 +1817,9 @@ fn runs_of(
             continue;
         }
         match runs.last_mut() {
-            Some(last) if last.kind == kind && kind != RunKind::Tab && last.style == st => {
+            Some(last)
+                if last.kind == kind && kind != RunKind::Tab && last.style == st && !row_start =>
+            {
                 if let Some(g) = glyph {
                     last.text.push(g);
                 }

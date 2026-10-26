@@ -47,6 +47,8 @@ export function textFrame(lines: string[], over: Partial<Frame> = {}): Frame {
     marks: [],
     markers: [],
     indent: 0,
+    row: line,
+    wraps: [],
   }));
   return {
     seq: 1,
@@ -57,6 +59,8 @@ export function textFrame(lines: string[], over: Partial<Frame> = {}): Frame {
     lines: frameLines,
     maxWidth: Math.max(0, ...lines.map((l) => l.length)),
     carets: [{ line: 0, cell: 0 }],
+    caretXy: [{ row: 0, x: 0 }],
+    primary: 0,
     caretLine: 0,
     caretCh: 0,
     selChars: 0,
@@ -70,6 +74,8 @@ export function textFrame(lines: string[], over: Partial<Frame> = {}): Frame {
     language: null,
     approxHighlight: false,
     selectionText: null,
+    wrap: false,
+    deco: 0,
     ...over,
   };
 }
@@ -147,8 +153,11 @@ export class FakeEditorApi extends EditorApi {
   disk = new Map<number, DiskState>();
   reloads: number[] = [];
 
-  reload(id: number): Promise<DocInfo> {
+  reloadEncodings: (string | undefined)[] = [];
+
+  reload(id: number, encoding?: string): Promise<DocInfo> {
     this.reloads.push(id);
+    this.reloadEncodings.push(encoding);
     return Promise.resolve(docInfo({ id, path: `/doc${id}`, name: `doc${id}` }));
   }
 
@@ -162,6 +171,18 @@ export class FakeEditorApi extends EditorApi {
   countMatches(_id: number, query: Query): Promise<MatchCount> {
     this.counted.push(query);
     return Promise.resolve(this.matchCount);
+  }
+
+  encodings = ['UTF-8', 'windows-1252'];
+  listEncodings(): Promise<string[]> {
+    return Promise.resolve(this.encodings);
+  }
+
+  overviewAnswer: number[] = [];
+  overviews: number[] = [];
+  overview(_id: number, buckets: number): Promise<number[]> {
+    this.overviews.push(buckets);
+    return Promise.resolve(this.overviewAnswer);
   }
 
   languages = ['JavaScript', 'Rust'];

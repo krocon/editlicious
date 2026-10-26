@@ -248,6 +248,7 @@ fn backspace_removes_a_soft_tab() {
             tab_width: Some(4),
             insert_spaces: Some(true),
             detect: false,
+            wrap: None,
         },
     );
     put(&mut s, 0, 0);
@@ -280,6 +281,7 @@ fn indent_and_outdent_lines() {
             tab_width: Some(2),
             insert_spaces: Some(true),
             detect: false,
+            wrap: None,
         },
     );
     s.set_cursors(vec![Cursor {
@@ -756,6 +758,7 @@ fn whitespace_commands() {
             tab_width: Some(4),
             insert_spaces: None,
             detect: false,
+            wrap: None,
         },
     );
     run(&mut s, Command::ConvertIndentation { spaces: true });
@@ -965,6 +968,7 @@ fn configure_detect_follows_the_file() {
             tab_width: Some(8),
             insert_spaces: Some(false),
             detect: true,
+            wrap: None,
         },
     );
     assert!(f.insert_spaces);
@@ -977,6 +981,7 @@ fn configure_detect_follows_the_file() {
             tab_width: Some(8),
             insert_spaces: Some(false),
             detect: true,
+            wrap: None,
         },
     );
     assert!(!f.insert_spaces);
@@ -989,6 +994,7 @@ fn configure_detect_follows_the_file() {
             tab_width: Some(3),
             insert_spaces: Some(true),
             detect: true,
+            wrap: None,
         },
     );
     assert!(!f.insert_spaces);
@@ -1004,10 +1010,346 @@ fn frame_lines_carry_their_indentation() {
             tab_width: Some(4),
             insert_spaces: None,
             detect: false,
+            wrap: None,
         },
     );
     let f = run(&mut s, Command::Frame);
     let ind: Vec<usize> = f.lines.iter().map(|l| l.indent).collect();
     // blank lines take the indentation of the line above
     assert_eq!(ind, vec![0, 4, 4, 4, 4, 4]);
+}
+
+// ---------------------------------------------------------------- soft wrap (design 010 E4)
+
+fn wrapped(text: &str, lines: f64, cols: f64) -> Session {
+    let mut s = session(text);
+    run(&mut s, Command::Resize { lines, cols });
+    run(
+        &mut s,
+        Command::Configure {
+            tab_width: Some(4),
+            insert_spaces: None,
+            detect: false,
+            wrap: Some(true),
+        },
+    );
+    s
+}
+
+#[test]
+fn wrap_splits_lines_into_rows() {
+    // view 11 cells → rows of 10
+    let mut s = wrapped("aaaa bbbb cccc dddd\nshort\n", 10.0, 11.0);
+    let f = run(&mut s, Command::Frame);
+    assert!(f.wrap);
+    assert_eq!(f.lines[0].wraps, vec![10]);
+    assert_eq!(f.lines[0].row, 0.0);
+    assert_eq!(f.lines[1].row, 2.0);
+    // runs never cross a row start
+    for r in &f.lines[0].runs {
+        assert!(!(r.cell < 10 && r.cell + r.width > 10), "{r:?}");
+    }
+    // the caret at the end of the first line is on its second row
+    put(&mut s, 0, 19);
+    let f = run(&mut s, Command::Frame);
+    assert_eq!(f.caret_xy[0].row, 1.0);
+    assert_eq!(f.caret_xy[0].x, 9);
+    assert_eq!(f.left, 0.0);
+}
+
+#[test]
+fn wrap_moves_by_rows() {
+    let mut s = wrapped("aaaa bbbb cccc dddd\nxy\n", 10.0, 11.0);
+    put(&mut s, 0, 2);
+    mv(&mut s, Motion::Down);
+    assert_eq!(caret(&s), (0, 12)); // second row, same x
+    mv(&mut s, Motion::Down);
+    assert_eq!(caret(&s), (1, 2));
+    mv(&mut s, Motion::Up);
+    assert_eq!(caret(&s), (0, 12));
+    mv(&mut s, Motion::Up);
+    assert_eq!(caret(&s), (0, 2));
+    // the goal stays before the row break
+    put(&mut s, 1, 2);
+    run(
+        &mut s,
+        Command::Move {
+            to: Motion::LineEnd,
+            select: false,
+        },
+    );
+    put(&mut s, 0, 9); // "aaaa bbbb |" end of first row (break after the space at 10)
+    mv(&mut s, Motion::Down);
+    assert_eq!(caret(&s).0, 0);
+}
+
+#[test]
+fn wrap_scrolls_and_clicks_by_rows() {
+    // 30 lines of 3 rows each, view of 5 rows
+    let line = "aaaaaaaa bbbbbbbb cccccccc";
+    let text = vec![line; 30].join("\n");
+    let mut s = wrapped(&text, 5.0, 11.0);
+    let f = run(&mut s, Command::Frame);
+    assert_eq!(f.lines[0].wraps.len(), 2);
+    run(
+        &mut s,
+        Command::Scroll {
+            lines: 4.0,
+            cells: 0.0,
+        },
+    );
+    let f = run(&mut s, Command::Frame);
+    // 4 rows down: line 1, second row
+    assert_eq!(f.first_line, 1);
+    assert_eq!(f.lines[0].row, -1.0);
+    // a click on view row 0 is line 1, row 1
+    let top = f.top;
+    run(
+        &mut s,
+        Command::Click {
+            line: top,
+            cell: 2.0,
+            count: 1,
+            extend: false,
+            add: false,
+        },
+    );
+    assert_eq!(caret(&s), (1, 11));
+    // the caret far below: reveal scrolls by rows, the caret ends on the last view row
+    put(&mut s, 20, 0);
+    run(
+        &mut s,
+        Command::Move {
+            to: Motion::Right,
+            select: false,
+        },
+    );
+    let f = run(&mut s, Command::Frame);
+    let xy = f.caret_xy[f.primary];
+    assert!(xy.row >= 0.0 && xy.row < 5.0, "{xy:?}");
+    // page down moves the caret by rows too
+    put(&mut s, 0, 0);
+    run(
+        &mut s,
+        Command::ScrollTo {
+            top: Some(0.0),
+            left: None,
+        },
+    );
+    mv(&mut s, Motion::PageDown);
+    assert_eq!(caret(&s), (1, 9)); // 4 rows down
+    // wrap off again: one row per line
+    run(
+        &mut s,
+        Command::Configure {
+            tab_width: None,
+            insert_spaces: None,
+            detect: false,
+            wrap: Some(false),
+        },
+    );
+    let f = run(&mut s, Command::Frame);
+    assert!(f.lines.iter().all(|l| l.wraps.is_empty()));
+}
+
+#[test]
+fn wrap_leaves_long_lines_alone() {
+    let long = "x".repeat(crate::document::FULL_LINE_LIMIT + 5);
+    let mut s = wrapped(&format!("{long}\nab\n"), 10.0, 11.0);
+    let f = run(&mut s, Command::Frame);
+    assert!(f.lines[0].long);
+    assert!(f.lines[0].wraps.is_empty());
+    assert_eq!(f.lines[1].row, 1.0);
+}
+
+// ---------------------------------------------------------------- line endings, HTML (design 010)
+
+#[test]
+fn line_endings_convert_in_one_undo_step() {
+    let mut s = session("a\r\nb\nc\rd");
+    put(&mut s, 2, 1);
+    let f = run(
+        &mut s,
+        Command::SetLineEnding {
+            line_ending: crate::document::model::LineEnding::Crlf,
+        },
+    );
+    assert_eq!(text(&s), "a\r\nb\r\nc\r\nd");
+    assert_eq!(caret(&s), (2, 1));
+    assert!(f.info.dirty);
+    assert!(!f.info.mixed_line_endings);
+    // new lines follow
+    typ(&mut s, "x");
+    run(&mut s, Command::Newline);
+    assert!(text(&s).contains("cx\r\n"));
+    run(&mut s, Command::Undo);
+    run(&mut s, Command::Undo);
+    run(&mut s, Command::Undo);
+    assert_eq!(text(&s), "a\r\nb\nc\rd");
+    // lone CRs anywhere, also at the very end and twice in a row
+    let mut s = session("a\r\rb\r");
+    run(
+        &mut s,
+        Command::SetLineEnding {
+            line_ending: crate::document::model::LineEnding::Lf,
+        },
+    );
+    assert_eq!(text(&s), "a\n\nb\n");
+    // nothing to do: still fine
+    let mut s = session("a\nb");
+    run(
+        &mut s,
+        Command::SetLineEnding {
+            line_ending: crate::document::model::LineEnding::Lf,
+        },
+    );
+    assert!(!s.doc.dirty());
+}
+
+#[derive(Default)]
+struct HtmlClip {
+    html: Option<String>,
+    text: Option<String>,
+}
+
+impl Clipboard for HtmlClip {
+    fn get(&mut self) -> Option<String> {
+        self.text.clone()
+    }
+    fn set(&mut self, text: String) -> bool {
+        self.text = Some(text);
+        true
+    }
+    fn set_html(&mut self, html: String, alt: String) -> bool {
+        self.html = Some(html);
+        self.text = Some(alt);
+        true
+    }
+}
+
+#[test]
+fn copy_as_html_with_styles_and_line_numbers() {
+    let mut s = Session::new(
+        Document::from_text("fn main() {\n    let a = \"<x>\";\n}\n"),
+        1,
+    );
+    let mut clip = HtmlClip::default();
+    s.run(
+        Command::SetLanguage {
+            name: Some("Rust".into()),
+        },
+        &mut clip,
+    )
+    .unwrap();
+    s.set_cursors(vec![Cursor {
+        anchor: Pos::new(0, 0),
+        head: Pos::new(2, 0),
+        goal: None,
+    }]);
+    let styles: Vec<String> = (0..30).map(|i| format!("color:#{i:06}")).collect();
+    s.run(
+        Command::CopyHtml {
+            line_numbers: true,
+            styles,
+            base: "color:black;background:white".into(),
+            gutter: "color:gray".into(),
+        },
+        &mut clip,
+    )
+    .unwrap();
+    let html = clip.html.unwrap();
+    assert!(html.starts_with("<pre style=\"color:black;background:white;tab-size:4"));
+    assert!(html.contains("&quot;&lt;x&gt;&quot;"), "{html}");
+    assert!(html.contains("<span style=\"color:gray;user-select:none\">1 </span>"));
+    assert!(html.contains("<span style=\"color:#"), "styled: {html}");
+    // two lines (the end at the start of line 3 does not count)
+    assert_eq!(html.matches("user-select:none").count(), 2);
+    assert_eq!(clip.text.unwrap(), "fn main() {\n    let a = \"<x>\";");
+}
+
+#[test]
+#[ignore]
+fn measure_wrap_and_line_endings() {
+    use std::time::Instant;
+    let line = "lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor ";
+    let text = format!("{}\n", line.repeat(3)).repeat(1_000_000); // 1M lines, ~240 MB? no: 237 chars × 1M
+    let mut s = session(&text);
+    run(
+        &mut s,
+        Command::Resize {
+            lines: 50.0,
+            cols: 100.0,
+        },
+    );
+    run(
+        &mut s,
+        Command::Configure {
+            tab_width: None,
+            insert_spaces: None,
+            detect: false,
+            wrap: Some(true),
+        },
+    );
+    let t = Instant::now();
+    run(&mut s, Command::Frame);
+    println!("wrapped frame: {:?}", t.elapsed());
+    let t = Instant::now();
+    for _ in 0..50 {
+        run(
+            &mut s,
+            Command::Scroll {
+                lines: 3.0,
+                cells: 0.0,
+            },
+        );
+    }
+    println!("50 wrapped scroll steps: {:?}", t.elapsed());
+    let t = Instant::now();
+    run(
+        &mut s,
+        Command::Move {
+            to: Motion::DocEnd,
+            select: false,
+        },
+    );
+    println!("jump to the end (wrapped): {:?}", t.elapsed());
+    let t = Instant::now();
+    run(
+        &mut s,
+        Command::SetLineEnding {
+            line_ending: crate::document::model::LineEnding::Crlf,
+        },
+    );
+    println!("1M line breaks to CRLF: {:?}", t.elapsed());
+    let t = Instant::now();
+    run(&mut s, Command::Undo);
+    println!("undo of it: {:?}", t.elapsed());
+}
+
+#[test]
+fn wrap_width_follows_the_view() {
+    // configured before the first resize (default view): later frames use the real width
+    let mut s = Session::new(Document::from_text(&"word ".repeat(100)), 1);
+    let mut clip = MemoryClipboard::default();
+    s.run(
+        Command::Configure {
+            tab_width: None,
+            insert_spaces: None,
+            detect: false,
+            wrap: Some(true),
+        },
+        &mut clip,
+    )
+    .unwrap();
+    let f = s
+        .run(
+            Command::Resize {
+                lines: 10.0,
+                cols: 41.0,
+            },
+            &mut clip,
+        )
+        .unwrap();
+    assert!(f.max_width <= 40, "{}", f.max_width);
+    assert_eq!(f.lines[0].wraps[0], 40);
 }

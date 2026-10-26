@@ -30,7 +30,9 @@
     "Mod+-": "view.zoomOut",
     "Mod+0": "view.zoomReset",
     "Mod+Shift+l": "view.lineNumbers",
-    "Mod+Alt+l": "view.indentGuides"
+    "Mod+Alt+l": "view.indentGuides",
+    "Mod+F5": "view.statusBar",
+    "Alt+z": "view.wordWrap"
   },
   "editor": {
     "ArrowLeft": "cursor.left",
@@ -81,6 +83,7 @@
     "Mod+j": "edit.joinLines",
     "Mod+d": "edit.addNextOccurrence",
     "Mod+Shift+F7": "edit.toggleMarker",
-    "Mod+Shift+F8": "edit.clearMarkers"
+    "Mod+Shift+F8": "edit.clearMarkers",
+    "Mod+Shift+c": "edit.copyHtml"
   }
 }
