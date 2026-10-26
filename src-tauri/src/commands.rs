@@ -44,6 +44,8 @@ pub struct AppState {
     /// AI control (design 016): what the UI told the tools, and the bridge while it is on.
     mcp_ui: Arc<Mutex<crate::mcp::UiState>>,
     mcp_server: Mutex<Option<crate::mcp::Server>>,
+    /// The running video export – a new one or `cancel_export` stops it (design 017).
+    exporting: Mutex<Option<Arc<AtomicBool>>>,
 }
 
 impl AppState {
@@ -951,6 +953,62 @@ pub async fn mcp_disconnect(state: State<'_, AppState>) -> Result<(), FsError> {
         .values()
     {
         c.stop();
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------- video export (design 017)
+
+/// Renders a recording or script as a video (or PNG frames); progress and the end over
+/// `on_event`. Runs on its own thread – the editor stays usable.
+#[tauri::command]
+pub async fn export_video(
+    state: State<'_, AppState>,
+    id: u64,
+    source: Source,
+    options: crate::export::ExportOptions,
+    on_event: Channel<crate::export::ExportEvent>,
+) -> Result<(), FsError> {
+    file_path(&options.path)?;
+    if let Source::Path { path } = &source {
+        file_path(path)?;
+    }
+    let handle = state.sessions.get(id)?;
+    let cancel = Arc::new(AtomicBool::new(false));
+    if let Some(old) = state
+        .exporting
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .replace(cancel.clone())
+    {
+        old.store(true, Ordering::SeqCst);
+    }
+    let o = options.clone();
+    let job = blocking(move || crate::export::job_of(&handle, &source, &o)).await?;
+    std::thread::spawn(move || {
+        let reason = match crate::export::run(job, &options, cancel, |e| {
+            let _ = on_event.send(e);
+        }) {
+            Ok(()) => "finished".to_string(),
+            Err(e) => serde_json::to_value(e.code)
+                .ok()
+                .and_then(|v| v.as_str().map(str::to_owned))
+                .unwrap_or_else(|| "io".into()),
+        };
+        let _ = on_event.send(crate::export::ExportEvent::Done { reason });
+    });
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn cancel_export(state: State<'_, AppState>) -> Result<(), FsError> {
+    if let Some(c) = state
+        .exporting
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .take()
+    {
+        c.store(true, Ordering::SeqCst);
     }
     Ok(())
 }

@@ -2,6 +2,8 @@ import { Injectable } from '@angular/core';
 import { Channel } from '@tauri-apps/api/core';
 import { call } from '../backend/call';
 import {
+  ExportEvent,
+  ExportOptions,
   PlaybackAction,
   PlaybackCheck,
   PlaybackEvent,
@@ -29,6 +31,14 @@ export abstract class RecordingApi {
     onEvent: (e: PlaybackEvent) => void,
   ): Promise<void>;
   abstract control(id: number, action: PlaybackAction): Promise<void>;
+  /** Renders a recording or script as a video (design 017); events until `done`. */
+  abstract exportVideo(
+    id: number,
+    source: PlaybackSource,
+    options: ExportOptions,
+    onEvent: (e: ExportEvent) => void,
+  ): Promise<void>;
+  abstract cancelExport(): Promise<void>;
 }
 
 @Injectable()
@@ -62,5 +72,20 @@ export class TauriRecordingApi extends RecordingApi {
 
   control(id: number, action: PlaybackAction): Promise<void> {
     return call<void>('playback_control', { id, action });
+  }
+
+  exportVideo(
+    id: number,
+    source: PlaybackSource,
+    options: ExportOptions,
+    onEvent: (e: ExportEvent) => void,
+  ): Promise<void> {
+    const ch = new Channel<ExportEvent>();
+    ch.onmessage = onEvent;
+    return call<void>('export_video', { id, source, options, onEvent: ch });
+  }
+
+  cancelExport(): Promise<void> {
+    return call<void>('cancel_export');
   }
 }

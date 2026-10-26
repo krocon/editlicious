@@ -28,6 +28,8 @@ export const EXTRA_FILES = {
 const ASSETS = [
   // the wordmark (public/logo.svg, site) is made of the outlines of Yellowtail, © 2010 Astigmatic (AOETI)
   { name: 'Yellowtail typeface (Astigmatic)', version: '1.0', license: 'Apache-2.0', file: 'yellowtail.txt' },
+  // the font of the video export (design 017), compiled into the app
+  { name: 'JetBrains Mono typeface (JetBrains)', version: '2.304', license: 'OFL-1.1', file: 'jetbrains-mono.txt' },
 ];
 
 /**

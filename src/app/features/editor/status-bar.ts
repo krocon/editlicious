@@ -29,6 +29,16 @@ import { EDITOR_TEXTS } from './editor-texts';
       @if (playback(); as p) {
         <span class="item strong" [title]="rt.playTitle">{{ p }}</span>
       }
+      @if (video(); as v) {
+        <button
+          type="button"
+          class="item btn-link strong"
+          [title]="rt.exportTitle"
+          (click)="run('record.cancelExport')"
+        >
+          {{ v }}
+        </button>
+      }
       @if (ai()) {
         <button
           type="button"
@@ -84,6 +94,13 @@ export class StatusBar {
   private readonly actions = inject(ActionService);
   private readonly rec = inject(RecordingStore);
   private readonly mcp = inject(McpStore);
+
+  /** "Video 37 %" while a video is rendered (design 017); a click cancels. */
+  protected readonly video = computed(() => {
+    const e = this.rec.exporting();
+    if (!e) return '';
+    return this.rt.video(e.total ? Math.floor((e.done * 100) / e.total) : 0);
+  });
 
   /** "AI" while an AI is connected (design 016 E9); a click disconnects it. */
   protected readonly ai = computed(() => this.mcp.connections() > 0);

@@ -28,6 +28,9 @@ export type FsErrorCode =
   | 'recording_unsupported'
   | 'playback_running'
   | 'no_recording'
+  | 'revision_conflict'
+  | 'invalid_request'
+  | 'ffmpeg_missing'
   /** Frontend only: no Tauri backend (e.g. `pnpm start` in a browser). */
   | 'backend_unavailable'
   /** Frontend only: something that is no `FsError` was thrown. */
@@ -63,6 +66,9 @@ const KNOWN: readonly FsErrorCode[] = [
   'recording_unsupported',
   'playback_running',
   'no_recording',
+  'revision_conflict',
+  'invalid_request',
+  'ffmpeg_missing',
   'backend_unavailable',
   'unknown',
 ];
@@ -106,6 +112,9 @@ const EN: Record<FsErrorCode, string> = {
   recording_unsupported: 'This recording contains a step that cannot be played back.',
   playback_running: 'A playback is running – press Escape to stop it.',
   no_recording: 'There is no recording yet.',
+  revision_conflict: 'The document changed meanwhile.',
+  invalid_request: 'The request is not valid.',
+  ffmpeg_missing: 'ffmpeg was not found – install it or set its path in the settings.',
   backend_unavailable: 'The desktop backend is not available (running in a browser?).',
   unknown: 'Something went wrong.',
 };
@@ -135,6 +144,10 @@ const TEXTS = translatable('fsErrors', EN, {
     recording_unsupported: 'Diese Aufnahme enthält einen Schritt, der sich nicht abspielen lässt.',
     playback_running: 'Eine Wiedergabe läuft – Esc beendet sie.',
     no_recording: 'Es gibt noch keine Aufnahme.',
+    revision_conflict: 'Das Dokument hat sich inzwischen geändert.',
+    invalid_request: 'Die Anfrage ist ungültig.',
+    ffmpeg_missing:
+      'ffmpeg wurde nicht gefunden – bitte installieren oder den Pfad in den Einstellungen angeben.',
     backend_unavailable: 'Das Desktop-Backend ist nicht verfügbar (läuft im Browser?).',
     unknown: 'Etwas ist schiefgegangen.',
   },

@@ -3,9 +3,11 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   ElementRef,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { Modal } from '../dialog/modal';
 import { PickService } from './pick.service';
@@ -17,7 +19,8 @@ const key = (s: string) => s.normalize('NFC').toLowerCase();
   selector: 'app-pick-dialog',
   imports: [Modal],
   template: `
-    @if (svc.request(); as r) {
+    <!-- keyed by the request: a new question gets a fresh modal (focus, filter) -->
+    @for (r of current(); track r) {
       <app-modal [heading]="r.title" width="28rem" (closed)="svc.answer(null)">
         <input
           class="input"
@@ -79,6 +82,10 @@ const key = (s: string) => s.normalize('NFC').toLowerCase();
 })
 export class PickDialog {
   protected readonly svc = inject(PickService);
+  protected readonly current = computed(() => {
+    const r = this.svc.request();
+    return r ? [r] : [];
+  });
   private readonly query = signal('');
   protected readonly active = signal(0);
   protected readonly items = computed(() => {
@@ -90,9 +97,15 @@ export class PickDialog {
 
   constructor() {
     const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-    const r = this.svc.request();
-    const i = r?.options.findIndex((o) => o.id === r.current) ?? -1;
-    this.active.set(Math.max(0, i));
+    // every new question starts unfiltered on its current option
+    effect(() => {
+      const r = this.svc.request();
+      untracked(() => {
+        this.query.set('');
+        const i = r?.options.findIndex((o) => o.id === r.current) ?? -1;
+        this.active.set(Math.max(0, i));
+      });
+    });
     afterRenderEffect(() => {
       host.querySelector(`#pick-${this.active()}`)?.scrollIntoView?.({ block: 'nearest' });
     });

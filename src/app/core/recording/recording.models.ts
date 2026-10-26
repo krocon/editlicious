@@ -35,3 +35,25 @@ export type PlaybackEvent =
   | { kind: 'done'; reason: string };
 
 export type PlaybackAction = 'pause' | 'resume' | 'stop' | 'step';
+
+/** Video export (design 017; Rust `export.rs`). */
+export interface ExportOptions {
+  /** `.mp4`/`.mov`/`.webm` (ffmpeg) or a folder for PNG frames. */
+  path: string;
+  width: number;
+  height: number;
+  fps?: number;
+  /** Colour scheme of the app (`paper`, `ink`, …). */
+  theme: string;
+  fontSize?: number | null;
+  chrome?: 'none' | 'plain' | 'mac';
+  best?: boolean;
+  tempo?: Tempo | null;
+  /** Empty = `ffmpeg` on the PATH. */
+  ffmpeg?: string;
+}
+
+export type ExportEvent =
+  | { kind: 'progress'; done: number; total: number }
+  /** `reason`: `finished`, `cancelled` or an error code. */
+  | { kind: 'done'; reason: string };

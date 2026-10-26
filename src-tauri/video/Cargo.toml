@@ -1,0 +1,30 @@
+[package]
+name = "ed-video"
+version = "0.1.0"
+description = "Video export of editlicious: plays a recording or script on a virtual clock and draws every frame (no screen capture)"
+authors = ["krocon"]
+license = "MIT"
+repository = "https://github.com/krocon/editlicious"
+edition = "2024"
+rust-version = "1.93"
+
+[lib]
+name = "ed_video"
+path = "src/lib.rs"
+
+[[bin]]
+name = "editlicious-render"
+path = "src/main.rs"
+
+[dependencies]
+ed-core = { path = "../core" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+# design 017 E2: glyphs rasterised in pure Rust (deterministic, no system font library)
+fontdue = "0.9"
+# design 017 E4: PNG frames and golden images
+png = "0.18"
+unicode-segmentation = "1.12"
+
+[dev-dependencies]
+tempfile = "3"

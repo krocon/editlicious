@@ -22,6 +22,7 @@
 | A5 | Angular 22 für die UI, Engine nativ – WebAssembly nur für die Webseiten-Demo | WASM im WebView müsste Dateien über die Brücke kopieren, 4-GB-Limit, keine Threads; Rust-UI-Frameworks verlören die Wiederverwendung aus den Schwesterprojekten (26.10.2026) |
 | A6 | Aufnahmen speichern Engine-Befehle (Klicks als Auswahl), Abspielen läuft in Rust auf einer deterministischen Zeitachse und schickt Frames über einen Channel | fensterunabhängig, wiederholbar (Seed), dieselbe Zeitachse für MCP (016) und Video (017); eine Abspielung = ein Undo-Schritt (015) |
 | A7 | KI-Steuerung über ein eigenes MCP-Sidecar (`ed-mcp`, stdio) mit Brücke zur laufenden App über 127.0.0.1 + Zufalls-Token; eigene MCP-Schicht statt `rmcp` | keine Tokio-/Makro-Abhängigkeit, ~800 KB Programm, auf allen drei Systemen nur Standardbibliothek; die App bleibt die eine Wahrheit (016) |
+| A8 | Video-Export kopflos in Rust (`ed-video`: Engine-Frames + eigener Rasterizer) statt Aufnahme der WebView | CLI/CI-fähig, deterministisch (Hash-Test), beliebige Größe ohne Fenster; die Farben kommen aus `src/styles.css` (zur Bauzeit gelesen), das Layout folgt der Editor-Ansicht; Kodieren über ein externes `ffmpeg` (Lizenz/Größe), sonst PNG-Folge (017) |
 | A4 | Dev-Server-Port 1440 | comic-commander nutzt 1430, files-and-folders 1420 – alle drei parallel startbar |
 
 ## Commands
@@ -48,6 +49,7 @@
 | `load_settings` / `save_settings(settings)` | `settings.json` (nachsichtig laden, Werte begrenzen, atomar schreiben) | 009 |
 | `start_recording(id)` / `stop_recording(id)` / `save_recording(id, path, script)` | Befehle aufzeichnen, als `*.edrec.jsonl` oder `*.edscript` speichern | 015 |
 | `mcp_enable(enabled)` / `mcp_info` / `mcp_set_actions(actions)` / `mcp_set_active(id)` / `mcp_disconnect`, Ereignisse `mcp-opened`, `mcp-activate`, `mcp-changed`, `mcp-action`, `mcp-recording`, `mcp-playback`, `mcp-status` | KI-Steuerung: Brücke an/aus, Werkzeuge kennen Aktionen und aktives Dokument, die UI führt aus, was die KI verlangt | 016 |
+| `export_video(id, source, options, onEvent)` / `cancel_export` | Aufnahme/Skript als Video (ffmpeg) oder PNG-Folge rendern, Fortschritt über Channel, abbrechbar; dasselbe ohne App: `editlicious render …` | 017 |
 | `check_playback(id, source)` / `play(id, source, tempo, onEvent)` / `playback_control(id, action)` | Aufnahme oder Skript prüfen und abspielen (Frames/Fortschritt über Channel, anhalten, Schritt, Stopp); während der Wiedergabe lehnt `editor_command` Bearbeitungen ab (`playback_running`) | 015 |
 
 ## Abhängigkeiten
@@ -65,6 +67,9 @@
 | `regex` | Suchen/Ersetzen mit linearer Laufzeit | 006 |
 | `syntect` (Oniguruma; `fancy` für WASM) | Syntax-Hervorhebung mit Sublime/TextMate-Grammatiken | 008 |
 | `arboard` (nur Text, Wayland) | System-Zwischenablage aus Rust – große Auswahlen gehen nicht über die IPC | 003 |
+| `fontdue` 0.9 | Glyphen in reinem Rust rastern – deterministisch, ohne System-Schriftbibliothek (Video-Export) | 017 |
+| `png` 0.18 | PNG-Einzelbilder und Golden-Images des Video-Exports | 017 |
+| JetBrains Mono 2.304 (OFL-1.1, Schrift im Programm) | feste Schrift des Video-Exports (Ersatzschriften nur ausdrücklich) | 017 |
 | `ed-mcp` (eigener Crate, nur `serde`/`serde_json`) | MCP-Sidecar `editlicious-mcp` und Brücken-Nachrichten | 016 |
 | `@angular/*`, `@tauri-apps/api`, `rxjs`, `tslib` | Frontend | 001 |
 

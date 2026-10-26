@@ -33,6 +33,7 @@
 | Alles prüfen | `pnpm check` |
 | Release | `pnpm version:set X.Y.Z`, `pnpm release:notes`, `pnpm notices` + `pnpm licenses:report` (nach Abhängigkeitsänderungen!); Pipeline testen: Workflow „Release“ Modus `dry-run` (kein Release) – Ablauf `docs/release.md` |
 | Webseite | `pnpm site:test`; Demo-Engine `pnpm site:demo` (braucht wasm32-Ziel) bzw. Workflow „Site demo“ |
+| Video rendern | `editlicious render <skript> -o out.mp4 …` bzw. `cargo run -p ed-video --release -- …`; Golden-Images neu: `UPDATE_GOLDEN=1 cargo test -p ed-video` |
 | MCP-Sidecar | `pnpm mcp:dev` (Debug neben der Debug-App), `pnpm mcp:build [triple]` (Release nach `src-tauri/binaries/`) |
 | Debug-App ohne Bundle | `pnpm tauri build --debug --no-bundle` → `src-tauri/target/debug/editlicious` |
 | Icons neu erzeugen | `pnpm tauri icon src-tauri/icons/source/app-icon.svg -o src-tauri/icons` (danach `android/`, `ios/` löschen) |
@@ -80,6 +81,7 @@ src-tauri/                    Rust (Tauri 2), Crate `editlicious`, Lib `ed_lib`
   src/keymap_file.rs          keymap.json laden
   src/session_file.rs         session.json (offene Dateien, zuletzt benutzt, Tab-Modus)
   src/settings.rs             settings.json (Einstellungen, nachsichtig laden, Werte begrenzen)
+  src/export.rs               „Als Video exportieren …“ (Thread, Fortschritt, Abbruch)
   src/mcp.rs                  KI-Steuerung: Brücken-Server (127.0.0.1 + Token) und Werkzeuge auf den Sitzungen
   src/playback.rs             Aufnahmen/Skripte lesen und speichern, Wiedergabe-Thread (Frames über Channel)
   src/model.rs                DTOs der App (serde camelCase); `document`, `error` kommen aus ed-core
@@ -93,6 +95,8 @@ src-tauri/                    Rust (Tauri 2), Crate `editlicious`, Lib `ed_lib`
                               recording (*.edrec.jsonl), script (*.edscript), playback (Zeitachse, Tempo)
     testdata/document.cases.json  datengetriebene Bearbeitungsfälle
   mcp/                        Crate `ed-mcp` (Workspace): MCP-Sidecar `editlicious-mcp` (stdio), Tools, Brücke
+  video/                      Crate `ed-video` (Workspace): Video-Export (Zeitachse, Rasterizer, Farben aus
+                              src/styles.css, ffmpeg/PNG, CLI `editlicious render`), fonts/, testdata/ (Golden-Images)
   tauri.sidecar.conf.json     nur im Release: Sidecar als `bundle.externalBin` (`pnpm mcp:build` vorher)
   src/fs_atomic.rs, config_file.rs  atomar schreiben / Konfig laden (aus files-and-folders)
   icons/source/app-icon.svg   Quelle des App-Icons

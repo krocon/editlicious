@@ -46,6 +46,9 @@ pub struct Settings {
     /// An AI may drive the editor over MCP (design 016 E9) – off unless the user turns it on.
     #[serde(default)]
     pub mcp: bool,
+    /// ffmpeg for the video export (design 017); empty = the one on the PATH.
+    #[serde(default)]
+    pub ffmpeg_path: String,
 }
 
 impl Default for Settings {
@@ -69,6 +72,7 @@ impl Default for Settings {
             word_wrap: false,
             overview: true,
             mcp: false,
+            ffmpeg_path: String::new(),
         }
     }
 }
@@ -109,6 +113,9 @@ pub fn sanitize(mut s: Settings) -> Settings {
     // a font family is a CSS value: no quotes/semicolons/braces, reasonable length
     if s.font_family.len() > 200 || s.font_family.contains(['"', ';', '{', '}', '\\', '<', '>']) {
         s.font_family = String::new();
+    }
+    if s.ffmpeg_path.len() > 1000 || s.ffmpeg_path.contains('\0') {
+        s.ffmpeg_path = String::new();
     }
     s
 }

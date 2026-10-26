@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
 import { RecordingApi } from '../app/core/recording/recording-api';
 import {
+  ExportEvent,
+  ExportOptions,
   PlaybackAction,
   PlaybackCheck,
   PlaybackEvent,
@@ -45,6 +47,22 @@ export class FakeRecordingApi extends RecordingApi {
   }
   control(id: number, action: PlaybackAction): Promise<void> {
     this.calls.push(`${action}:${id}`);
+    return Promise.resolve();
+  }
+  lastExport: { id: number; source: PlaybackSource; options: ExportOptions } | null = null;
+  exportEmit: ((e: ExportEvent) => void) | null = null;
+  exportVideo(
+    id: number,
+    source: PlaybackSource,
+    options: ExportOptions,
+    onEvent: (e: ExportEvent) => void,
+  ): Promise<void> {
+    this.lastExport = { id, source, options };
+    this.exportEmit = onEvent;
+    return Promise.resolve();
+  }
+  cancelExport(): Promise<void> {
+    this.calls.push('cancelExport');
     return Promise.resolve();
   }
 }

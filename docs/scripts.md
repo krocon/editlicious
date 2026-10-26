@@ -51,10 +51,30 @@ do {"type":"toggleMarker"}
 | `type <<END` … `END` | type a block of lines |
 | `type @file` | type a file (relative to the script) |
 | `pause 800` | wait (ms) |
+| `keys "Ctrl+D"` | show keys or a note in an exported video for a moment (nothing happens in the editor) |
 | `goto 12:5`, `select 12:5 12:9` | place the caret, select |
 | `move wordRight [select] [n]` | `left right up down wordLeft wordRight lineStart lineEnd pageUp pageDown docStart docEnd` |
 | `newline`, `backspace 3`, `delete`, `undo`, `redo`, `indent`, `outdent`, `selectAll`, `copy`, `cut`, `paste`, `duplicateLines`, `deleteLines`, `joinLines`, `toggleMarker`, `clearMarkers`, `addNextOccurrence`, `singleCursor` | editor commands, optionally repeated |
 | `find "text" [regex] [case] [word] [back]` | find and select the next match |
 | `do {json}` | any engine command, e.g. `do {"type":"sortLines","options":{"unique":true}}` |
+
+## Videos
+
+*Export as video…* (menu *Edit → Recording*) or the command line renders a recording or script **without a screen
+recording**: every frame is drawn from the engine on a virtual clock – sharp at any size, the same timing every
+time, in any colour scheme of the app. Videos need [ffmpeg](https://ffmpeg.org) (path in the settings if it is not on
+the `PATH`); without it, a folder as output gets numbered PNG frames.
+
+```bash
+editlicious render demo.edscript -o demo.mp4 --size 1080x1920 --theme night --chrome mac
+editlicious render demo.edscript -o frames/ --hold 0.5,1 --tempo human --seed 7
+editlicious render demo.edscript -o demo.de.mp4 --fallback-font /usr/share/fonts/NotoSansCJK.ttc
+```
+
+`editlicious render --help` lists every option (size, fps, theme, font and fallback fonts, window look, padding,
+line numbers, caret blinking, still picture at start/end, start text, language, tempo, `--best`, `--ffmpeg`). The
+built-in font is JetBrains Mono; characters it lacks (CJK, emoji) need a `--fallback-font`, otherwise they show as
+boxes – never a random system font. `.mp4` = H.264 (`-preset veryfast`, `--best` = slower and better), `.mov` =
+ProRes, `.webm` = VP9.
 
 "Save the last recording as a script" turns a recording into such a script – a good start for editing by hand.

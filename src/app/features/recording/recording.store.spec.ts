@@ -108,4 +108,34 @@ describe('RecordingStore (design 015)', () => {
     api.emit!({ kind: 'done', reason: 'recording_unsupported' });
     expect(docs.message()).toContain('cannot be played');
   });
+
+  it('exports a video: source, size, file, progress, done (design 017)', async () => {
+    const { api, ws, store, docs, actions, id } = await setup();
+    const picks = vi
+      .spyOn(TestBed.inject(PickService), 'pick')
+      .mockResolvedValueOnce('file')
+      .mockResolvedValueOnce('portrait');
+    ws.openAnswer = ['/tmp/demo.edscript'];
+    ws.saveAnswer = '/tmp/out.mp4';
+    await store.exportVideo();
+    expect(picks).toHaveBeenCalledTimes(2);
+    expect(api.lastExport?.id).toBe(id);
+    expect(api.lastExport?.source).toEqual({ kind: 'path', path: '/tmp/demo.edscript' });
+    expect(api.lastExport?.options).toMatchObject({
+      path: '/tmp/out.mp4',
+      width: 1080,
+      height: 1920,
+      chrome: 'plain',
+    });
+    expect(['paper', 'ink']).toContain(api.lastExport?.options.theme);
+    expect(actions.enabled('record.exportVideo')).toBe(false);
+    api.exportEmit!({ kind: 'progress', done: 5, total: 10 });
+    expect(store.exporting()).toEqual({ done: 5, total: 10 });
+    actions.run('record.cancelExport');
+    await flush();
+    expect(api.calls).toContain('cancelExport');
+    api.exportEmit!({ kind: 'done', reason: 'ffmpeg_missing' });
+    expect(store.exporting()).toBeNull();
+    expect(docs.message()).toContain('ffmpeg');
+  });
 });

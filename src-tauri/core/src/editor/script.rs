@@ -10,6 +10,7 @@
 //! END
 //! type @snippets/example.rs
 //! pause 800
+//! keys "Ctrl+D"
 //! goto 12:5
 //! select 12:5 12:9
 //! move wordRight select
@@ -106,6 +107,10 @@ pub fn parse(
                 Item::Type(text.replace("\r\n", "\n").replace('\r', "\n"))
             }
             "pause" => Item::Pause(parse_num(rest.trim()).map_err(|e| invalid(no, &e))?),
+            "keys" => {
+                let (s, _) = parse_string(rest.trim()).map_err(|e| invalid(no, &e))?;
+                Item::Keys(s)
+            }
             "goto" => {
                 let p = parse_pos(rest.trim()).map_err(|e| invalid(no, &e))?;
                 cmd(Command::GoTo {
@@ -419,6 +424,7 @@ move wordRight select
 backspace 3
 find "ne.dle" regex case
 do {"type":"duplicateLines"}
+keys "Ctrl+D"
 "#)
         .unwrap();
         assert_eq!(
@@ -457,7 +463,8 @@ do {"type":"duplicateLines"}
             if query.regex && query.case_sensitive && !query.whole_word)
         );
         assert_eq!(items[11], cmd(Command::DuplicateLines));
-        assert_eq!(items.len(), 12);
+        assert_eq!(items[12], Item::Keys("Ctrl+D".into()));
+        assert_eq!(items.len(), 13);
     }
 
     #[test]

@@ -254,7 +254,7 @@ impl Session {
                 wrap: self.wrap,
             },
         );
-        self.recorder = Some(recording::Recorder::new(header));
+        self.recorder = Some(recording::Recorder::new(header).with_start(self.doc.rope().clone()));
     }
 
     /// Stops the recording; it becomes the last one. `None` when none was running.

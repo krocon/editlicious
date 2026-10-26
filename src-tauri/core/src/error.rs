@@ -58,6 +58,8 @@ pub enum FsErrorCode {
     RevisionConflict,
     /// A tool call with missing or wrong arguments (design 016).
     InvalidRequest,
+    /// The video export found no `ffmpeg` (design 017).
+    FfmpegMissing,
 }
 
 /// The one error type every command returns.

@@ -19,6 +19,8 @@ export interface Settings {
   overview: boolean;
   /** An AI may drive the editor over MCP (design 016 E9). */
   mcp: boolean;
+  /** ffmpeg for the video export (design 017); empty = the one on the PATH. */
+  ffmpegPath: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -40,6 +42,7 @@ export const DEFAULT_SETTINGS: Settings = {
   wordWrap: false,
   overview: true,
   mcp: false,
+  ffmpegPath: '',
 };
 
 export interface LoadedSettings {

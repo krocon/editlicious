@@ -115,6 +115,8 @@ export const ACTIONS: readonly ActionDef[] = [
   G('record.stop', 'Stop playback'),
   G('record.save', 'Save the last recording…'),
   G('record.saveScript', 'Save the last recording as a script…'),
+  G('record.exportVideo', 'Export as video…'),
+  G('record.cancelExport', 'Cancel the video export'),
   // AI control (design 016)
   G('mcp.disconnect', 'Disconnect the AI'),
   // editing – the engine does it

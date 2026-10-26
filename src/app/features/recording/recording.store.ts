@@ -3,7 +3,14 @@ import { ActionHandler, ActionService } from '../../core/actions/action.service'
 import { Frame } from '../../core/editor/editor.models';
 import { describeFsError, FsErrorCode, toFsError } from '../../core/errors/fs-error';
 import { RecordingApi } from '../../core/recording/recording-api';
-import { PlaybackEvent, PlaybackSource, Tempo } from '../../core/recording/recording.models';
+import {
+  ExportEvent,
+  PlaybackEvent,
+  PlaybackSource,
+  Tempo,
+} from '../../core/recording/recording.models';
+import { ChromeStore } from '../menus/chrome.store';
+import { SettingsStore } from '../settings/settings.store';
 import { WorkspaceApi } from '../../core/workspace/workspace-api';
 import { AskService } from '../../shared/ask/ask.service';
 import { PickService } from '../../shared/pick/pick.service';
@@ -51,6 +58,10 @@ export class RecordingStore {
   readonly pushed = signal<Frame | null>(null);
   /** Documents with a finished recording (save, play again). */
   readonly recorded = signal<ReadonlySet<number>>(new Set());
+  /** A running video export (design 017). */
+  readonly exporting = signal<{ done: number; total: number } | null>(null);
+  private readonly chrome = inject(ChromeStore);
+  private readonly settings = inject(SettingsStore);
 
   readonly activeRecording = computed(() => {
     const id = this.docs.activeId();
@@ -96,6 +107,14 @@ export class RecordingStore {
       'record.stop': { run: () => void this.stopPlayback(), enabled: playing },
       'record.save': { run: () => void this.save(false), enabled: recorded },
       'record.saveScript': { run: () => void this.save(true), enabled: recorded },
+      'record.exportVideo': {
+        run: () => void this.exportVideo(),
+        enabled: () => hasDoc() && !this.exporting(),
+      },
+      'record.cancelExport': {
+        run: () => void this.api.cancelExport(),
+        enabled: () => !!this.exporting(),
+      },
     };
     actions.registerAll(handlers, destroyRef);
   }
@@ -250,6 +269,91 @@ export class RecordingStore {
     } catch (e) {
       this.fail(e);
     }
+  }
+
+  /** "Export as video…" (design 017): source, size, file – then render in the background. */
+  async exportVideo(): Promise<void> {
+    const doc = this.docs.active();
+    if (!doc || this.exporting()) return;
+    const t = this.t;
+    const sources = [
+      ...(this.recorded().has(doc.id) ? [{ id: 'last', label: t.lastRecording }] : []),
+      { id: 'file', label: t.chooseFile },
+    ];
+    const which = await this.picker.pick({
+      title: t.exportTitle,
+      placeholder: t.exportSource,
+      options: sources,
+      current: sources[0].id,
+    });
+    if (!which) return;
+    let source: PlaybackSource = { kind: 'last' };
+    if (which === 'file') {
+      const files = await this.ws.pickOpenFiles(doc.info.path).catch(() => null);
+      if (!files?.[0]) return;
+      source = { kind: 'path', path: files[0] };
+    }
+    const sizes: Record<string, [number, number]> = {
+      landscape: [1920, 1080],
+      portrait: [1080, 1920],
+      hd: [1280, 720],
+      uhd: [3840, 2160],
+    };
+    const size = await this.picker.pick({
+      title: t.exportTitle,
+      placeholder: t.exportSize,
+      options: [
+        { id: 'landscape', label: t.sizeLandscape },
+        { id: 'portrait', label: t.sizePortrait },
+        { id: 'hd', label: t.sizeHd },
+        { id: 'uhd', label: t.sizeUhd },
+      ],
+      current: 'landscape',
+    });
+    if (!size) return;
+    const path = await this.ws.pickSavePath('editlicious.mp4', doc.info.path).catch(() => null);
+    if (!path) return;
+    const [width, height] = sizes[size];
+    this.exporting.set({ done: 0, total: 0 });
+    try {
+      await this.api.exportVideo(
+        doc.id,
+        source,
+        {
+          path,
+          width,
+          height,
+          fps: 60,
+          theme: this.videoTheme(),
+          chrome: 'plain',
+          ffmpeg: this.settings.settings().ffmpegPath,
+        },
+        (e) => this.onExport(e),
+      );
+      this.say(t.exportStarted);
+    } catch (e) {
+      this.exporting.set(null);
+      this.fail(e);
+    }
+  }
+
+  /** The scheme on screen; `auto` follows the system like the app. */
+  private videoTheme(): string {
+    const s = this.chrome.scheme();
+    if (s !== 'auto') return s;
+    const dark = globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches;
+    return dark ? 'ink' : 'paper';
+  }
+
+  private onExport(e: ExportEvent): void {
+    if (e.kind === 'progress') {
+      this.exporting.set({ done: e.done, total: e.total });
+      return;
+    }
+    this.exporting.set(null);
+    if (e.reason === 'finished') this.say(this.t.exportDone);
+    else if (e.reason === 'cancelled') this.say(this.t.exportCancelled);
+    else this.say(describeFsError({ code: e.reason as FsErrorCode, message: '' }));
   }
 
   private setIn(s: ReturnType<typeof signal<ReadonlySet<number>>>, id: number, on: boolean): void {

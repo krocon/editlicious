@@ -60,6 +60,8 @@ pub enum Item {
     Pause(u64),
     /// From here on another tempo (scripts).
     Tempo(Tempo),
+    /// Shows keys or a caption in a video (design 017); nothing happens in the editor.
+    Keys(String),
 }
 
 /// One step of the timeline.
@@ -69,6 +71,8 @@ pub struct Step {
     pub at: u64,
     pub cmd: Command,
     pub clip: Option<String>,
+    /// A caption for the video export (`keys "Ctrl+D"`); the command is then `frame`.
+    pub overlay: Option<String>,
 }
 
 /// The items of a recording; a pasted text that was too large to keep cannot play.
@@ -173,6 +177,7 @@ impl Clock<'_> {
             at: self.at,
             cmd,
             clip,
+            overlay: None,
         });
     }
 
@@ -283,6 +288,12 @@ pub fn timeline(items: &[Item], tempo: Tempo) -> Vec<Step> {
         match item {
             Item::Tempo(t) => clock.set_tempo(*t),
             Item::Pause(ms) => clock.pause(*ms),
+            Item::Keys(text) => clock.out.push(Step {
+                at: clock.at,
+                cmd: Command::Frame,
+                clip: None,
+                overlay: Some(text.clone()),
+            }),
             Item::Type(text) => clock.type_text(text),
             Item::Cmd { cmd, clip, gap } => {
                 // a recording with human tempo: typed characters get a human rhythm too

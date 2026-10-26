@@ -27,6 +27,8 @@ const FIXED: Record<string, string> = {
   'record.stop': 'Wiedergabe beenden',
   'record.save': 'Letzte Aufnahme speichern …',
   'record.saveScript': 'Letzte Aufnahme als Skript speichern …',
+  'record.exportVideo': 'Als Video exportieren …',
+  'record.cancelExport': 'Video-Export abbrechen',
   'mcp.disconnect': 'KI-Steuerung trennen',
   'edit.copyHtmlNumbers': 'Als HTML mit Zeilennummern kopieren',
   'app.focusMenu': 'Menüleiste',

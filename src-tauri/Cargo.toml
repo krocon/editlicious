@@ -1,5 +1,5 @@
 [workspace]
-members = ["core", "mcp"]
+members = ["core", "mcp", "video"]
 # the WebAssembly build of the engine for the website demo (prompt 011) – own lock file, built with
 # `pnpm site:demo`; outside the workspace so `ed-core` keeps Oniguruma for the app
 exclude = ["wasm"]
@@ -32,6 +32,8 @@ tauri-plugin-single-instance = "2"
 ed-core = { path = "core" }
 # design 016 E1: bridge messages and the endpoint file shared with the MCP sidecar
 ed-mcp = { path = "mcp" }
+# design 017: video export (`editlicious render …`)
+ed-video = { path = "video" }
 # design 003 E5: copy/cut/paste in Rust – big selections never cross the IPC bridge
 arboard = { version = "3.7", default-features = false, features = ["wayland-data-control"] }
 

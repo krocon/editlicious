@@ -110,6 +110,8 @@ export function buildMenuModel(os: Os, input: MenuInputs): TopMenuNode[] {
         sep,
         a('record.save'),
         a('record.saveScript'),
+        sep,
+        a('record.exportVideo'),
       ],
     },
     sep,

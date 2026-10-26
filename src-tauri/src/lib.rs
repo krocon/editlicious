@@ -10,6 +10,7 @@
 //! - [`app_menu`]      native menu bar of macOS from the frontend's menu model (design 005)
 //! - [`keymap_file`]   the user's shortcut overrides `keymap.json` (design 005)
 //! - [`about`]         data for the About dialog (version, platform)
+//! - [`export`]        "Export as video…" with the renderer of `ed-video` (design 017)
 //! - [`mcp`]           AI control: bridge server for the MCP sidecar and its tools (design 016)
 //! - [`playback`]      recordings and scripts: read, save, play in real time (design 015)
 //! - [`commands`]      thin Tauri command layer (validate, `spawn_blocking`, never synchronous)
@@ -19,6 +20,7 @@ pub mod app_menu;
 pub mod commands;
 pub mod config_file;
 pub use ed_core::{document, editor, error, highlight, search};
+pub mod export;
 pub mod fs_atomic;
 pub mod keymap_file;
 pub mod mcp;
@@ -106,6 +108,8 @@ pub fn run() {
             commands::mcp_set_actions,
             commands::mcp_set_active,
             commands::mcp_disconnect,
+            commands::export_video,
+            commands::cancel_export,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

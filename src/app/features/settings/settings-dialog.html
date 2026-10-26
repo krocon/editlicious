@@ -191,6 +191,22 @@
         }
       }
     </fieldset>
+
+    <fieldset>
+      <legend>{{ t.video }}</legend>
+      <label class="row" for="set-ffmpeg">
+        <span>{{ t.ffmpeg }}</span>
+        <input
+          id="set-ffmpeg"
+          class="input"
+          type="text"
+          spellcheck="false"
+          [placeholder]="t.ffmpegPlaceholder"
+          [value]="s.ffmpegPath"
+          (change)="set('ffmpegPath', value($event).trim())"
+        />
+      </label>
+    </fieldset>
   </div>
   <div class="actions">
     <span class="hint">{{ t.savedIn }}</span>

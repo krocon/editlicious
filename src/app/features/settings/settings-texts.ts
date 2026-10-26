@@ -28,6 +28,9 @@ const EN = {
   showTabs: 'Show tabs as arrows',
   wordWrap: 'Wrap long lines',
   overview: 'Show matches and markers in the scrollbar',
+  video: 'Video export',
+  ffmpeg: 'ffmpeg',
+  ffmpegPlaceholder: 'ffmpeg on the PATH',
   ai: 'AI control',
   mcp: 'Let an AI drive the editor (MCP)',
   mcpHint:
@@ -74,6 +77,9 @@ export const SETTINGS_TEXTS = translatable('settings', EN, {
     showTabs: 'Tabs als Pfeile zeigen',
     wordWrap: 'Lange Zeilen umbrechen',
     overview: 'Treffer und Markierungen in der Scrollleiste zeigen',
+    video: 'Video-Export',
+    ffmpeg: 'ffmpeg',
+    ffmpegPlaceholder: 'ffmpeg aus dem PATH',
     ai: 'KI-Steuerung',
     mcp: 'Eine KI darf den Editor steuern (MCP)',
     mcpHint:

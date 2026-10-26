@@ -89,6 +89,9 @@ pub struct Recording {
     pub steps: Vec<RecStep>,
     /// Steps beyond [`MAX_STEPS`] that were not kept.
     pub dropped: usize,
+    /// The text when the recording started (a cheap rope copy; not in the file) – the video
+    /// export starts from it (design 017).
+    pub start_text: Option<ropey::Rope>,
 }
 
 impl Recording {
@@ -135,6 +138,7 @@ impl Recording {
             header,
             steps,
             dropped: 0,
+            start_text: None,
         })
     }
 }
@@ -162,8 +166,15 @@ impl Recorder {
                 header,
                 steps: Vec::new(),
                 dropped: 0,
+                start_text: None,
             },
         }
+    }
+
+    /// Keeps the text the recording starts on (for the video export).
+    pub fn with_start(mut self, text: ropey::Rope) -> Self {
+        self.rec.start_text = Some(text);
+        self
     }
 
     /// Keeps a command that ran; `pasted` = the clipboard text of a `paste`, `sels` = the
@@ -259,6 +270,7 @@ mod tests {
         let text = rec.to_jsonl();
         assert_eq!(text.lines().count(), 3);
         assert_eq!(Recording::from_jsonl(&text).unwrap(), rec);
+        assert!(rec.start_text.is_none());
     }
 
     #[test]
