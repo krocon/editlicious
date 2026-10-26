@@ -36,6 +36,9 @@
 | `pick_open_files(near)` / `pick_save_path(name, near)` | native Dateidialoge (nur Rust-API) | 004 |
 | `load_session` / `save_session` | `session.json` | 004 |
 | `set_title` / `take_over_close` / `quit_app`, Ereignis `close-requested` | Fenster, Beenden mit Frage | 004 |
+| `toggle_fullscreen` | Vollbild | 005 |
+| `set_app_menu(spec)`, Ereignis `menu-action` | natives Menü (macOS) | 005 |
+| `load_keymap_overrides` | `keymap.json` | 005 |
 
 ## Abhängigkeiten
 

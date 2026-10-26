@@ -7,6 +7,8 @@ import { FakeAboutApi } from '../testing/fake-about-api';
 import { FakeEditorApi } from '../testing/fake-editor-api';
 import { WorkspaceApi } from './core/workspace/workspace-api';
 import { FakeWorkspaceApi } from '../testing/fake-workspace-api';
+import { OS } from './core/actions/platform';
+import { ActionService } from './core/actions/action.service';
 
 function setup(desktop: boolean, paths: string[] = []): FakeEditorApi {
   const api = new FakeEditorApi();
@@ -18,6 +20,7 @@ function setup(desktop: boolean, paths: string[] = []): FakeEditorApi {
       { provide: EditorApi, useValue: api },
       { provide: WorkspaceApi, useClass: FakeWorkspaceApi },
       { provide: DESKTOP, useValue: desktop },
+      { provide: OS, useValue: 'other' },
     ],
   });
   return api;
@@ -48,5 +51,37 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     expect(fixture.nativeElement.querySelector('app-editor-view')).not.toBeNull();
+  });
+
+  it('keeps the menu bar hidden until Alt and runs actions from the palette', async () => {
+    setup(true);
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('app-menu-bar')).toBeNull();
+    const actions = TestBed.inject(ActionService);
+    actions.run('app.focusMenu');
+    await fixture.whenStable();
+    expect(el.querySelector('[role="menubar"]')).not.toBeNull();
+    actions.run('view.toggleChrome');
+    actions.run('app.palette');
+    await fixture.whenStable();
+    expect(el.querySelector('[role="combobox"]')).not.toBeNull();
+    const options = [...el.querySelectorAll('[role="option"]')].map((o) => o.textContent ?? '');
+    expect(options.some((o) => o.includes('Save') && o.includes('Ctrl+S'))).toBe(true);
+    expect(options.some((o) => o.includes('Cursor left'))).toBe(false);
+  });
+
+  it('lists the keyboard shortcuts', async () => {
+    setup(true);
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    TestBed.inject(ActionService).run('app.shortcuts');
+    await fixture.whenStable();
+    const text = (fixture.nativeElement as HTMLElement).querySelector(
+      '[role="dialog"]',
+    )!.textContent;
+    expect(text).toContain('Undo');
+    expect(text).toContain('Ctrl+Z');
   });
 });

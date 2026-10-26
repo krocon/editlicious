@@ -54,6 +54,9 @@ src/                          Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/features/documents/     DocumentsStore (offene Dateien, Öffnen/Speichern/Schließen, Sitzung, Änderungen von
                               außen, Beenden), TabBar
   app/shared/ask/             AskService + AskDialog (Fragen als Promise)
+  app/core/menu/              MenuApi (set_app_menu, menu-action), KeymapApi (keymap.json)
+  app/features/menus/         menu-model (rein), MenuService (nativ/HTML), MenuBar (APG, versteckt bis Alt),
+                              CommandPalette, ShortcutsDialog, ChromeStore (F1, Menüleiste, Vollbild)
   app/features/about/         About-Dialog
   app/shared/dialog/          Modal (Fokusfalle, Esc), DialogService (aus comic-commander/files-and-folders)
   testing/                    Fakes – nie im Produktivcode importieren
@@ -61,6 +64,8 @@ public/                       favicon.png, logo.svg (Schriftzug, Yellowtail-Pfad
 src-tauri/                    Rust (Tauri 2), Crate `editlicious`, Lib `ed_lib`
   src/lib.rs                  Modulübersicht, Builder, Commands
   src/commands.rs             dünne Command-Schicht, Test command_rules
+  src/app_menu.rs             natives macOS-Menü aus dem Frontend-Modell (ohne vordefiniertes Edit-Menü)
+  src/keymap_file.rs          keymap.json laden
   src/session_file.rs         session.json (offene Dateien, zuletzt benutzt, Tab-Modus)
   src/model.rs                DTOs der App (serde camelCase); `document`, `error` kommen aus ed-core
   core/                       Crate `ed-core` (Workspace-Mitglied): Editor-Engine ohne Tauri

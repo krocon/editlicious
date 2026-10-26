@@ -1,4 +1,5 @@
 import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
+import { KeymapApi } from '../menu/menu-api';
 import { actionDef, ActionDef } from './action-catalog';
 import { buildKeymap, Keymap } from './keymap';
 import { OS } from './platform';
@@ -21,6 +22,7 @@ export interface ActionHandler {
 @Injectable({ providedIn: 'root' })
 export class ActionService {
   readonly os = inject(OS);
+  private readonly keymapApi = inject(KeymapApi);
   private readonly stacks = new Map<string, ActionHandler[]>();
   /** Bumped on every (un)registration – menus and palette recompute. */
   private readonly version = signal(0);
@@ -31,6 +33,18 @@ export class ActionService {
   /** Set once by the app shell : keys, menus and palette all follow it. */
   setGate(fn: (def: ActionDef) => boolean): void {
     this.gate.set(fn);
+  }
+
+  /** Loads `keymap.json` (design 005 E5); problems go to the console only. */
+  async loadOverrides(): Promise<void> {
+    try {
+      const o = await this.keymapApi.loadOverrides();
+      const k = buildKeymap(this.os, o.bindings);
+      k.notes.forEach((n) => console.warn(n));
+      this.keymap.set(k);
+    } catch {
+      // no backend (browser) or unreadable: the defaults stay
+    }
   }
 
   register(id: string, handler: ActionHandler, destroyRef?: DestroyRef): () => void {

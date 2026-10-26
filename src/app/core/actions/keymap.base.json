@@ -10,7 +10,20 @@
     "Ctrl+Tab": "file.next",
     "Ctrl+Shift+Tab": "file.prev",
     "F10": "file.next",
-    "Shift+F10": "file.prev"
+    "Shift+F10": "file.prev",
+    "Mod+Shift+p": "app.palette",
+    "Mod+Shift+k": "app.shortcuts",
+    "Mod+,": "app.settings",
+    "F1": "view.toggleChrome",
+    "Mod+1": "file.switch.1",
+    "Mod+2": "file.switch.2",
+    "Mod+3": "file.switch.3",
+    "Mod+4": "file.switch.4",
+    "Mod+5": "file.switch.5",
+    "Mod+6": "file.switch.6",
+    "Mod+7": "file.switch.7",
+    "Mod+8": "file.switch.8",
+    "Mod+9": "file.switch.9"
   },
   "editor": {
     "ArrowLeft": "cursor.left",

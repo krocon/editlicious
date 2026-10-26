@@ -62,6 +62,23 @@ describe('KeyboardDispatcher', () => {
     expect(ran).toEqual(['file.open']);
   });
 
+  it('opens the menu bar on a lone Alt (Windows/Linux)', () => {
+    const { ran, reg } = setup();
+    const dispatcher = TestBed.inject(KeyboardDispatcher);
+    const up = (e: KeyboardEvent) => dispatcher.keyup(e);
+    document.addEventListener('keyup', up);
+    cleanups.push(() => document.removeEventListener('keyup', up));
+    reg('app.focusMenu');
+    key(el('ed'), 'Alt', { altKey: true });
+    el('ed').dispatchEvent(new KeyboardEvent('keyup', { key: 'Alt', bubbles: true }));
+    expect(ran).toEqual(['app.focusMenu']);
+    // Alt as a modifier of another key does not count
+    key(el('ed'), 'Alt', { altKey: true });
+    key(el('ed'), 'x', { altKey: true });
+    el('ed').dispatchEvent(new KeyboardEvent('keyup', { key: 'Alt', bubbles: true }));
+    expect(ran).toEqual(['app.focusMenu']);
+  });
+
   it('ignores keys while composing', () => {
     const { ran, reg } = setup();
     reg('edit.newline');

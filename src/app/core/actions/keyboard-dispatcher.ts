@@ -61,6 +61,7 @@ export class KeyboardDispatcher {
     if (this.attached) return;
     this.attached = doc;
     doc.addEventListener('keydown', (e) => this.handle(e));
+    doc.addEventListener('keyup', (e) => this.keyup(e));
     doc.addEventListener('contextmenu', (e) => this.contextMenu(e));
   }
 
@@ -73,7 +74,19 @@ export class KeyboardDispatcher {
     if (!isTextField(target)) e.preventDefault();
   }
 
+  /** Alt pressed and released alone (Windows/Linux) opens the hidden menu bar (design 005 E2). */
+  private altAlone = false;
+
+  keyup(e: KeyboardEvent): void {
+    const alone = this.altAlone;
+    this.altAlone = false;
+    if (e.key !== 'Alt' || !alone || this.actions.os === 'mac') return;
+    if (this.provider(e.target instanceof Element ? e.target : null) === null) return;
+    if (this.actions.run('app.focusMenu')) e.preventDefault();
+  }
+
   handle(e: KeyboardEvent): void {
+    this.altAlone = e.key === 'Alt' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.repeat;
     if (e.defaultPrevented || e.isComposing) return;
     const target = e.target instanceof Element ? e.target : null;
     const contexts = this.provider(target);

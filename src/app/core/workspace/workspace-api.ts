@@ -18,6 +18,8 @@ export abstract class WorkspaceApi {
   /** From now on the close button asks via `onCloseRequested`. */
   abstract takeOverClose(): Promise<void>;
   abstract quit(): Promise<void>;
+  /** Returns the new state. */
+  abstract toggleFullscreen(): Promise<boolean>;
   abstract onCloseRequested(fn: () => void): Promise<() => void>;
   abstract onFilesDropped(fn: (paths: string[]) => void): Promise<() => void>;
 }
@@ -50,6 +52,10 @@ export class TauriWorkspaceApi extends WorkspaceApi {
 
   quit(): Promise<void> {
     return call<void>('quit_app');
+  }
+
+  toggleFullscreen(): Promise<boolean> {
+    return call<boolean>('toggle_fullscreen');
   }
 
   onCloseRequested(fn: () => void): Promise<() => void> {

@@ -21,6 +21,11 @@ export interface ActionDef {
   cmd?: Command;
 }
 
+/** Recently used files reachable from the menu. */
+export const MAX_RECENT_ACTIONS = 10;
+/** Open files reachable by `Mod+1…9` and the menu. */
+export const MAX_SWITCH_ACTIONS = 9;
+
 const G = (id: string, label: string, extra: Partial<ActionDef> = {}): ActionDef => ({
   id,
   label,
@@ -61,8 +66,25 @@ export const ACTIONS: readonly ActionDef[] = [
   G('file.closeAll', 'Close all files'),
   G('file.next', 'Next file', { repeat: true }),
   G('file.prev', 'Previous file', { repeat: true }),
+  ...Array.from({ length: MAX_RECENT_ACTIONS }, (_, i) =>
+    G(`file.recent.${i + 1}`, `Recent file ${i + 1}`, { palette: false }),
+  ),
+  ...Array.from({ length: MAX_SWITCH_ACTIONS }, (_, i) =>
+    G(`file.switch.${i + 1}`, `Switch to file ${i + 1}`, { palette: false }),
+  ),
+  // app and view (design 005)
+  G('app.palette', 'Command palette…'),
+  G('app.shortcuts', 'Keyboard shortcuts…'),
+  G('app.settings', 'Settings…'),
+  G('app.focusMenu', 'Menu bar', { palette: false }),
   G('app.about', 'About editlicious'),
   G('app.quit', 'Quit'),
+  G('view.toggleMenuBar', 'Show menu bar'),
+  G('view.toggleChrome', 'Hide everything but the text'),
+  G('view.fullscreen', 'Full screen'),
+  G('view.tabs.auto', 'Tabs: from the second file on'),
+  G('view.tabs.show', 'Tabs: always'),
+  G('view.tabs.hide', 'Tabs: never'),
   // editing – the engine does it
   E('edit.undo', 'Undo', { type: 'undo' }, { repeat: true }),
   E('edit.redo', 'Redo', { type: 'redo' }, { repeat: true }),

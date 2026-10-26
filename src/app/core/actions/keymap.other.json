@@ -1,5 +1,9 @@
 {
-  "global": {},
+  "global": {
+    "F11": "view.fullscreen",
+    "Mod+m": "view.toggleMenuBar",
+    "Mod+q": "app.quit"
+  },
   "editor": {
     "Mod+ArrowLeft": "cursor.wordLeft",
     "Mod+ArrowRight": "cursor.wordRight",

@@ -34,6 +34,8 @@ pub enum FsErrorCode {
     InvalidEdit,
     /// The operation was cancelled by the user.
     Cancelled,
+    /// The menu sent to `set_app_menu` is not valid (design 005).
+    InvalidMenu,
 }
 
 /// The one error type every command returns.

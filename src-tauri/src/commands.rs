@@ -312,6 +312,60 @@ pub async fn quit_app(app: AppHandle) -> Result<(), FsError> {
     Ok(())
 }
 
+fn io_error(message: impl Into<String>) -> FsError {
+    FsError::new(FsErrorCode::Io, message, None)
+}
+
+/// Full screen on/off (design 005); returns the new state.
+#[tauri::command]
+pub async fn toggle_fullscreen(window: tauri::WebviewWindow) -> Result<bool, FsError> {
+    let on = !window
+        .is_fullscreen()
+        .map_err(|e| io_error(e.to_string()))?;
+    window
+        .set_fullscreen(on)
+        .map_err(|e| io_error(e.to_string()))?;
+    Ok(on)
+}
+
+/// The native menu bar (macOS) from the frontend's menu model (design 005, from comic-commander).
+#[tauri::command]
+pub async fn set_app_menu(app: AppHandle, spec: crate::app_menu::MenuSpec) -> Result<(), FsError> {
+    crate::app_menu::validate(&spec)?;
+    apply_app_menu(app, spec).await
+}
+
+/// macOS: menus are built on the main thread; the answer is awaited off the async runtime.
+#[cfg(target_os = "macos")]
+async fn apply_app_menu(app: AppHandle, spec: crate::app_menu::MenuSpec) -> Result<(), FsError> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    let handle = app.clone();
+    app.run_on_main_thread(move || {
+        let _ = tx.send(crate::app_menu::apply(&handle, &spec));
+    })
+    .map_err(|e| io_error(e.to_string()))?;
+    blocking(move || {
+        rx.recv()
+            .map_err(|e| io_error(e.to_string()))?
+            .map_err(|e| io_error(e.to_string()))
+    })
+    .await
+}
+
+/// Windows/Linux: the HTML menu bar needs nothing from the backend.
+#[cfg(not(target_os = "macos"))]
+async fn apply_app_menu(_app: AppHandle, _spec: crate::app_menu::MenuSpec) -> Result<(), FsError> {
+    Ok(())
+}
+
+/// The user's shortcut overrides (`keymap.json`, design 005 E5).
+#[tauri::command]
+pub async fn load_keymap_overrides(
+    app: AppHandle,
+) -> Result<crate::keymap_file::KeymapOverrides, FsError> {
+    blocking(move || Ok(crate::keymap_file::load(&config_dir(&app)?))).await
+}
+
 /// Should a close request wait for the frontend?
 pub fn close_handled(app: &AppHandle) -> bool {
     app.state::<AppState>()
@@ -337,6 +391,6 @@ mod command_rules {
                 count += 1;
             }
         }
-        assert!(count >= 18);
+        assert!(count >= 21);
     }
 }

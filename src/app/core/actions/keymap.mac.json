@@ -1,6 +1,7 @@
 {
   "global": {
-    "Mod+q": "app.quit"
+    "Mod+q": "app.quit",
+    "Mod+Ctrl+f": "view.fullscreen"
   },
   "editor": {
     "Alt+ArrowLeft": "cursor.wordLeft",

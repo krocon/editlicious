@@ -2,36 +2,46 @@ import { DOCUMENT } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   DestroyRef,
   inject,
-  signal,
   viewChild,
 } from '@angular/core';
-import { ActionService } from './core/actions/action.service';
+import { MAX_RECENT_ACTIONS, MAX_SWITCH_ACTIONS } from './core/actions/action-catalog';
+import { ActionHandler, ActionService } from './core/actions/action.service';
 import { KeyboardDispatcher } from './core/actions/keyboard-dispatcher';
 import { DESKTOP } from './core/backend/desktop';
 import { WorkspaceApi } from './core/workspace/workspace-api';
+import { TabsMode } from './core/workspace/workspace.models';
 import { AboutDialog } from './features/about/about-dialog';
 import { DocumentsStore } from './features/documents/documents.store';
 import { TabBar } from './features/documents/tab-bar';
 import { EditorView } from './features/editor/editor-view';
+import { ChromeStore } from './features/menus/chrome.store';
+import { CommandPalette } from './features/menus/command-palette';
+import { MenuBar } from './features/menus/menu-bar';
+import { MenuService } from './features/menus/menu.service';
+import { ShortcutsDialog } from './features/menus/shortcuts-dialog';
 import { AskDialog } from './shared/ask/ask-dialog';
 import { DialogService } from './shared/dialog/dialog.service';
 
 /**
- * Root: tabs (only when wanted) and the editor surface of the active file – nothing else
- * catches the eye (prompt 000-start: "wenig Ablenkung"). Menus, palette and the
- * distraction-free switches follow in prompt 005.
+ * Root: (hidden) menu bar, tabs only when wanted, the editor surface of the active file –
+ * nothing else catches the eye (prompt 000-start: "wenig Ablenkung"). Every function is an
+ * action: keys, menus and the command palette run them.
  */
 @Component({
   selector: 'app-root',
-  imports: [AboutDialog, AskDialog, EditorView, TabBar],
+  imports: [AboutDialog, AskDialog, CommandPalette, EditorView, MenuBar, ShortcutsDialog, TabBar],
   template: `
     @if (store.loading(); as l) {
       <div class="progress" [style.width.%]="l.progress * 100"></div>
     }
+    @if (!mac && chrome.menuVisible()) {
+      <app-menu-bar (left)="chrome.menuOnce.set(false)" />
+    }
     @if (desktop) {
-      @if (store.tabsVisible()) {
+      @if (tabsVisible()) {
         <app-tab-bar (closeTab)="closeTab($event)" (chosen)="focusEditor()" />
       }
       @if (store.activeId(); as id) {
@@ -58,6 +68,12 @@ import { DialogService } from './shared/dialog/dialog.service';
       @case ('ask') {
         <app-ask-dialog />
       }
+      @case ('palette') {
+        <app-command-palette />
+      }
+      @case ('shortcuts') {
+        <app-shortcuts-dialog />
+      }
     }
   `,
   styleUrl: './app.css',
@@ -67,9 +83,13 @@ import { DialogService } from './shared/dialog/dialog.service';
 export class App {
   protected readonly dialogs = inject(DialogService);
   protected readonly store = inject(DocumentsStore);
+  protected readonly chrome = inject(ChromeStore);
   protected readonly desktop = inject(DESKTOP);
-  protected readonly ready = signal(false);
+  private readonly actions = inject(ActionService);
+  protected readonly mac = this.actions.os === 'mac';
+  protected readonly tabsVisible = computed(() => this.store.tabsVisible() && !this.chrome.bare());
   private readonly editor = viewChild(EditorView);
+  private readonly menuBar = viewChild(MenuBar);
   private readonly ws = inject(WorkspaceApi);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -81,17 +101,18 @@ export class App {
     });
     dispatcher.attach(inject(DOCUMENT));
     this.registerActions();
+    void this.actions.loadOverrides();
+    inject(MenuService).start();
     if (this.desktop) void this.start();
   }
 
   private async start(): Promise<void> {
     await this.store.start();
-    const destroy = this.destroyRef;
     const offClose = await this.ws.onCloseRequested(() => void this.store.quit()).catch(() => null);
     const offDrop = await this.ws
       .onFilesDropped((paths) => void this.store.openPaths(paths))
       .catch(() => null);
-    destroy.onDestroy(() => {
+    this.destroyRef.onDestroy(() => {
       offClose?.();
       offDrop?.();
     });
@@ -99,23 +120,74 @@ export class App {
 
   private registerActions(): void {
     const s = this.store;
+    const c = this.chrome;
     const after = (p: Promise<unknown>) => void p.then(() => this.focusEditor());
-    inject(ActionService).registerAll(
-      {
-        'file.new': { run: () => after(s.newDoc()) },
-        'file.open': { run: () => after(s.openDialog()) },
-        'file.save': { run: () => after(s.save()), enabled: () => s.active() !== null },
-        'file.saveAs': { run: () => after(s.saveAs()), enabled: () => s.active() !== null },
-        'file.saveAll': { run: () => after(s.saveAll()) },
-        'file.close': { run: () => after(s.close()) },
-        'file.closeAll': { run: () => after(s.closeAll()) },
-        'file.next': { run: () => s.next(1), enabled: () => s.docs().length > 1 },
-        'file.prev': { run: () => s.next(-1), enabled: () => s.docs().length > 1 },
-        'app.about': { run: () => this.dialogs.show('about') },
-        'app.quit': { run: () => void s.quit() },
+    const tabs = (mode: TabsMode): ActionHandler => ({
+      run: () => s.tabsMode.set(mode),
+      checked: () => s.tabsMode() === mode,
+    });
+    const handlers: Record<string, ActionHandler> = {
+      'file.new': { run: () => after(s.newDoc()) },
+      'file.open': { run: () => after(s.openDialog()) },
+      'file.save': { run: () => after(s.save()), enabled: () => s.active() !== null },
+      'file.saveAs': { run: () => after(s.saveAs()), enabled: () => s.active() !== null },
+      'file.saveAll': { run: () => after(s.saveAll()) },
+      'file.close': { run: () => after(s.close()) },
+      'file.closeAll': { run: () => after(s.closeAll()) },
+      'file.next': { run: () => s.next(1), enabled: () => s.docs().length > 1 },
+      'file.prev': { run: () => s.next(-1), enabled: () => s.docs().length > 1 },
+      'app.palette': { run: () => this.dialogs.show('palette') },
+      'app.shortcuts': { run: () => this.dialogs.show('shortcuts') },
+      // settings follow with prompt 009
+      'app.settings': { run: () => undefined, enabled: () => false },
+      'app.about': { run: () => this.dialogs.show('about') },
+      'app.quit': { run: () => void s.quit() },
+      'app.focusMenu': {
+        run: () => {
+          if (this.mac) return;
+          c.menuOnce.set(true);
+          setTimeout(() => this.menuBar()?.enter());
+        },
+        enabled: () => !this.mac,
       },
-      this.destroyRef,
-    );
+      'view.toggleMenuBar': {
+        run: () => c.toggleMenuBar(),
+        checked: () => c.menuBar(),
+        enabled: () => !this.mac,
+      },
+      'view.toggleChrome': { run: () => c.toggleBare(), checked: () => c.bare() },
+      'view.fullscreen': {
+        run: () =>
+          void this.ws
+            .toggleFullscreen()
+            .then((on) => c.fullscreen.set(on))
+            .catch(() => undefined),
+        checked: () => c.fullscreen(),
+      },
+      'view.tabs.auto': tabs('auto'),
+      'view.tabs.show': tabs('show'),
+      'view.tabs.hide': tabs('hide'),
+    };
+    for (let n = 1; n <= MAX_RECENT_ACTIONS; n++) {
+      handlers[`file.recent.${n}`] = {
+        run: () => {
+          const p = s.recent()[n - 1];
+          if (p) after(s.openPaths([p]));
+        },
+        enabled: () => s.recent().length >= n,
+      };
+    }
+    for (let n = 1; n <= MAX_SWITCH_ACTIONS; n++) {
+      handlers[`file.switch.${n}`] = {
+        run: () => {
+          const d = s.docs()[n - 1];
+          if (d) s.activate(d.id);
+        },
+        enabled: () => s.docs().length >= n,
+        checked: () => s.docs()[n - 1]?.id === s.activeId(),
+      };
+    }
+    this.actions.registerAll(handlers, this.destroyRef);
   }
 
   protected closeTab(id: number): void {

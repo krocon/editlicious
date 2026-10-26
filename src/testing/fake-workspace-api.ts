@@ -36,6 +36,11 @@ export class FakeWorkspaceApi extends WorkspaceApi {
     this.quitCalls++;
     return Promise.resolve();
   }
+  fullscreen = false;
+  toggleFullscreen(): Promise<boolean> {
+    this.fullscreen = !this.fullscreen;
+    return Promise.resolve(this.fullscreen);
+  }
   onCloseRequested(): Promise<() => void> {
     return Promise.resolve(() => undefined);
   }
