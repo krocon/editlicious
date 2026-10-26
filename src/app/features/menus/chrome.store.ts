@@ -1,26 +1,43 @@
 import { computed, Injectable, signal } from '@angular/core';
 
-/** Colour schemes (design 008 E6; legacy: four built-in styles, F12 switches). */
-export const SCHEMES = ['auto', 'paper', 'ink', 'sand', 'night'] as const;
-export type Scheme = (typeof SCHEMES)[number];
+import { Scheme, SCHEMES } from '../../core/settings/settings.models';
+
+/** Colour schemes (design 008 E6, prompt 021; legacy: four built-in styles, F12 switches). */
+export { SCHEMES };
+export type { Scheme };
+
+/** The schemes built on the dark base (`--scheme-base: dark` in `styles.css`). */
+const DARK: ReadonlySet<Scheme> = new Set<Scheme>([
+  'one',
+  'moss',
+  'mocha',
+  'moon',
+  'night',
+  'graphite',
+  'ink',
+  'amber',
+]);
+
+export function isDarkScheme(s: Scheme): boolean {
+  return DARK.has(s);
+}
 
 /** `data-theme` (chrome light/dark) and `data-scheme` of a scheme; `null` = follow the system. */
 export function schemeAttributes(s: Scheme): {
   theme: 'light' | 'dark' | null;
   scheme: string | null;
 } {
-  switch (s) {
-    case 'auto':
-      return { theme: null, scheme: null };
-    case 'paper':
-      return { theme: 'light', scheme: null };
-    case 'ink':
-      return { theme: 'dark', scheme: null };
-    case 'sand':
-      return { theme: 'light', scheme: 'sand' };
-    case 'night':
-      return { theme: 'dark', scheme: 'night' };
-  }
+  if (s === 'auto') return { theme: null, scheme: null };
+  const theme = isDarkScheme(s) ? 'dark' : 'light';
+  return { theme, scheme: s === 'paper' || s === 'ink' ? null : s };
+}
+
+/** Attributes that draw a scheme inside one element (`[data-preview]` in `styles.css`). */
+export function previewAttributes(s: Exclude<Scheme, 'auto'>): {
+  preview: string;
+  dark: '' | null;
+} {
+  return { preview: schemeAttributes(s).scheme ?? '', dark: isDarkScheme(s) ? '' : null };
 }
 
 /**

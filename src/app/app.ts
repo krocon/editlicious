@@ -28,6 +28,7 @@ import { CommandPalette } from './features/menus/command-palette';
 import { MenuBar } from './features/menus/menu-bar';
 import { MenuService } from './features/menus/menu.service';
 import { ShortcutsDialog } from './features/menus/shortcuts-dialog';
+import { SchemePicker } from './features/menus/scheme-picker';
 import { AskDialog } from './shared/ask/ask-dialog';
 import { DialogService } from './shared/dialog/dialog.service';
 import { SettingsDialog } from './features/settings/settings-dialog';
@@ -52,6 +53,7 @@ import { McpStore } from './features/mcp/mcp.store';
     SettingsDialog,
     StatusBar,
     ShortcutsDialog,
+    SchemePicker,
     TabBar,
   ],
   template: `
@@ -105,6 +107,9 @@ import { McpStore } from './features/mcp/mcp.store';
       }
       @case ('settings') {
         <app-settings-dialog />
+      }
+      @case ('scheme') {
+        <app-scheme-picker />
       }
     }
   `,
@@ -204,6 +209,7 @@ export class App {
     });
     const handlers: Record<string, ActionHandler> = {
       'view.nextScheme': { run: () => c.nextScheme() },
+      'view.schemePicker': { run: () => this.dialogs.show('scheme') },
       ...Object.fromEntries(SCHEMES.map((s) => [`view.scheme.${s}`, scheme(s)])),
       'file.new': { run: () => after(s.newDoc()) },
       'file.open': { run: () => after(s.openDialog()) },

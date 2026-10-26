@@ -1,3 +1,4 @@
+import { SCHEMES } from '../../core/settings/settings.models';
 import { formatChord } from '../../core/actions/shortcut';
 import { Os } from '../../core/actions/platform';
 import { MAX_RECENT_ACTIONS, MAX_SWITCH_ACTIONS } from '../../core/actions/action-catalog';
@@ -144,11 +145,9 @@ export function buildMenuModel(os: Os, input: MenuInputs): TopMenuNode[] {
       kind: 'submenu',
       label: t.scheme,
       items: [
-        a('view.scheme.auto'),
-        a('view.scheme.paper'),
-        a('view.scheme.ink'),
-        a('view.scheme.sand'),
-        a('view.scheme.night'),
+        a('view.schemePicker'),
+        sep,
+        ...SCHEMES.map((s) => a(`view.scheme.${s}`)),
         sep,
         a('view.nextScheme'),
       ],

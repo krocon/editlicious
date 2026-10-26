@@ -9,6 +9,11 @@ use std::io;
 use std::path::Path;
 
 pub const FILE_NAME: &str = "settings.json";
+/// The colour schemes, light to dark (= `SCHEMES` in `settings.models.ts`, prompt 021).
+pub const SCHEMES: &[&str] = &[
+    "auto", "paper", "glass", "sand", "harvest", "chalk", "one", "moss", "mocha", "moon", "night",
+    "graphite", "ink", "amber",
+];
 const MAX_BYTES: u64 = 64 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -17,7 +22,7 @@ pub struct Settings {
     pub version: u32,
     /// `auto` (system), `en`, `de`.
     pub language: String,
-    /// `auto`, `paper`, `ink`, `sand`, `night` (design 008 E6).
+    /// `auto` or a scheme of [`SCHEMES`] (design 008 E6, prompt 021).
     pub scheme: String,
     /// Editor font family; empty = the platform's monospace font.
     pub font_family: String,
@@ -107,11 +112,7 @@ pub fn sanitize(mut s: Settings) -> Settings {
     let d = Settings::default();
     s.version = 1;
     one_of(&mut s.language, &["auto", "en", "de"], &d.language);
-    one_of(
-        &mut s.scheme,
-        &["auto", "paper", "ink", "sand", "night"],
-        &d.scheme,
-    );
+    one_of(&mut s.scheme, SCHEMES, &d.scheme);
     one_of(
         &mut s.indent_with,
         &["auto", "spaces", "tabs"],

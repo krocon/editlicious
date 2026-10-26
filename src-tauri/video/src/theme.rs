@@ -146,11 +146,13 @@ fn blocks(css: &str) -> Vec<(String, HashMap<String, String>)> {
 pub fn names() -> Vec<String> {
     let mut out = vec!["paper".to_owned(), "ink".to_owned()];
     for (sel, _) in blocks(STYLES_CSS) {
-        if let Some(rest) = sel.strip_prefix(":root[data-scheme='")
-            && let Some(name) = rest.strip_suffix("']")
-            && !out.iter().any(|n| n == name)
-        {
-            out.push(name.to_owned());
+        for part in sel.split(',') {
+            if let Some(rest) = part.trim().strip_prefix(":root[data-scheme='")
+                && let Some(name) = rest.strip_suffix("']")
+                && !out.iter().any(|n| n == name)
+            {
+                out.push(name.to_owned());
+            }
         }
     }
     out
@@ -332,5 +334,67 @@ mod contrast {
             }
         }
         assert!(low.is_empty(), "{low:?}");
+    }
+
+    /// Prompt 021: every scheme reads well – text ≥ 7 : 1, muted chrome text ≥ 4 : 1, the caret
+    /// ≥ 3 : 1; syntax of the new schemes ≥ 4.5 : 1 (comments, punctuation, debug lines ≥ 3 : 1).
+    /// The older palettes keep their character (Solarized-like `sand` sits near 3 : 1).
+    #[test]
+    fn every_scheme_is_readable() {
+        const NEW: [&str; 9] = [
+            "glass", "harvest", "chalk", "one", "moss", "mocha", "moon", "graphite", "amber",
+        ];
+        let mut low = Vec::new();
+        for name in names() {
+            let strict = NEW.contains(&name.as_str());
+            let t = theme(&name).unwrap();
+            let mut check = |what: &str, fg: Rgba, bg: Rgba, min: f64| {
+                let r = ratio(fg, bg);
+                if r < min {
+                    low.push(format!("{name} {what}: {r:.2}"));
+                }
+            };
+            check("text", t.text, t.bg, 7.0);
+            check("muted", t.muted, t.page, 4.0);
+            check("caret", t.caret, t.bg, 3.0);
+            for (c, colour) in CLASSES.iter().zip(&t.syntax) {
+                let min = match (strict, *c) {
+                    (false, _) => 2.4,
+                    (true, "comment" | "punct" | "log-debug") => 3.0,
+                    (true, _) => 4.5,
+                };
+                check(&format!("syntax {c}"), *colour, t.bg, min);
+            }
+        }
+        assert!(low.is_empty(), "{low:#?}");
+    }
+
+    /// Prompt 021: the schemes from light to dark (by the editor background) – the same order
+    /// as `SCHEMES` in `src/app/features/menus/schemes.ts` (its spec checks the list).
+    pub const ORDER: [&str; 13] = [
+        "paper", "glass", "sand", "harvest", "chalk", "one", "moss", "mocha", "moon", "night",
+        "graphite", "ink", "amber",
+    ];
+
+    #[test]
+    fn schemes_go_from_light_to_dark() {
+        let mut names = names();
+        names.sort();
+        let mut order = ORDER.map(String::from).to_vec();
+        order.sort();
+        assert_eq!(names, order, "every scheme of styles.css in ORDER");
+        let l: Vec<f64> = ORDER.iter().map(|n| lum(theme(n).unwrap().bg)).collect();
+        assert!(
+            l.windows(2).all(|w| w[0] >= w[1]),
+            "{:?}",
+            ORDER.iter().zip(&l).collect::<Vec<_>>()
+        );
+        for n in ORDER {
+            assert_eq!(
+                theme(n).unwrap().dark,
+                lum(theme(n).unwrap().bg) < 0.2,
+                "{n}: base"
+            );
+        }
     }
 }

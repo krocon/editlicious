@@ -45,6 +45,7 @@ Kritischer Pfad zum ersten nutzbaren Editor: **001 → 002 → 003 → 004**. Da
 | 018a | [018a-doppelklick.md](done/018a-doppelklick.md) | Fortschreitende Auswahl per wiederholtem Doppelklick: gewichtete Wortgrenzen (`_` `-` `.` `/` Leerzeichen …), Klammern/Anführungszeichen, Zeile, Absatz, Zyklus | 003, 007 | M | ✅ 26.10.2026 |
 | 019 | [019-marker-ausbau-html.md](done/019-marker-ausbau-html.md) | Wort-Marker im „Als HTML kopieren“ (deckende Farben für E-Mail), Auswahl markieren, feste Farbe 1…0, nächstes/voriges Vorkommen, Anzahl in der Statusleiste, Marker in der Sitzung | 007, 010 | S–M | ✅ 26.10.2026 |
 | 020 | [020-rechnen-tooltips-autocomplete.md](done/020-rechnen-tooltips-autocomplete.md) | Math-Parser in Rust (Vorlage `java-k-editor/MathParser`), Ergebnis als Hinweis am Caret und als Vorschlag (`255/8=` → `31.875`); allgemeine Bausteine Tooltip- und Vorschlags-Anbieter | 005, 009, 010 | M–L | ✅ 26.10.2026 |
+| 021 | [021-more-themes.md](done/021-more-themes.md) | Neun weitere Farbschemata (inspiriert von gruvbox light hard, Liquid Glass light, Chalkdraw paper, One Dark, Moonlight, gruvbox material dark, Cozy Latte dark, Russian Hacker amber, Graphite Pop), Reihenfolge hell → dunkel, Farbschema-Auswahl mit Vorschaubildern | 008, 009 | M | ✅ 26.10.2026 |
 
 ## Folge-Ideen (noch ohne Prompt)
 

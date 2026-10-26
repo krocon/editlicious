@@ -5,7 +5,8 @@
  * New tokens go into ALL THREE blocks (light, dark via media query, dark forced).
  * Editor colours (`--ed-*`) are the "ink" of the text area; syntax colours follow in prompt 008.
  */
-:root {
+:root,
+[data-preview] {
   color-scheme: light;
   --color-bg: #f7f6f2;
   --color-surface: #ffffff;
@@ -154,7 +155,8 @@
   }
 }
 
-:root[data-theme='dark'] {
+:root[data-theme='dark'],
+[data-preview][data-dark] {
   color-scheme: dark;
   --color-bg: #17191d;
   --color-surface: #1f2228;
@@ -213,11 +215,61 @@
 }
 
 /*
- * Further colour schemes (design 008 E6; legacy: four built-in styles, F12 switches).
- * `paper` and `ink` are the light/dark blocks above; these override them and set
- * `data-theme` for the chrome as well (ChromeStore).
+ * Further colour schemes (design 008 E6; legacy: four built-in styles, F12 switches; more in
+ * prompt 021). `paper` and `ink` are the light/dark blocks above; these override them and set
+ * `data-theme` for the chrome as well (ChromeStore, `schemes.ts` – same order: light → dark).
+ * `--scheme-base: dark` builds on the dark block (video export, design 017). `[data-preview]`
+ * draws a scheme inside one element (thumbnails of the scheme picker, design 021).
  */
-:root[data-scheme='sand'] {
+/* Liquid glass light: cool, frosted – prompt 021 */
+:root[data-scheme='glass'],
+[data-preview][data-preview='glass'] {
+  --scheme-base: light;
+  --color-bg: #e9eef5;
+  --color-surface: #f8fafd;
+  --color-surface-2: #edf1f7;
+  --color-border: #d3dbe6;
+  --color-hover: #e3e9f2;
+  --color-text: #1c2430;
+  --color-text-muted: #5f6b7a;
+  --color-accent: #0a64d6;
+  --color-accent-text: #ffffff;
+  --color-focus: #0a64d6;
+  --ed-bg: #f7f9fc;
+  --ed-gutter-bg: #f7f9fc;
+  --ed-text: #1f2733;
+  --ed-gutter-text: #a9b4c2;
+  --ed-gutter-text-active: #4f5b6b;
+  --ed-current-line: rgb(10 100 214 / 5%);
+  --ed-selection: rgb(10 132 255 / 18%);
+  --ed-caret: #0a64d6;
+  --syn-comment: #7d8999;
+  --syn-string: #1f7a45;
+  --syn-keyword: #9a35c4;
+  --syn-number: #b83c0b;
+  --syn-constant: #b83c0b;
+  --syn-type: #0e6a85;
+  --syn-function: #1d5fd1;
+  --syn-tag: #1d5fd1;
+  --syn-attribute: #966008;
+  --syn-operator: #5f6b7a;
+  --syn-punct: #626d7c;
+  --syn-heading: #1d5fd1;
+  --syn-code: #b83c0b;
+  --syn-link: #0a64d6;
+  --syn-invalid: #c0262d;
+  --syn-inserted: #1f7a45;
+  --syn-deleted: #c0262d;
+  --syn-changed: #966008;
+  --syn-log-error: #c0262d;
+  --syn-log-warning: #a85a00;
+  --syn-log-info: #1d5fd1;
+  --syn-log-debug: #7d8999;
+}
+
+:root[data-scheme='sand'],
+[data-preview][data-preview='sand'] {
+  --scheme-base: light;
   --color-bg: #f3ecd8;
   --color-surface: #fdf6e3;
   --color-surface-2: #eee8d5;
@@ -252,7 +304,295 @@
   --ed-marker-9: rgb(160 82 45 / 26%);
 }
 
-:root[data-scheme='night'] {
+/* Harvest: warm, hard contrast (after gruvbox light hard) – prompt 021 */
+:root[data-scheme='harvest'],
+[data-preview][data-preview='harvest'] {
+  --scheme-base: light;
+  --color-bg: #f2e5bc;
+  --color-surface: #f9f5d7;
+  --color-surface-2: #ebdbb2;
+  --color-border: #d5c4a1;
+  --color-hover: #ebdbb2;
+  --color-text: #3c3836;
+  --color-text-muted: #665c54;
+  --color-accent: #076678;
+  --color-accent-text: #ffffff;
+  --color-focus: #076678;
+  --ed-bg: #f9f5d7;
+  --ed-gutter-bg: #f9f5d7;
+  --ed-text: #3c3836;
+  --ed-gutter-text: #bdae93;
+  --ed-gutter-text-active: #665c54;
+  --ed-current-line: rgb(213 196 161 / 30%);
+  --ed-selection: rgb(7 102 120 / 18%);
+  --ed-caret: #af3a03;
+  --syn-comment: #928374;
+  --syn-string: #6b670c;
+  --syn-keyword: #9d0006;
+  --syn-number: #8f3f71;
+  --syn-constant: #8f3f71;
+  --syn-type: #97600a;
+  --syn-function: #076678;
+  --syn-tag: #9d0006;
+  --syn-attribute: #97600a;
+  --syn-operator: #af3a03;
+  --syn-punct: #6f645a;
+  --syn-heading: #af3a03;
+  --syn-code: #427b58;
+  --syn-link: #076678;
+  --syn-invalid: #9d0006;
+  --syn-inserted: #6b670c;
+  --syn-deleted: #9d0006;
+  --syn-changed: #97600a;
+  --syn-log-error: #9d0006;
+  --syn-log-warning: #af3a03;
+  --syn-log-info: #076678;
+  --syn-log-debug: #928374;
+}
+
+/* Chalk: coloured chalk on warm paper – prompt 021 */
+:root[data-scheme='chalk'],
+[data-preview][data-preview='chalk'] {
+  --scheme-base: light;
+  --color-bg: #ebe6da;
+  --color-surface: #f6f2e9;
+  --color-surface-2: #e6e0d2;
+  --color-border: #d4ccba;
+  --color-hover: #e2dccd;
+  --color-text: #2f2d2a;
+  --color-text-muted: #6c665e;
+  --color-accent: #a8452f;
+  --color-accent-text: #ffffff;
+  --color-focus: #a8452f;
+  --ed-bg: #f4f0e6;
+  --ed-gutter-bg: #f4f0e6;
+  --ed-text: #33312d;
+  --ed-gutter-text: #bdb5a5;
+  --ed-gutter-text-active: #6d675e;
+  --ed-current-line: rgb(120 100 60 / 7%);
+  --ed-selection: rgb(80 120 170 / 20%);
+  --ed-caret: #a8452f;
+  --syn-comment: #857e72;
+  --syn-string: #53742f;
+  --syn-keyword: #a8452f;
+  --syn-number: #7f4f94;
+  --syn-constant: #7f4f94;
+  --syn-type: #2b6585;
+  --syn-function: #2f5f9e;
+  --syn-tag: #a8452f;
+  --syn-attribute: #8a5f17;
+  --syn-operator: #6c665e;
+  --syn-punct: #857e73;
+  --syn-heading: #2f5f9e;
+  --syn-code: #7f4f94;
+  --syn-link: #2f5f9e;
+  --syn-invalid: #b0302a;
+  --syn-inserted: #53742f;
+  --syn-deleted: #b0302a;
+  --syn-changed: #8a5f17;
+  --syn-log-error: #b0302a;
+  --syn-log-warning: #8a5f17;
+  --syn-log-info: #2f5f9e;
+  --syn-log-debug: #857e72;
+}
+
+/* One: the classic dark (after One Dark) – prompt 021 */
+:root[data-scheme='one'],
+[data-preview][data-preview='one'] {
+  --scheme-base: dark;
+  --color-bg: #21252b;
+  --color-surface: #282c34;
+  --color-surface-2: #2c313a;
+  --color-border: #3a3f4b;
+  --color-hover: #2f343e;
+  --color-text: #d7dae0;
+  --color-text-muted: #8b929e;
+  --color-accent: #61afef;
+  --color-accent-text: #0b1220;
+  --color-focus: #61afef;
+  --ed-bg: #282c34;
+  --ed-gutter-bg: #282c34;
+  --ed-text: #bbc1cc;
+  --ed-gutter-text: #4b5263;
+  --ed-gutter-text-active: #a0a7b4;
+  --ed-current-line: rgb(255 255 255 / 4%);
+  --ed-selection: rgb(97 175 239 / 22%);
+  --ed-caret: #528bff;
+  --syn-comment: #7f848e;
+  --syn-string: #98c379;
+  --syn-keyword: #c678dd;
+  --syn-number: #d19a66;
+  --syn-constant: #d19a66;
+  --syn-type: #e5c07b;
+  --syn-function: #61afef;
+  --syn-tag: #e8808a;
+  --syn-attribute: #d19a66;
+  --syn-operator: #56b6c2;
+  --syn-punct: #abb2bf;
+  --syn-heading: #e8808a;
+  --syn-code: #98c379;
+  --syn-link: #61afef;
+  --syn-invalid: #e8808a;
+  --syn-inserted: #98c379;
+  --syn-deleted: #e8808a;
+  --syn-changed: #e5c07b;
+  --syn-log-error: #e8808a;
+  --syn-log-warning: #d19a66;
+  --syn-log-info: #61afef;
+  --syn-log-debug: #7f848e;
+  /* text on markers ≥ 4.5 : 1 (design 019 E5) */
+  --ed-marker-2: rgb(75 192 92 / 28%);
+  --ed-marker-3: rgb(255 159 64 / 25%);
+  --ed-marker-5: rgb(0 200 200 / 26%);
+  --ed-marker-6: rgb(230 200 0 / 22%);
+}
+
+/* Moss: soft, earthy (after gruvbox material dark) – prompt 021 */
+:root[data-scheme='moss'],
+[data-preview][data-preview='moss'] {
+  --scheme-base: dark;
+  --color-bg: #1d2021;
+  --color-surface: #282828;
+  --color-surface-2: #32302f;
+  --color-border: #45403d;
+  --color-hover: #32302f;
+  --color-text: #ddc7a1;
+  --color-text-muted: #a89984;
+  --color-accent: #7daea3;
+  --color-accent-text: #1d2021;
+  --color-focus: #7daea3;
+  --ed-bg: #282828;
+  --ed-gutter-bg: #282828;
+  --ed-text: #d4be98;
+  --ed-gutter-text: #5a524c;
+  --ed-gutter-text-active: #a89984;
+  --ed-current-line: rgb(255 255 255 / 4%);
+  --ed-selection: rgb(125 174 163 / 22%);
+  --ed-caret: #ddc7a1;
+  --syn-comment: #928374;
+  --syn-string: #a9b665;
+  --syn-keyword: #ea6962;
+  --syn-number: #d3869b;
+  --syn-constant: #d3869b;
+  --syn-type: #d8a657;
+  --syn-function: #89b482;
+  --syn-tag: #e78a4e;
+  --syn-attribute: #d8a657;
+  --syn-operator: #e78a4e;
+  --syn-punct: #a89984;
+  --syn-heading: #e78a4e;
+  --syn-code: #89b482;
+  --syn-link: #7daea3;
+  --syn-invalid: #ea6962;
+  --syn-inserted: #a9b665;
+  --syn-deleted: #ea6962;
+  --syn-changed: #d8a657;
+  --syn-log-error: #ea6962;
+  --syn-log-warning: #e78a4e;
+  --syn-log-info: #7daea3;
+  --syn-log-debug: #928374;
+  /* text on markers ≥ 4.5 : 1 (design 019 E5) */
+  --ed-marker-2: rgb(75 192 92 / 29%);
+  --ed-marker-3: rgb(255 159 64 / 26%);
+  --ed-marker-5: rgb(0 200 200 / 28%);
+  --ed-marker-6: rgb(230 200 0 / 23%);
+}
+
+/* Mocha: coffee and cream (after cozy latte dark) – prompt 021 */
+:root[data-scheme='mocha'],
+[data-preview][data-preview='mocha'] {
+  --scheme-base: dark;
+  --color-bg: #221c18;
+  --color-surface: #2b2420;
+  --color-surface-2: #352d28;
+  --color-border: #4a3f37;
+  --color-hover: #3a312b;
+  --color-text: #ece0d1;
+  --color-text-muted: #a8968a;
+  --color-accent: #d9a066;
+  --color-accent-text: #221c18;
+  --color-focus: #d9a066;
+  --ed-bg: #2b2420;
+  --ed-gutter-bg: #2b2420;
+  --ed-text: #e6d5c3;
+  --ed-gutter-text: #5f5148;
+  --ed-gutter-text-active: #b7a597;
+  --ed-current-line: rgb(255 230 200 / 4%);
+  --ed-selection: rgb(217 160 102 / 22%);
+  --ed-caret: #e0b07a;
+  --syn-comment: #8f7d6f;
+  --syn-string: #b9c78a;
+  --syn-keyword: #e0a070;
+  --syn-number: #e7a9a0;
+  --syn-constant: #e7a9a0;
+  --syn-type: #e8c98f;
+  --syn-function: #9fc4c8;
+  --syn-tag: #e0a070;
+  --syn-attribute: #e8c98f;
+  --syn-operator: #c9a98b;
+  --syn-punct: #a8968a;
+  --syn-heading: #e0a070;
+  --syn-code: #b9c78a;
+  --syn-link: #9fc4c8;
+  --syn-invalid: #e57d6f;
+  --syn-inserted: #b9c78a;
+  --syn-deleted: #e57d6f;
+  --syn-changed: #e8c98f;
+  --syn-log-error: #e57d6f;
+  --syn-log-warning: #e0a070;
+  --syn-log-info: #9fc4c8;
+  --syn-log-debug: #8f7d6f;
+}
+
+/* Moon: blue night with pastel light (after Moonlight) – prompt 021 */
+:root[data-scheme='moon'],
+[data-preview][data-preview='moon'] {
+  --scheme-base: dark;
+  --color-bg: #1e2030;
+  --color-surface: #222436;
+  --color-surface-2: #2f334d;
+  --color-border: #3b3f5c;
+  --color-hover: #2a2d44;
+  --color-text: #d0d9f7;
+  --color-text-muted: #828bb8;
+  --color-accent: #82aaff;
+  --color-accent-text: #10121c;
+  --color-focus: #82aaff;
+  --ed-bg: #222436;
+  --ed-gutter-bg: #222436;
+  --ed-text: #c8d3f5;
+  --ed-gutter-text: #444a73;
+  --ed-gutter-text-active: #828bb8;
+  --ed-current-line: rgb(130 170 255 / 6%);
+  --ed-selection: rgb(130 170 255 / 22%);
+  --ed-caret: #82aaff;
+  --syn-comment: #7a88cf;
+  --syn-string: #c3e88d;
+  --syn-keyword: #c099ff;
+  --syn-number: #ff966c;
+  --syn-constant: #ff966c;
+  --syn-type: #ffc777;
+  --syn-function: #82aaff;
+  --syn-tag: #ff757f;
+  --syn-attribute: #ffc777;
+  --syn-operator: #86e1fc;
+  --syn-punct: #a9b8e8;
+  --syn-heading: #82aaff;
+  --syn-code: #ff966c;
+  --syn-link: #86e1fc;
+  --syn-invalid: #ff757f;
+  --syn-inserted: #c3e88d;
+  --syn-deleted: #ff757f;
+  --syn-changed: #ffc777;
+  --syn-log-error: #ff757f;
+  --syn-log-warning: #ffc777;
+  --syn-log-info: #82aaff;
+  --syn-log-debug: #7a88cf;
+}
+
+:root[data-scheme='night'],
+[data-preview][data-preview='night'] {
+  --scheme-base: dark;
   --color-bg: #191a17;
   --color-surface: #22231f;
   --color-surface-2: #2c2d28;
@@ -284,6 +624,102 @@
   --syn-log-warning: #fd971f;
   --syn-log-info: #66d9ef;
   --syn-log-debug: #8f8c76;
+}
+
+/* Graphite: grey with bright accents (after Graphite Pop) – prompt 021 */
+:root[data-scheme='graphite'],
+[data-preview][data-preview='graphite'] {
+  --scheme-base: dark;
+  --color-bg: #18191b;
+  --color-surface: #1e1f22;
+  --color-surface-2: #26282b;
+  --color-border: #36383c;
+  --color-hover: #2a2c30;
+  --color-text: #e3e3e3;
+  --color-text-muted: #92959a;
+  --color-accent: #ff5c8a;
+  --color-accent-text: #18191b;
+  --color-focus: #ff5c8a;
+  --ed-bg: #1e1f22;
+  --ed-gutter-bg: #1e1f22;
+  --ed-text: #d4d4d4;
+  --ed-gutter-text: #4a4c50;
+  --ed-gutter-text-active: #a4a7ab;
+  --ed-current-line: rgb(255 255 255 / 4%);
+  --ed-selection: rgb(255 92 138 / 20%);
+  --ed-caret: #ff5c8a;
+  --syn-comment: #7a7e85;
+  --syn-string: #b5e655;
+  --syn-keyword: #ff5c8a;
+  --syn-number: #ffb347;
+  --syn-constant: #ffb347;
+  --syn-type: #4fd6e8;
+  --syn-function: #5ab0ff;
+  --syn-tag: #ff5c8a;
+  --syn-attribute: #ffb347;
+  --syn-operator: #c792ea;
+  --syn-punct: #9da1a6;
+  --syn-heading: #5ab0ff;
+  --syn-code: #b5e655;
+  --syn-link: #5ab0ff;
+  --syn-invalid: #ff5555;
+  --syn-inserted: #b5e655;
+  --syn-deleted: #ff5555;
+  --syn-changed: #ffb347;
+  --syn-log-error: #ff5555;
+  --syn-log-warning: #ffb347;
+  --syn-log-info: #5ab0ff;
+  --syn-log-debug: #7a7e85;
+}
+
+/* Amber: a monochrome amber terminal (after Russian Hacker amber) – prompt 021 */
+:root[data-scheme='amber'],
+[data-preview][data-preview='amber'] {
+  --scheme-base: dark;
+  --color-bg: #0b0804;
+  --color-surface: #120d06;
+  --color-surface-2: #1a1309;
+  --color-border: #3a2a10;
+  --color-hover: #22180b;
+  --color-text: #ffb000;
+  --color-text-muted: #b07a1a;
+  --color-accent: #ffb000;
+  --color-accent-text: #0b0804;
+  --ed-bg: #0f0b05;
+  --ed-gutter-bg: #0f0b05;
+  --ed-text: #ffb000;
+  --ed-gutter-text: #5c4210;
+  --ed-gutter-text-active: #d08f10;
+  --ed-current-line: rgb(255 176 0 / 6%);
+  --ed-selection: rgb(255 176 0 / 24%);
+  --ed-caret: #ffcc33;
+  --ed-whitespace: rgb(255 176 0 / 18%);
+  --ed-indent-guide: rgb(255 176 0 / 8%);
+  --ed-scrollbar: rgb(255 176 0 / 22%);
+  --ed-scrollbar-hover: rgb(255 176 0 / 38%);
+  --color-focus: #ffc640;
+  --syn-comment: #9a7026;
+  --syn-string: #ffd27a;
+  --syn-keyword: #ff8c1a;
+  --syn-number: #ffe0a0;
+  --syn-constant: #ffe0a0;
+  --syn-type: #ffc04d;
+  --syn-function: #ffcc66;
+  --syn-tag: #ff8c1a;
+  --syn-attribute: #ffc04d;
+  --syn-operator: #e09a20;
+  --syn-punct: #c08a2a;
+  --syn-heading: #ffd27a;
+  --syn-code: #ffd27a;
+  --syn-link: #ffd27a;
+  --syn-invalid: #ff5a1f;
+  --syn-inserted: #ffd27a;
+  --syn-deleted: #ff5a1f;
+  --syn-changed: #ffc04d;
+  --syn-log-error: #ff5a1f;
+  --syn-log-warning: #ff8c1a;
+  --syn-log-info: #ffd27a;
+  --syn-log-debug: #9a7026;
 }
 
 *,

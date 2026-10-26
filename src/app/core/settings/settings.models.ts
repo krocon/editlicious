@@ -1,8 +1,30 @@
+/**
+ * The colour schemes from light to dark (design 008 E6, prompt 021) – `auto` follows the system.
+ * Same order as `ORDER` in `src-tauri/video/src/theme.rs` (test there: sorted by background).
+ */
+export const SCHEMES = [
+  'auto',
+  'paper',
+  'glass',
+  'sand',
+  'harvest',
+  'chalk',
+  'one',
+  'moss',
+  'mocha',
+  'moon',
+  'night',
+  'graphite',
+  'ink',
+  'amber',
+] as const;
+export type Scheme = (typeof SCHEMES)[number];
+
 /** Mirror of Rust `settings::Settings` (design 009). */
 export interface Settings {
   version: number;
   language: 'auto' | 'en' | 'de';
-  scheme: 'auto' | 'paper' | 'ink' | 'sand' | 'night';
+  scheme: Scheme;
   fontFamily: string;
   fontSize: number;
   tabWidth: number;

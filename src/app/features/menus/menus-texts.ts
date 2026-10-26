@@ -24,6 +24,10 @@ const EN = {
   shortcutsFilter: 'Filter shortcuts…',
   shortcutsHint: 'Your own shortcuts go into keymap.json in the settings folder.',
   close: 'Close',
+  schemeTitle: 'Colour scheme',
+  schemeHint: 'Arrow keys try a scheme, Enter keeps it, Esc goes back. Light to dark.',
+  cancel: 'Cancel',
+  ok: 'OK',
 };
 
 export const MENUS_TEXTS = translatable('menus', EN, {
@@ -50,5 +54,10 @@ export const MENUS_TEXTS = translatable('menus', EN, {
     shortcutsFilter: 'Kürzel filtern …',
     shortcutsHint: 'Eigene Kürzel gehören in die Datei keymap.json im Einstellungsordner.',
     close: 'Schließen',
+    schemeTitle: 'Farbschema',
+    schemeHint:
+      'Pfeiltasten probieren ein Schema aus, Enter behält es, Esc geht zurück. Von hell nach dunkel.',
+    cancel: 'Abbrechen',
+    ok: 'OK',
   },
 });

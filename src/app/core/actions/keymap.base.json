@@ -25,6 +25,7 @@
     "Mod+8": "file.switch.8",
     "Mod+9": "file.switch.9",
     "F12": "view.nextScheme",
+    "Shift+F12": "view.schemePicker",
     "Mod+=": "view.zoomIn",
     "Mod++": "view.zoomIn",
     "Mod+-": "view.zoomOut",
