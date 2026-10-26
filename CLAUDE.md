@@ -28,7 +28,8 @@
 | Frontend-Tests | `pnpm test` (Vitest + jsdom über `ng test`), `pnpm test:watch` |
 | Lint / Format | `pnpm lint`, `pnpm format`, `pnpm format:check` |
 | Frontend-Build | `pnpm build` |
-| Rust | `pnpm rust:fmt`, `pnpm rust:lint` (clippy `-D warnings`), `pnpm rust:test` |
+| Rust | `pnpm rust:fmt`, `pnpm rust:lint` (clippy `-D warnings`), `pnpm rust:test` (ganzer Workspace inkl. `ed-core`) |
+| Messungen | `cd src-tauri && cargo test -p ed-core --release -- --ignored --nocapture measure_` |
 | Alles prüfen | `pnpm check` |
 | Debug-App ohne Bundle | `pnpm tauri build --debug --no-bundle` → `src-tauri/target/debug/editlicious` |
 | Icons neu erzeugen | `pnpm tauri icon src-tauri/icons/source/app-icon.svg -o src-tauri/icons` (danach `android/`, `ios/` löschen) |
@@ -49,7 +50,11 @@ public/                       favicon.png, logo.svg (Schriftzug, Yellowtail-Pfad
 src-tauri/                    Rust (Tauri 2), Crate `editlicious`, Lib `ed_lib`
   src/lib.rs                  Modulübersicht, Builder, Commands
   src/commands.rs             dünne Command-Schicht, Test command_rules
-  src/error.rs, model.rs      FsError, DTOs (serde camelCase)
+  src/model.rs                DTOs der App (serde camelCase); `document`, `error` kommen aus ed-core
+  core/                       Crate `ed-core` (Workspace-Mitglied): Editor-Engine ohne Tauri
+    src/error.rs              FsError { code, message, path }
+    src/document/             Rope, load (Encoding/BOM/Zeilenenden), save (atomar), history (Undo), registry, model
+    testdata/document.cases.json  datengetriebene Bearbeitungsfälle
   src/fs_atomic.rs, config_file.rs  atomar schreiben / Konfig laden (aus files-and-folders)
   icons/source/app-icon.svg   Quelle des App-Icons
 docs/                         architecture.md (Entscheidungen, Commands, Abhängigkeiten), legacy-analysis.md
@@ -59,9 +64,13 @@ site/                         Werbe-Webseite (Prompt 011)
 
 ## 4. Architekturregeln (verbindlich)
 
-- **Der Text lebt im Rust-Backend** (ab 002): Dokumente als Rope, das Frontend fragt nur den sichtbaren Ausschnitt
-  ab (Zeilen **und** Spaltenfenster) und schickt Bearbeitungen. Nichts, was proportional zur Dateigröße ist, geht
-  über die IPC-Grenze – auch nicht beim Kopieren großer Auswahlen, Suchen oder Sortieren.
+- **Rust ist die Editor-Engine, die UI rendert nur** (Marc, 26.10.2026; Design 002 E13): Text (Rope), Carets,
+  Auswahl, Navigation, Bearbeitungsbefehle, Scrollstand und Layout in Zellen leben im Crate `ed-core`
+  (`src-tauri/core`, ohne Tauri, WASM-fähig). Die UI übersetzt Eingaben in Befehle und zeichnet Frames (sichtbare
+  Zeilen bzw. Spaltenfenster). Nichts, was proportional zur Dateigröße ist, geht über die IPC-Grenze – auch nicht
+  beim Kopieren großer Auswahlen, Suchen oder Sortieren. Ausnahme: IME-Komposition bis zum Abschluss.
+- **Angular bleibt die UI** (Entscheidung 26.10.2026): WebAssembly nur für die Webseiten-Demo; die Engine läuft
+  nativ (große Dateien, Threads, kein 4-GB-Limit, kein Kopieren der Datei über die Brücke).
 - **Frontend ruft das Backend nur über typisierte Fassaden** (`AboutApi`, `DocumentApi` …, in `app/core/`);
   `invoke()` steht nur in `core/backend/call.ts`. Tests und der Browser-Modus ersetzen die Fassade.
 - **DTO-Vertrag**: Rust `model.rs` ↔ TS `*.models.ts` von Hand synchron; jede Änderung auf beiden Seiten + Test.

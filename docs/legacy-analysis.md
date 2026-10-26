@@ -2,8 +2,8 @@
 
 > Fachliche Vorlage („legacy §N“) für die Neuauflage. Quelle: `~/IdeaProjects/java-k-editor/Editor` auf Marcs Mac
 > (Paket `com.krocon.editlicious`, ca. 10 000 Zeilen eigener Code + Mozilla `universalchardet`). Stand der Analyse:
-> 26.10.2026. Die alte Webseite http://editlicio.us/ war bei der Analyse nicht erreichbar (Weiterleitungsschleife
-> http ↔ https); ihr Inhalt fließt daher nicht ein.
+> 26.10.2026. Die alte Webseite (http://editlicio.us/, online nicht erreichbar) liegt lokal unter
+> `~/IdeaProjects/java-k-editor/Web` – Auswertung in §10.
 >
 > Der eigentliche Text-Kern (`EditComponent`, `TextModel`, `Grammar`, `StyleManager`) lag in einem separaten Modul,
 > das nicht im Ordner ist – nur seine Tests (`TextModelTest`, `TextModel2Test`) sind vorhanden.
@@ -137,3 +137,23 @@ prüft Kollisionen per Test. Auf macOS gilt Cmd statt Ctrl.
 - Kein Proxy, keine Webprüfung beim Start (Updater ggf. in 012), keine Icon-Leiste (Befehlspalette statt Icons).
 - Einstellungen sofort speichern statt „Save Settings“.
 - Zen Coding / Autovervollständigung / Falten erst als Folge-Ideen.
+
+## §10 Alte Webseite (`java-k-editor/Web`, 2013)
+
+- Foundation-3-Seite (jQuery, Orbit-Slider mit animierten GIF-Screenshots), Navigation Übersicht · Features ·
+  Download · Impressum; Akzentfarbe Rot `#e00034` auf hellem, leicht strukturiertem Grund; Logo = Schriftzug +
+  Füllfederhalter (Schriften im Ordner `src/`: Lobster, FFF Tusj).
+- Claim: **„Is tastier than chocolate“** – „A new text editor for Windows & Mac“. Name = *Editor* + *Delicious*:
+  „Dieser Texteditor macht jedem Anwender Spaß.“
+- Versprochen: schlanke Oberfläche, konfigurierbares Aussehen und Handling, Syntax-Hervorhebung und
+  Autovervollständigung für diverse Grammatiken (inkl. Variablen im Scope), Performance beim Rendern bei wenig
+  Speicher, Erweiterbarkeit per JavaScript (Zen Coding integriert).
+- Features mit Screenshots: Minimap (Dokument zehnfach verkleinert, rechts), Farbwerte als Farbfelder im linken
+  Rand, helles und eigenes Farbschema, Zeilen- und Blockauswahl (beim Kopieren und Einfügen berücksichtigt),
+  Zen Coding, intelligente Tooltips (z. B. Ergebnis arithmetischer Ausdrücke), Code-Faltung, relative/absolute
+  Zeilennummern, bis zu **10 Wörter** in verschiedenen Farben markieren, „Als HTML kopieren“ im aktuellen
+  Farbschema (z. B. in E-Mails einfügen), Schriftgröße per Mausrad, alle Menüpunkte per Kürzel, Undo mit
+  > 200 Schritten.
+- Download war nie öffentlich („früher Prototyp“).
+- Für die neue Seite (Prompt 011) übernehmen: Claim-Ton (verspielt, „lecker“), Schriftzug, rotes Akzent-Erbe,
+  Feature-Liste mit kurzen bewegten Beispielen; neu: große Dateien als Hauptbotschaft, Download über GitHub.

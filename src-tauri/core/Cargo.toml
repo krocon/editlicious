@@ -1,0 +1,22 @@
+[package]
+name = "ed-core"
+version = "0.1.0"
+description = "The editor engine of editlicious: document (rope), encodings, editing, undo, view frames – no Tauri"
+authors = ["krocon"]
+license = "MIT"
+repository = "https://github.com/krocon/editlicious"
+edition = "2024"
+rust-version = "1.93"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+# design 002 E1: the text of a document lives in a rope (only LF/CR/CRLF are line breaks)
+ropey = { version = "1.6.1", default-features = false, features = ["simd", "cr_lines"] }
+# design 002 E4/E8: decode/encode legacy encodings, guess the encoding of non-UTF-8 files
+encoding_rs = "0.8.35"
+chardetng = "1.0.0"
+memchr = "2"
+
+[dev-dependencies]
+tempfile = "3"

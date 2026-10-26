@@ -17,6 +17,23 @@ pub enum FsErrorCode {
     InvalidPath,
     /// Any other I/O error (message carries the details).
     Io,
+    /// A document id that is not (or no longer) open (design 002).
+    UnknownDocument,
+    /// The file contains NUL bytes – not a text file (design 002 E4).
+    BinaryFile,
+    /// The file exceeds `MAX_FILE_BYTES` (design 002 E4).
+    FileTooLarge,
+    /// An encoding name the Encoding Standard does not know.
+    UnsupportedEncoding,
+    /// A character cannot be written in the document's encoding (design 002 E8); the message
+    /// carries `line:ch` (0-based) of the first one.
+    UnmappableCharacter,
+    /// The requested text is too large for the IPC bridge (design 002 E11).
+    SelectionTooLarge,
+    /// Overlapping or otherwise invalid changes sent to `apply_edits`.
+    InvalidEdit,
+    /// The operation was cancelled by the user.
+    Cancelled,
 }
 
 /// The one error type every command returns.

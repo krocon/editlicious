@@ -19,12 +19,12 @@ und schickt Bearbeitungen. So bleibt die IPC-Last unabhängig von der Dateigrö�
 - **Bearbeiten**: Liste von Änderungen (Bereich → Text) atomar anwenden, Undo/Redo mit Gruppierung (Tippen in einem
   Wort = ein Schritt), Revisionszähler, „dirty“-Status.
 - **Speichern**: im ursprünglichen Encoding/Zeilenende/BOM, atomar (`fs_atomic`), Speichern unter.
-- TS-Fassade `DocumentApi` + DTOs; **`MemoryDocumentApi`** (reines TS, gleiche Semantik) für Tests, den Browser-Modus
-  und die Demo auf der Webseite.
+- ~~TS-Fassade `DocumentApi` + `MemoryDocumentApi`~~ → geändert (Marc, 26.10.2026): Rust ist die ganze
+  Editor-Engine (Crate `ed-core`), die UI rendert nur; die Fassade entsteht in 003.
 
 ## Akzeptanz
 
 - Rust-Tests: Unicode (Emoji, CJK, kombinierende Zeichen), alle Zeilenenden, BOMs, Latin-1/Windows-1252,
   leere Datei, Datei ohne abschließendes Zeilenende, Binärdatei, 100-MB-Datei (ignored-Test mit Messung),
   Zeile mit 10 Mio. Zeichen (Fenster mitten in der Zeile < 5 ms).
-- Gleiche Fälle als Vertragstest gegen `MemoryDocumentApi`.
+- Gemeinsame Fälle datengetrieben aus `core/testdata/document.cases.json`.

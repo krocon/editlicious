@@ -10,4 +10,6 @@
   plattformübergreifend, Open Source.
 - Abschnitte: Hero mit Screenshot, Features, Zahlen (Messwerte aus 013 bzw. 002/003), Tastenkürzel, Download
   (GitHub Releases), FAQ, Footer mit Impressum-Link (krocon.de).
-- Optional: eine kleine Live-Demo des Editors im Browser über `MemoryDocumentApi`.
+- Live-Demo: `ed-core` nach WebAssembly bauen (`wasm-bindgen`), dieselbe Render-Ansicht in einer schlanken
+  Seite – echte Editor-Logik im Browser.
+- Vorlage aus der alten Seite (legacy §10): Claim-Ton „tastier than chocolate“, Schriftzug, rotes Akzent-Erbe.

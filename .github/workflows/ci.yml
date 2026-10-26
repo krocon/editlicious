@@ -60,15 +60,15 @@ jobs:
         with:
           workspaces: src-tauri
       # Debug builds compile in Tauri's dev mode (devUrl), so no frontend build is needed here.
-      - run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
-      - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
+      - run: cargo fmt --manifest-path src-tauri/Cargo.toml --all --check
+      - run: cargo clippy --manifest-path src-tauri/Cargo.toml --workspace --all-targets --locked -- -D warnings
       # Failing tests also become one error annotation (the "failures:" block of the log), so
       # they show up in the PR without opening the job log.
       - name: cargo test
         shell: bash
         run: |
           set -o pipefail
-          if ! cargo test --manifest-path src-tauri/Cargo.toml --locked --no-fail-fast 2>&1 | tee "$RUNNER_TEMP/test.log"; then
+          if ! cargo test --manifest-path src-tauri/Cargo.toml --workspace --locked --no-fail-fast 2>&1 | tee "$RUNNER_TEMP/test.log"; then
             log="$RUNNER_TEMP/test.log"
             # names first (the last "failures:" list), then the details, cut to fit an annotation
             names=$(awk '/^failures:$/{n=""} /^    [^ ]/{n=n $0 "\n"} END{printf "%s", n}' "$log")

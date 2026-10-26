@@ -1,0 +1,176 @@
+[
+  {
+    "name": "insert into an empty document",
+    "text": "",
+    "steps": [
+      {
+        "op": "edit",
+        "kind": "type",
+        "changes": [{ "from": { "line": 0, "ch": 0 }, "to": { "line": 0, "ch": 0 }, "text": "hi" }],
+        "expect": { "lines": ["hi"], "sel": [[0, 2, 0, 2]], "dirty": true, "canUndo": true }
+      },
+      { "op": "undo", "expect": { "lines": [""], "dirty": false, "canUndo": false, "canRedo": true } },
+      { "op": "redo", "expect": { "lines": ["hi"], "dirty": true, "canRedo": false } }
+    ]
+  },
+  {
+    "name": "typing merges into one undo step",
+    "text": "ab",
+    "steps": [
+      { "op": "edit", "kind": "type", "changes": [{ "from": { "line": 0, "ch": 2 }, "to": { "line": 0, "ch": 2 }, "text": "c" }] },
+      { "op": "edit", "kind": "type", "changes": [{ "from": { "line": 0, "ch": 3 }, "to": { "line": 0, "ch": 3 }, "text": "d" }] },
+      { "op": "edit", "kind": "type", "changes": [{ "from": { "line": 0, "ch": 4 }, "to": { "line": 0, "ch": 4 }, "text": "e" }], "expect": { "lines": ["abcde"] } },
+      { "op": "undo", "expect": { "lines": ["ab"], "canUndo": false } },
+      { "op": "redo", "expect": { "lines": ["abcde"], "sel": [[0, 5, 0, 5]] } }
+    ]
+  },
+  {
+    "name": "a line break starts a new undo step",
+    "text": "",
+    "steps": [
+      { "op": "edit", "kind": "type", "changes": [{ "from": { "line": 0, "ch": 0 }, "to": { "line": 0, "ch": 0 }, "text": "a" }] },
+      { "op": "edit", "kind": "type", "changes": [{ "from": { "line": 0, "ch": 1 }, "to": { "line": 0, "ch": 1 }, "text": "\n" }], "expect": { "lines": ["a", ""], "sel": [[1, 0, 1, 0]] } },
+      { "op": "undo", "expect": { "lines": ["a"] } },
+      { "op": "undo", "expect": { "lines": [""] } }
+    ]
+  },
+  {
+    "name": "backspace merges",
+    "text": "hello",
+    "steps": [
+      { "op": "edit", "kind": "delete", "changes": [{ "from": { "line": 0, "ch": 4 }, "to": { "line": 0, "ch": 5 }, "text": "" }] },
+      { "op": "edit", "kind": "delete", "changes": [{ "from": { "line": 0, "ch": 3 }, "to": { "line": 0, "ch": 4 }, "text": "" }], "expect": { "lines": ["hel"], "sel": [[0, 3, 0, 3]] } },
+      { "op": "undo", "expect": { "lines": ["hello"], "canUndo": false } }
+    ]
+  },
+  {
+    "name": "forward delete merges",
+    "text": "hello",
+    "steps": [
+      { "op": "edit", "kind": "delete", "changes": [{ "from": { "line": 0, "ch": 1 }, "to": { "line": 0, "ch": 2 }, "text": "" }] },
+      { "op": "edit", "kind": "delete", "changes": [{ "from": { "line": 0, "ch": 1 }, "to": { "line": 0, "ch": 2 }, "text": "" }], "expect": { "lines": ["hlo"] } },
+      { "op": "undo", "expect": { "lines": ["hello"], "canUndo": false } }
+    ]
+  },
+  {
+    "name": "several carets in one edit",
+    "text": "aa\nbb\ncc",
+    "steps": [
+      {
+        "op": "edit",
+        "kind": "type",
+        "changes": [
+          { "from": { "line": 2, "ch": 0 }, "to": { "line": 2, "ch": 0 }, "text": "> " },
+          { "from": { "line": 0, "ch": 0 }, "to": { "line": 0, "ch": 0 }, "text": "> " }
+        ],
+        "expect": { "lines": ["> aa", "bb", "> cc"], "sel": [[0, 2, 0, 2], [2, 2, 2, 2]] }
+      },
+      { "op": "undo", "expect": { "lines": ["aa", "bb", "cc"] } }
+    ]
+  },
+  {
+    "name": "pasted line breaks follow the document (CRLF)",
+    "text": "one\r\ntwo",
+    "steps": [
+      {
+        "op": "edit",
+        "kind": "other",
+        "changes": [{ "from": { "line": 0, "ch": 3 }, "to": { "line": 0, "ch": 3 }, "text": "\nx\ry\r\nz" }],
+        "expect": { "lines": ["one", "x", "y", "z", "two"], "raw": "one\r\nx\r\ny\r\nz\r\ntwo", "sel": [[3, 1, 3, 1]] }
+      }
+    ]
+  },
+  {
+    "name": "CR-only line endings",
+    "text": "a\rb\rc",
+    "steps": [{ "op": "check", "expect": { "lines": ["a", "b", "c"], "lineEnding": "cr" } }]
+  },
+  {
+    "name": "trailing line break gives an empty last line",
+    "text": "a\n",
+    "steps": [{ "op": "check", "expect": { "lines": ["a", ""], "lineCount": 2 } }]
+  },
+  {
+    "name": "positions count Unicode scalar values (emoji, combining marks)",
+    "text": "a😀b é!",
+    "steps": [
+      {
+        "op": "edit",
+        "kind": "type",
+        "changes": [{ "from": { "line": 0, "ch": 2 }, "to": { "line": 0, "ch": 2 }, "text": "X" }],
+        "expect": { "lines": ["a😀Xb é!"], "sel": [[0, 3, 0, 3]] }
+      },
+      {
+        "op": "edit",
+        "kind": "other",
+        "changes": [{ "from": { "line": 0, "ch": 5 }, "to": { "line": 0, "ch": 7 }, "text": "é" }],
+        "expect": { "lines": ["a😀Xb é!"] }
+      }
+    ]
+  },
+  {
+    "name": "deleting across lines",
+    "text": "first\nsecond\nthird",
+    "steps": [
+      {
+        "op": "edit",
+        "kind": "delete",
+        "changes": [{ "from": { "line": 0, "ch": 2 }, "to": { "line": 2, "ch": 1 }, "text": "" }],
+        "expect": { "lines": ["fihird"], "lineCount": 1, "sel": [[0, 2, 0, 2]] }
+      },
+      { "op": "undo", "expect": { "lines": ["first", "second", "third"], "sel": [[0, 2, 2, 1]] } }
+    ],
+    "selBefore": [[0, 2, 2, 1]]
+  },
+  {
+    "name": "a new edit after undo clears redo",
+    "text": "x",
+    "steps": [
+      { "op": "edit", "kind": "other", "changes": [{ "from": { "line": 0, "ch": 1 }, "to": { "line": 0, "ch": 1 }, "text": "1" }] },
+      { "op": "undo", "expect": { "canRedo": true } },
+      { "op": "edit", "kind": "other", "changes": [{ "from": { "line": 0, "ch": 1 }, "to": { "line": 0, "ch": 1 }, "text": "2" }], "expect": { "lines": ["x2"], "canRedo": false } }
+    ]
+  },
+  {
+    "name": "positions are clamped",
+    "text": "ab\ncd",
+    "steps": [
+      {
+        "op": "edit",
+        "kind": "other",
+        "changes": [{ "from": { "line": 9, "ch": 99 }, "to": { "line": 9, "ch": 99 }, "text": "!" }],
+        "expect": { "lines": ["ab", "cd!"] }
+      },
+      {
+        "op": "edit",
+        "kind": "other",
+        "changes": [{ "from": { "line": 0, "ch": 50 }, "to": { "line": 0, "ch": 50 }, "text": "?" }],
+        "expect": { "lines": ["ab?", "cd!"] }
+      }
+    ]
+  },
+  {
+    "name": "overlapping changes are refused",
+    "text": "abcdef",
+    "steps": [
+      {
+        "op": "edit",
+        "kind": "other",
+        "changes": [
+          { "from": { "line": 0, "ch": 1 }, "to": { "line": 0, "ch": 4 }, "text": "" },
+          { "from": { "line": 0, "ch": 3 }, "to": { "line": 0, "ch": 5 }, "text": "" }
+        ],
+        "expect": { "error": "invalid_edit", "lines": ["abcdef"] }
+      }
+    ]
+  },
+  {
+    "name": "replacing a selection and typing on merges",
+    "text": "hello world",
+    "steps": [
+      { "op": "edit", "kind": "type", "changes": [{ "from": { "line": 0, "ch": 6 }, "to": { "line": 0, "ch": 11 }, "text": "t" }] },
+      { "op": "edit", "kind": "type", "changes": [{ "from": { "line": 0, "ch": 7 }, "to": { "line": 0, "ch": 7 }, "text": "o" }], "expect": { "lines": ["hello to"] } },
+      { "op": "undo", "expect": { "lines": ["hello world"], "canUndo": false } }
+    ]
+  }
+]
