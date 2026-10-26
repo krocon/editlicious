@@ -9,6 +9,14 @@ export type FsErrorCode =
   | 'is_a_directory'
   | 'invalid_path'
   | 'io'
+  | 'unknown_document'
+  | 'binary_file'
+  | 'file_too_large'
+  | 'unsupported_encoding'
+  | 'unmappable_character'
+  | 'selection_too_large'
+  | 'invalid_edit'
+  | 'cancelled'
   /** Frontend only: no Tauri backend (e.g. `pnpm start` in a browser). */
   | 'backend_unavailable'
   /** Frontend only: something that is no `FsError` was thrown. */
@@ -27,6 +35,14 @@ const KNOWN: readonly FsErrorCode[] = [
   'is_a_directory',
   'invalid_path',
   'io',
+  'unknown_document',
+  'binary_file',
+  'file_too_large',
+  'unsupported_encoding',
+  'unmappable_character',
+  'selection_too_large',
+  'invalid_edit',
+  'cancelled',
   'backend_unavailable',
   'unknown',
 ];
@@ -61,6 +77,22 @@ export function describeFsError(error: FsError): string {
       return 'The path is not valid.';
     case 'io':
       return 'The file could not be read or written.';
+    case 'unknown_document':
+      return 'This file is no longer open.';
+    case 'binary_file':
+      return 'This is not a text file.';
+    case 'file_too_large':
+      return 'The file is too large (more than 4 GB).';
+    case 'unsupported_encoding':
+      return 'This encoding is not supported.';
+    case 'unmappable_character':
+      return 'A character cannot be stored in this encoding.';
+    case 'selection_too_large':
+      return 'The selection is too large for this operation.';
+    case 'invalid_edit':
+      return 'The change could not be applied.';
+    case 'cancelled':
+      return 'Cancelled.';
     case 'backend_unavailable':
       return 'The desktop backend is not available (running in a browser?).';
     case 'unknown':

@@ -138,6 +138,16 @@ impl Session {
         (self.top, self.left)
     }
 
+    /// Replaces the text with a fresh load of the file (changed on disk, design 004 E6);
+    /// cursors and scroll position stay where they were, as far as the new text allows.
+    pub fn replace_document(&mut self, doc: Document) {
+        self.doc = doc;
+        self.max_width = 0;
+        self.drag = None;
+        self.normalize();
+        self.clamp_scroll();
+    }
+
     /// Runs one command and returns the frame to draw.
     pub fn run(&mut self, cmd: Command, clip: &mut dyn Clipboard) -> Result<Frame, FsError> {
         self.notice = None;
@@ -184,6 +194,15 @@ impl Session {
                     goal: None,
                 }];
                 reveal = Reveal::No;
+            }
+            Command::GoTo { line, ch, select } => {
+                let p = self.doc.clamp(Pos::new(line, ch));
+                let anchor = if select { self.cursors[0].anchor } else { p };
+                self.cursors = vec![Cursor {
+                    anchor,
+                    head: p,
+                    goal: None,
+                }];
             }
             Command::Click {
                 line,

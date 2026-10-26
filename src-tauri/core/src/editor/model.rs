@@ -37,6 +37,13 @@ pub enum Command {
         select: bool,
     },
     SelectAll,
+    /// Puts the caret at a position (session restore, "go to line").
+    GoTo {
+        line: usize,
+        ch: usize,
+        #[serde(default)]
+        select: bool,
+    },
     Click {
         line: f64,
         cell: f64,

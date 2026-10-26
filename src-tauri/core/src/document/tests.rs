@@ -582,3 +582,16 @@ fn measure_big_files() {
         t.elapsed()
     );
 }
+
+#[test]
+fn disk_state_sees_changes_from_outside() {
+    let dir = tempfile::tempdir().unwrap();
+    let p = write(&dir, "d.txt", b"one");
+    let d = Document::from_loaded(load(&p).unwrap(), &p);
+    assert_eq!(d.disk_state(), DiskState::default());
+    fs::write(&p, b"other text").unwrap();
+    assert!(d.disk_state().changed);
+    fs::remove_file(&p).unwrap();
+    assert!(d.disk_state().missing);
+    assert_eq!(Document::from_text("x").disk_state(), DiskState::default());
+}

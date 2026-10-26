@@ -1,6 +1,7 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { AboutApi, TauriAboutApi } from './core/about/about-api';
 import { EditorApi, TauriEditorApi } from './core/editor/editor-api';
+import { TauriWorkspaceApi, WorkspaceApi } from './core/workspace/workspace-api';
 
 /**
  * Zoneless (Angular 22 default, no zone.js). Every backend facade is bound here; tests
@@ -11,5 +12,6 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     { provide: AboutApi, useClass: TauriAboutApi },
     { provide: EditorApi, useClass: TauriEditorApi },
+    { provide: WorkspaceApi, useClass: TauriWorkspaceApi },
   ],
 };

@@ -8,6 +8,7 @@ import {
   ElementRef,
   inject,
   input,
+  output,
   signal,
   untracked,
   viewChild,
@@ -15,7 +16,8 @@ import {
 import { EditorApi } from '../../core/editor/editor-api';
 import { Command, Frame, FrameLine, Run } from '../../core/editor/editor.models';
 import { describeFsError, toFsError } from '../../core/errors/fs-error';
-import { detectOs, keyToCommand } from './key-commands';
+import { ActionService } from '../../core/actions/action.service';
+import { ACTIONS } from '../../core/actions/action-catalog';
 import { EDITOR_TEXTS } from './editor-texts';
 
 /** Cells of padding left of the text. */
@@ -49,6 +51,10 @@ interface Metrics {
 export class EditorView {
   /** The engine session to show. */
   readonly docId = input.required<number>();
+  /** Changes when the document was replaced underneath (reload) – draw again. */
+  readonly refresh = input(0);
+  /** Every frame (dirty state, caret, scroll for tabs and the session). */
+  readonly frameChange = output<Frame>();
 
   protected readonly texts = EDITOR_TEXTS;
   protected readonly frame = signal<Frame | null>(null);
@@ -62,7 +68,6 @@ export class EditorView {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly input = viewChild.required<ElementRef<HTMLTextAreaElement>>('input');
   private readonly measure = viewChild.required<ElementRef<HTMLElement>>('measure');
-  private readonly os = detectOs();
   private readonly destroyRef = inject(DestroyRef);
 
   private chain: Promise<unknown> = Promise.resolve();
@@ -140,7 +145,16 @@ export class EditorView {
       this.viewCols();
       untracked(() => this.sendResize());
     });
+    effect(() => {
+      if (this.refresh() > 0) untracked(() => void this.send({ type: 'frame' }));
+    });
     this.destroyRef.onDestroy(() => this.stopDrag());
+    // the editor actions run engine commands (design 004 E1)
+    const actions = inject(ActionService);
+    for (const def of ACTIONS) {
+      const cmd = def.cmd;
+      if (cmd) actions.register(def.id, { run: () => void this.send(cmd) }, this.destroyRef);
+    }
   }
 
   focus(): void {
@@ -183,6 +197,7 @@ export class EditorView {
         const f = await this.api.command(id, cmd);
         if (id === this.docId()) {
           this.frame.set(f);
+          this.frameChange.emit(f);
           if (f.notice) this.status.set(this.texts.notice(f.notice));
         }
       } catch (e) {
@@ -230,14 +245,6 @@ export class EditorView {
   }
 
   // ---------------------------------------------------------------- keyboard & text input
-
-  protected onKeydown(e: KeyboardEvent): void {
-    if (this.composing() || e.isComposing) return;
-    const cmd = keyToCommand(e, this.os);
-    if (!cmd) return;
-    e.preventDefault();
-    void this.send(cmd);
-  }
 
   protected onInput(e: Event): void {
     if (this.composing()) return;

@@ -106,6 +106,7 @@
 <textarea
   #input
   class="input"
+  data-editor-input
   [class.composing]="composing()"
   [style.left.px]="textLeft() + caretXY().x"
   [style.top.px]="caretXY().y"
@@ -114,7 +115,6 @@
   autocomplete="off"
   spellcheck="false"
   wrap="off"
-  (keydown)="onKeydown($event)"
   (input)="onInput($event)"
   (compositionstart)="onCompositionStart()"
   (compositionend)="onCompositionEnd($event)"

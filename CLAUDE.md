@@ -45,7 +45,15 @@ src/                          Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/core/about/             AppInfo, AboutApi
   app/core/backend/desktop.ts DESKTOP-Token (Tauri da?)
   app/core/editor/            EditorApi (open, editor_command → Frame, save …), DTOs = Rust editor/model.rs
-  app/features/editor/        EditorView (zeichnet Frames, Scrollleisten, Maus, IME-Textfeld), key-commands (rein)
+  app/core/actions/           Aktionen (aus comic-commander 008): action-catalog (Ids, Kontexte global/editor,
+                              Editor-Aktionen mit Engine-Befehl), keymap.{base,mac,other}.json, ActionService,
+                              KeyboardDispatcher (der eine keydown-Listener), shortcut, platform (OS-Token)
+  app/core/workspace/         WorkspaceApi: Dateidialoge, session.json, Titel, Schließen, Drag & Drop
+  app/features/editor/        EditorView (zeichnet Frames, Scrollleisten, Maus, IME-Textfeld, registriert die
+                              Editor-Aktionen)
+  app/features/documents/     DocumentsStore (offene Dateien, Öffnen/Speichern/Schließen, Sitzung, Änderungen von
+                              außen, Beenden), TabBar
+  app/shared/ask/             AskService + AskDialog (Fragen als Promise)
   app/features/about/         About-Dialog
   app/shared/dialog/          Modal (Fokusfalle, Esc), DialogService (aus comic-commander/files-and-folders)
   testing/                    Fakes – nie im Produktivcode importieren
@@ -53,6 +61,7 @@ public/                       favicon.png, logo.svg (Schriftzug, Yellowtail-Pfad
 src-tauri/                    Rust (Tauri 2), Crate `editlicious`, Lib `ed_lib`
   src/lib.rs                  Modulübersicht, Builder, Commands
   src/commands.rs             dünne Command-Schicht, Test command_rules
+  src/session_file.rs         session.json (offene Dateien, zuletzt benutzt, Tab-Modus)
   src/model.rs                DTOs der App (serde camelCase); `document`, `error` kommen aus ed-core
   core/                       Crate `ed-core` (Workspace-Mitglied): Editor-Engine ohne Tauri
     src/error.rs              FsError { code, message, path }
@@ -89,8 +98,10 @@ site/                         Werbe-Webseite (Prompt 011)
   Dateien; Encoding, BOM und Zeilenende bleiben wie geladen, außer der Nutzer ändert sie.
 - **Sicherheit**: keine Tauri-Plugins mit breitem Dateisystem- oder Shell-Zugriff für die WebView; Dialoge nur über
   die Rust-API; CSP strikt (`style-src 'unsafe-inline'` wegen Angulars Laufzeit-Styles). Dateiinhalte nie loggen.
-- **Tastatur nur über Aktionen** (ab 005): Aktionskatalog, Keymaps je OS, ein globaler `KeyboardDispatcher`.
-  Davor: zentrale Handler je Ansicht, nie verstreute `keydown`-Handler.
+- **Tastatur nur über Aktionen** (seit 004): jede Funktion ist eine Aktion in `action-catalog.ts` (Editor-Aktionen
+  tragen ihren Engine-Befehl), Kürzel stehen in `keymap.*.json`, der einzige globale `keydown`-Listener ist der
+  `KeyboardDispatcher`. Widgets mit eigener Tastatur nach APG (Tabs, Menüs) behalten Element-Handler und rufen
+  `preventDefault`.
 - **Wenig Ablenkung**: neue sichtbare Bedienelemente nur mit Begründung; Funktionen gehören in Aktionen,
   Befehlspalette und (ausblendbares) Menü.
 - **Neue Abhängigkeiten** (npm oder crates) nur mit kurzer Begründung in `docs/architecture.md`. Keine

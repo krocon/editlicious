@@ -28,6 +28,12 @@ export interface DocInfo {
   canRedo: boolean;
 }
 
+/** Did the file change on disk? (`disk_state`, design 004 E6) */
+export interface DiskState {
+  changed: boolean;
+  missing: boolean;
+}
+
 export interface LoadEvent {
   kind: 'progress';
   loaded: number;
@@ -63,6 +69,7 @@ export type Command =
   | { type: 'scrollTo'; top?: number; left?: number }
   | { type: 'move'; to: Motion; select?: boolean }
   | { type: 'selectAll' }
+  | { type: 'goTo'; line: number; ch: number; select?: boolean }
   | { type: 'click'; line: number; cell: number; count?: number; extend?: boolean }
   | { type: 'drag'; line: number; cell: number }
   | { type: 'type'; text: string }

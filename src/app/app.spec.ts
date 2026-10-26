@@ -5,6 +5,8 @@ import { DESKTOP } from './core/backend/desktop';
 import { EditorApi } from './core/editor/editor-api';
 import { FakeAboutApi } from '../testing/fake-about-api';
 import { FakeEditorApi } from '../testing/fake-editor-api';
+import { WorkspaceApi } from './core/workspace/workspace-api';
+import { FakeWorkspaceApi } from '../testing/fake-workspace-api';
 
 function setup(desktop: boolean, paths: string[] = []): FakeEditorApi {
   const api = new FakeEditorApi();
@@ -14,6 +16,7 @@ function setup(desktop: boolean, paths: string[] = []): FakeEditorApi {
     providers: [
       { provide: AboutApi, useClass: FakeAboutApi },
       { provide: EditorApi, useValue: api },
+      { provide: WorkspaceApi, useClass: FakeWorkspaceApi },
       { provide: DESKTOP, useValue: desktop },
     ],
   });

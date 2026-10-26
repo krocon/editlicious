@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Channel } from '@tauri-apps/api/core';
 import { call } from '../backend/call';
-import { Command, DocInfo, Frame, LoadEvent, SaveRequest } from './editor.models';
+import { Command, DiskState, DocInfo, Frame, LoadEvent, SaveRequest } from './editor.models';
 
 /** A running load: cancel it with {@link EditorApi.cancelLoad}. */
 export interface Loading {
@@ -22,6 +22,8 @@ export abstract class EditorApi {
   abstract command(id: number, cmd: Command): Promise<Frame>;
   abstract save(id: number, req?: SaveRequest): Promise<DocInfo>;
   abstract startupPaths(): Promise<string[]>;
+  abstract reload(id: number): Promise<DocInfo>;
+  abstract diskState(id: number): Promise<DiskState>;
 }
 
 let loadSeq = 0;
@@ -61,5 +63,13 @@ export class TauriEditorApi extends EditorApi {
 
   startupPaths(): Promise<string[]> {
     return call<string[]>('startup_paths');
+  }
+
+  reload(id: number): Promise<DocInfo> {
+    return call<DocInfo>('reload_document', { id });
+  }
+
+  diskState(id: number): Promise<DiskState> {
+    return call<DiskState>('disk_state', { id });
   }
 }

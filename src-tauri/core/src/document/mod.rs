@@ -403,6 +403,23 @@ impl Document {
         self.history.seal();
     }
 
+    /// Has the file changed on disk since it was loaded/saved? (design 004 E6)
+    pub fn disk_state(&self) -> DiskState {
+        let Some(path) = &self.path else {
+            return DiskState::default();
+        };
+        match std::fs::metadata(path) {
+            Err(_) => DiskState {
+                changed: false,
+                missing: true,
+            },
+            Ok(m) => DiskState {
+                changed: m.len() != self.file_size || m.modified().ok() != self.disk_mtime,
+                missing: false,
+            },
+        }
+    }
+
     /// Saves to `req.path` or the own path, in `req.encoding` or the own one (design 002 E8).
     pub fn save(&mut self, req: &SaveRequest) -> Result<(), FsError> {
         let path = req
@@ -465,6 +482,13 @@ pub fn encoding_for_label(label: &str) -> Result<&'static Encoding, FsError> {
         ));
     }
     Ok(enc)
+}
+
+/// See [`Document::disk_state`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize)]
+pub struct DiskState {
+    pub changed: bool,
+    pub missing: bool,
 }
 
 fn ordered(a: usize, b: usize) -> (usize, usize) {

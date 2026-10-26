@@ -1,0 +1,21 @@
+{
+  "global": {
+    "Mod+q": "app.quit"
+  },
+  "editor": {
+    "Alt+ArrowLeft": "cursor.wordLeft",
+    "Alt+ArrowRight": "cursor.wordRight",
+    "Alt+Shift+ArrowLeft": "select.wordLeft",
+    "Alt+Shift+ArrowRight": "select.wordRight",
+    "Mod+ArrowLeft": "cursor.lineStart",
+    "Mod+ArrowRight": "cursor.lineEnd",
+    "Mod+Shift+ArrowLeft": "select.lineStart",
+    "Mod+Shift+ArrowRight": "select.lineEnd",
+    "Mod+ArrowUp": "cursor.docStart",
+    "Mod+ArrowDown": "cursor.docEnd",
+    "Mod+Shift+ArrowUp": "select.docStart",
+    "Mod+Shift+ArrowDown": "select.docEnd",
+    "Alt+Backspace": "edit.deleteWordLeft",
+    "Alt+Delete": "edit.deleteWordRight"
+  }
+}

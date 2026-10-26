@@ -5,7 +5,8 @@
 
 ## Umfang
 
-- Aktionskatalog mit allen bisherigen Funktionen; Keymaps je OS (`Mod` = Cmd/Strg), Overrides `keymap.json`.
+- Aktionskatalog, Keymaps je OS und Dispatcher gibt es seit 004 (Design 004 E1). Hier: Overrides `keymap.json`
+  im App-Config-Ordner (Rust lädt), Prüfung auf doppelte Belegungen.
 - Menü: macOS nativ, sonst schlanke HTML-Menüleiste, die standardmäßig **versteckt** ist (Alt/F1 blendet ein).
 - **Ablenkungsfrei** (legacy F1 „Toggle Menu, Tabs, Iconbar“, Strg+Umschalt+F1 „Fade in/out“): Menü, Tabs und
   Statusleiste einzeln und gemeinsam ein-/ausblenden; Vollbild.

@@ -2,16 +2,32 @@ import { TestBed } from '@angular/core/testing';
 import { EditorApi } from '../../core/editor/editor-api';
 import { FakeEditorApi, textFrame } from '../../../testing/fake-editor-api';
 import { EditorView } from './editor-view';
+import { KeyboardDispatcher } from '../../core/actions/keyboard-dispatcher';
+import { OS } from '../../core/actions/platform';
+
+const cleanups: (() => void)[] = [];
+/** Lets the serial command chain of the view run. */
+const flush = () => new Promise((r) => setTimeout(r, 0));
 
 async function setup(api = new FakeEditorApi()) {
   TestBed.configureTestingModule({
     imports: [EditorView],
-    providers: [{ provide: EditorApi, useValue: api }],
+    providers: [
+      { provide: EditorApi, useValue: api },
+      { provide: OS, useValue: 'other' },
+    ],
   });
   // jsdom has no layout: give the host a size
   const rect = { top: 0, left: 0, right: 800, bottom: 440, width: 800, height: 440 } as DOMRect;
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(rect);
+  const dispatcher = TestBed.inject(KeyboardDispatcher);
+  dispatcher.setContextProvider(() => ['editor', 'global']);
+  const listener = (e: KeyboardEvent) => dispatcher.handle(e);
+  document.addEventListener('keydown', listener);
+  cleanups.push(() => document.removeEventListener('keydown', listener));
   const fixture = TestBed.createComponent(EditorView);
+  document.body.appendChild(fixture.nativeElement);
+  cleanups.push(() => fixture.nativeElement.remove());
   fixture.componentRef.setInput('docId', 7);
   await fixture.whenStable();
   await new Promise((r) => setTimeout(r));
@@ -20,7 +36,10 @@ async function setup(api = new FakeEditorApi()) {
 }
 
 describe('EditorView', () => {
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    cleanups.splice(0).forEach((f) => f());
+  });
 
   it('sends its size and renders the frame', async () => {
     const { api, el } = await setup();
@@ -36,8 +55,11 @@ describe('EditorView', () => {
   it('turns keys into engine commands', async () => {
     const { api, el, fixture } = await setup();
     const input = el.querySelector('textarea')!;
-    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', shiftKey: true }));
-    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    input.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowDown', shiftKey: true, bubbles: true }),
+    );
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await flush();
     await fixture.whenStable();
     expect(api.sent('move')).toEqual([{ type: 'move', to: 'down', select: true }]);
     expect(api.sent('newline').length).toBe(1);

@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { EditorApi, Loading } from '../app/core/editor/editor-api';
 import {
   Command,
+  DiskState,
   DocInfo,
   Frame,
   FrameLine,
@@ -79,16 +80,26 @@ export class FakeEditorApi extends EditorApi {
     this.opened.push(path);
     onProgress?.({ kind: 'progress', loaded: 1, total: 1 });
     const id = this.nextId++;
-    return { loadId: id, done: Promise.resolve(docInfo({ id, path, name: path })) };
+    const info = docInfo({ id, path, name: path });
+    this.infos.set(id, info);
+    return { loadId: id, done: Promise.resolve(info) };
   }
 
   cancelLoad(): Promise<void> {
     return Promise.resolve();
   }
 
+  /** What the fake engine knows about each document. */
+  infos = new Map<number, DocInfo>();
+
   newDocument(): Promise<DocInfo> {
-    return Promise.resolve(docInfo({ id: this.nextId++ }));
+    const info = docInfo({ id: this.nextId++ });
+    this.infos.set(info.id, info);
+    return Promise.resolve(info);
   }
+
+  /** Next answer of `save` (an error to throw, or nothing). */
+  saveError: unknown = null;
 
   close(): Promise<void> {
     return Promise.resolve();
@@ -100,16 +111,35 @@ export class FakeEditorApi extends EditorApi {
 
   command(id: number, cmd: Command): Promise<Frame> {
     this.commands.push({ id, cmd });
-    return Promise.resolve({ ...this.nextFrame, info: { ...this.nextFrame.info, id } });
+    const info = this.infos.get(id) ?? { ...this.nextFrame.info, id };
+    return Promise.resolve({ ...this.nextFrame, info });
   }
 
   save(id: number, req: SaveRequest = {}): Promise<DocInfo> {
     this.saved.push({ id, req });
-    return Promise.resolve(docInfo({ id }));
+    if (this.saveError) {
+      const e = this.saveError;
+      this.saveError = null;
+      return Promise.reject(e);
+    }
+    const path = req.path ?? `/doc${id}`;
+    return Promise.resolve(docInfo({ id, path, name: path.split('/').pop()!, dirty: false }));
   }
 
   startupPaths(): Promise<string[]> {
     return Promise.resolve(this.paths);
+  }
+
+  disk = new Map<number, DiskState>();
+  reloads: number[] = [];
+
+  reload(id: number): Promise<DocInfo> {
+    this.reloads.push(id);
+    return Promise.resolve(docInfo({ id, path: `/doc${id}`, name: `doc${id}` }));
+  }
+
+  diskState(id: number): Promise<DiskState> {
+    return Promise.resolve(this.disk.get(id) ?? { changed: false, missing: false });
   }
 
   /** Commands of a type, for assertions. */
