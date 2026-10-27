@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.version.1.10.0.schema.json
+# editlicious – winget version manifest (distribution/README.md). Before submitting: check the current
+# ManifestVersion in microsoft/winget-pkgs (doc/manifest/schema) and that the identifier is not taken.
+
+PackageIdentifier: MarcKronberg.editlicious
+PackageVersion: 1.0.0
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.10.0

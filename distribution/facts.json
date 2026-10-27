@@ -1,0 +1,129 @@
+{
+  "_comment": "Single source of truth for all distribution entries. Verified 2026-10-27 against the GitHub release v1.0.0 (API: assets + sha256 digests), the downloaded packages (all sums recomputed locally), README.md, site/index.html and https://krocon.de/products/editlicious/. Update this file first, then the manifests (see distribution/README.md).",
+  "product": {
+    "name": "editlicious",
+    "nameNotes": "Always lower case, one word – also at the start of a sentence. Identifiers: 'editlicious' (package names), 'MarcKronberg.editlicious' (winget).",
+    "identifier": "io.github.krocon.editlicious",
+    "version": "1.0.0",
+    "releaseTag": "v1.0.0",
+    "releaseDate": "2026-10-26",
+    "previousReleases": ["v0.1.0 (2026-10-26, pre-release)"],
+    "license": "MIT",
+    "licenseUrl": "https://github.com/krocon/editlicious/blob/main/LICENSE",
+    "licenseNotes": "App is MIT. Bundled third-party parts are listed in THIRD-PARTY-NOTICES.txt inside every package (docs/licenses.md); the logo wordmark uses paths from the Yellowtail font (Apache-2.0).",
+    "thirdPartyNoticesUrl": "https://github.com/krocon/editlicious/blob/main/THIRD-PARTY-NOTICES.txt",
+    "price": "free",
+    "openSource": true,
+    "author": "Marc Kronberg",
+    "publisher": "Marc Kronberg",
+    "copyright": "© 2026 Marc Kronberg",
+    "homepage": "https://krocon.de/products/editlicious/",
+    "liveDemo": "https://krocon.de/products/editlicious/demo/",
+    "developerWebsite": "https://krocon.de/",
+    "repository": "https://github.com/krocon/editlicious",
+    "issues": "https://github.com/krocon/editlicious/issues",
+    "releases": "https://github.com/krocon/editlicious/releases",
+    "releaseNotesUrl": "https://github.com/krocon/editlicious/releases/tag/v1.0.0",
+    "contactPublic": "GitHub issues (https://github.com/krocon/editlicious/issues). A personal e-mail address is NOT released for public listings – ask Marc.",
+    "techStack": ["Tauri 2", "Rust", "Angular 22", "TypeScript", "WebAssembly (live demo only)"],
+    "uiLanguages": ["English", "German"],
+    "telemetry": "none – no telemetry, no accounts, no update pings (product page FAQ)",
+    "notAnIde": "No project view, no language server, no plugin store (product page FAQ)."
+  },
+  "features": {
+    "_source": "Product page and README – use only these statements.",
+    "items": [
+      "Opens and edits huge files: millions of lines, lines with millions of characters; files up to 4 GB (needs roughly the file size in RAM)",
+      "Text lives in a rope in the Rust engine; the window only renders the visible lines and columns",
+      "Soft wrap (Alt Z) for normal lines; very long lines shown as a window of what fits",
+      "Distraction-free: menu bar on Alt, tabs only with a second file, F1 hides everything but the text",
+      "Command palette; every function is a command with a shortcut",
+      "Several carets (Ctrl/Cmd D, Alt-click), column selection",
+      "Selections that grow with every double click (word, snake_case part, path segment, brackets, line, paragraph)",
+      "Find and replace with regular expressions, marks for every match in the scroll bar, go to line",
+      "Syntax colours from Sublime/TextMate grammars for more than 70 languages, log files and INI included",
+      "Thirteen colour schemes (plus the system's), picked from thumbnails",
+      "Encodings and line endings detected on load, kept on save; convert from the status bar",
+      "Atomic saving: permissions and symlinks kept, nothing half written",
+      "Ten word markers that jump (F7), count and stay in 'Copy as HTML'",
+      "Copy as HTML with colours, with or without line numbers",
+      "Colour values as swatches in the gutter (#hex, rgb(), hsl(), 0xAARRGGBB, \"ffRRGGBB\")",
+      "Notices changes on disk; restores open files, caret and scroll position",
+      "Record and play back macros and typing scripts; render them to video (CLI 'editlicious render', needs ffmpeg for MP4)",
+      "Opt-in AI control via MCP (sidecar 'editlicious-mcp', off by default, local only)",
+      "English and German user interface"
+    ],
+    "performance": {
+      "_note": "Only quote together with the context: release builds of the engine on a small two-core Linux machine (docs/architecture.md).",
+      "items": [
+        "1 GB / 10 million lines opened in 1.6 s",
+        "first to last line in 5 ms",
+        "100 MB single line opened in 0.1 s",
+        "10,000 matches replaced in the 1 GB file in 0.4 s"
+      ]
+    }
+  },
+  "platforms": {
+    "macos": { "minimum": "macOS 12 Monterey", "architectures": ["arm64", "x86_64"], "package": "universal .dmg", "signed": false, "notarized": false, "gatekeeperNote": "Unsigned: first start via right-click → Open (or System Settings → Privacy & Security → Open Anyway)." },
+    "windows": { "minimum": "Windows 10 or 11", "architectures": ["x64"], "packages": ["NSIS -setup.exe (per user, no admin)", ".msi (WiX, per machine)"], "signed": false, "runtime": "Microsoft Edge WebView2 (installers fetch the bootstrapper if missing)", "smartScreenNote": "Unsigned: SmartScreen → More info → Run anyway." },
+    "linux": { "requirements": "WebKitGTK 4.1 for .deb/.rpm (Ubuntu 22.04, Debian 12, Fedora 36 or newer); the AppImage bundles everything", "architectures": ["x86_64"], "packages": [".deb", ".rpm", ".AppImage"] }
+  },
+  "packageDetails": {
+    "linuxBinary": "/usr/bin/editlicious",
+    "linuxMcpBinary": "/usr/bin/editlicious-mcp",
+    "linuxDesktopFile": "/usr/share/applications/editlicious.desktop",
+    "linuxDesktopCategories": "Development;",
+    "linuxMimeType": "text/plain;",
+    "linuxIconName": "editlicious",
+    "linuxIcons": ["32x32", "128x128", "256x256@2"],
+    "linuxDebPackageName": "editlicious",
+    "linuxDebSection": "editors",
+    "linuxDebDepends": "libwebkit2gtk-4.1-0, libgtk-3-0",
+    "linuxMetainfo": "none in the packages (no /usr/share/metainfo)",
+    "thirdPartyNoticesLinux": "/usr/lib/editlicious/THIRD-PARTY-NOTICES.txt",
+    "windowsExe": "editlicious.exe",
+    "windowsMcpExe": "editlicious-mcp.exe",
+    "msiProductCode": "{1B63B59C-A06A-48F4-A326-7EC039935EF4}",
+    "msiUpgradeCode": "{0CAA1787-1C4B-4135-9849-889571AD0F40}",
+    "msiAllUsers": "1 (per machine)",
+    "nsisInstallMode": "currentUser; hook windows/open-with.nsh adds 'Open with' entries (HKCU), no default association",
+    "macAppBundle": "editlicious.app",
+    "macExecutables": ["Contents/MacOS/editlicious", "Contents/MacOS/editlicious-mcp"],
+    "macBundleId": "io.github.krocon.editlicious",
+    "macMinimumSystemVersion": "12.0",
+    "macDocumentTypes": "Open-with (rank Alternate), never the default app",
+    "mcpSetupExample": "claude mcp add editlicious -- \"/Applications/editlicious.app/Contents/MacOS/editlicious-mcp\""
+  },
+  "assets": [
+    { "os": "macos", "type": "dmg", "arch": "universal", "url": "https://github.com/krocon/editlicious/releases/download/v1.0.0/editlicious_1.0.0_universal.dmg", "sha256": "4ff4af99be572c636b260e932d7651296a7f8acc4703382408978b20a5d2320f", "size": 13077550 },
+    { "os": "macos", "type": "app.tar.gz", "arch": "universal", "url": "https://github.com/krocon/editlicious/releases/download/v1.0.0/editlicious_universal.app.tar.gz", "sha256": "7717fba68592f68062c7f53764341481a6bc9eb1c160c03816f9e8efe99b2c00", "size": 12991426, "note": "file name has no version – not suitable as a stable versioned URL" },
+    { "os": "windows", "type": "nsis", "arch": "x64", "url": "https://github.com/krocon/editlicious/releases/download/v1.0.0/editlicious_1.0.0_x64-setup.exe", "sha256": "acec1979b3d76e0e4754c7b90a522b4be98bf14caa78b08a85d267c75ebd0982", "size": 4395578 },
+    { "os": "windows", "type": "msi", "arch": "x64", "url": "https://github.com/krocon/editlicious/releases/download/v1.0.0/editlicious_1.0.0_x64_en-US.msi", "sha256": "6ce8722d1895eeb90c0a43f06b97de2f0071b3eb301d418a46870a6b4d03941e", "size": 6451200 },
+    { "os": "linux", "type": "deb", "arch": "amd64", "url": "https://github.com/krocon/editlicious/releases/download/v1.0.0/editlicious_1.0.0_amd64.deb", "sha256": "bacd01bf4325340079548f69b187f8df5d57a96c0cbd055da913972ee3c3b1a4", "size": 8315474 },
+    { "os": "linux", "type": "rpm", "arch": "x86_64", "url": "https://github.com/krocon/editlicious/releases/download/v1.0.0/editlicious-1.0.0-1.x86_64.rpm", "sha256": "4d5902a36cc7861a01910c4618b09cbe7d368a67a0707488ea2e2f85edb8810e", "size": 8319334 },
+    { "os": "linux", "type": "AppImage", "arch": "x86_64", "url": "https://github.com/krocon/editlicious/releases/download/v1.0.0/editlicious_1.0.0_amd64.AppImage", "sha256": "55e95eebd8a9397733605b14c98abfda331d001d983955ad9995d4d981b33a6a", "size": 86116856 }
+  ],
+  "checksumsFile": "MISSING for v1.0.0 – the release has no SHA256SUMS.txt (v0.1.0 has one), although the product page says every release contains it. Use the per-asset sha256 above (shown on the release page as 'sha256:').",
+  "licenseFileSha256AtTag": { "tag": "v1.0.0", "file": "LICENSE", "sha256": "786cdc49559acade1d3ff493832ec03a03382c3b3ac4ad3dd4b2047b74be1526" },
+  "images": {
+    "icon": "https://raw.githubusercontent.com/krocon/editlicious/main/src-tauri/icons/icon.png",
+    "icon256": "https://raw.githubusercontent.com/krocon/editlicious/main/src-tauri/icons/128x128@2x.png",
+    "iconSvg": "https://raw.githubusercontent.com/krocon/editlicious/main/public/icon.svg",
+    "screenshots": [
+      { "url": "https://krocon.de/products/editlicious/img/main.png", "fallback": "https://raw.githubusercontent.com/krocon/editlicious/main/site/img/main.png", "caption": "A Rust file with syntax colours, the find bar and marks for every match in the scroll bar" },
+      { "url": "https://krocon.de/products/editlicious/img/big-log.png", "fallback": "https://raw.githubusercontent.com/krocon/editlicious/main/site/img/big-log.png", "caption": "A log file with 1,000,001 lines (69.2 MB), scrolled to line 500,000" },
+      { "url": "https://krocon.de/products/editlicious/img/wrap.png", "fallback": "https://raw.githubusercontent.com/krocon/editlicious/main/site/img/wrap.png", "caption": "Soft wrap in the 'sand' colour scheme" },
+      { "url": "https://krocon.de/products/editlicious/img/palette.png", "fallback": "https://raw.githubusercontent.com/krocon/editlicious/main/site/img/palette.png", "caption": "Command palette" },
+      { "url": "https://krocon.de/products/editlicious/img/settings.png", "fallback": "https://raw.githubusercontent.com/krocon/editlicious/main/site/img/settings.png", "caption": "Settings" }
+    ],
+    "imagesNote": "All 1100 × 760. The krocon.de URLs are the ones the product page uses; they could not be fetched from the build container (network) – the agent must open each once. The raw GitHub fallbacks were checked (HTTP 200)."
+  },
+  "githubRepoMetadata": { "description": null, "homepage": null, "topics": [], "stars": 0, "checked": "2026-10-27", "note": "empty – set before directory entries (Freigabe A)" },
+  "unknown": [
+    "Download counts / user numbers (do not state any)",
+    "Code signing (macOS Developer ID + notarization, Windows certificate) – not set up as of v1.0.0",
+    "ARM64 builds for Windows and Linux – not built",
+    "Auto-update – not available",
+    "MCPB bundle of editlicious-mcp – does not exist"
+  ]
+}

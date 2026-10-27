@@ -46,6 +46,7 @@ Kritischer Pfad zum ersten nutzbaren Editor: **001 → 002 → 003 → 004**. Da
 | 019 | [019-marker-ausbau-html.md](done/019-marker-ausbau-html.md) | Wort-Marker im „Als HTML kopieren“ (deckende Farben für E-Mail), Auswahl markieren, feste Farbe 1…0, nächstes/voriges Vorkommen, Anzahl in der Statusleiste, Marker in der Sitzung | 007, 010 | S–M | ✅ 26.10.2026 |
 | 020 | [020-rechnen-tooltips-autocomplete.md](done/020-rechnen-tooltips-autocomplete.md) | Math-Parser in Rust (Vorlage `java-k-editor/MathParser`), Ergebnis als Hinweis am Caret und als Vorschlag (`255/8=` → `31.875`); allgemeine Bausteine Tooltip- und Vorschlags-Anbieter | 005, 009, 010 | M–L | ✅ 26.10.2026 |
 | 021 | [021-more-themes.md](done/021-more-themes.md) | Neun weitere Farbschemata (inspiriert von gruvbox light hard, Liquid Glass light, Chalkdraw paper, One Dark, Moonlight, gruvbox material dark, Cozy Latte dark, Russian Hacker amber, Graphite Pop), Reihenfolge hell → dunkel, Farbschema-Auswahl mit Vorschaubildern | 008, 009 | M | ✅ 26.10.2026 |
+| 022 | [022-distribution.md](done/022-distribution.md) | Meta-Prompt für Claude im Browser: editlicious bei Paketmanagern (WinGet, Scoop, Homebrew, Flathub, AUR …), Software-Verzeichnissen und Discovery-Plattformen eintragen; Fakten, Texte und Manifeste in [`distribution/`](../distribution/README.md) (Vorlage: comic-commander-tauri 014) | 012, 014 | M | ✅ 27.10.2026 |
 
 ## Folge-Ideen (noch ohne Prompt)
 
@@ -53,4 +54,5 @@ Kritischer Pfad zum ersten nutzbaren Editor: **001 → 002 → 003 → 004**. Da
 - Log-Modus (legacy `Todos.java`): Filter nach Level, Auto-Reload, „nur zeigen/ignorieren“ mit Regex.
 - Textvergleich (Diff) zweier Dateien.
 - Hex-Ansicht für Binärdateien.
+- Distribution (022): `SHA256SUMS.txt` für v1.0.0 nachreichen, AppStream-`metainfo.xml` und Desktop-Kategorien `Development;TextEditor;Utility;` in die Linux-Pakete, Signierung macOS/Windows, ggf. `.mcpb`-Asset für die MCP Registry.
 - Numerische Integration aus der MathParser-Vorlage (`algo/numerical`), Farbwähler und benannte CSS-Farben für die Farbfelder (018).

@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.10.0.schema.json
+# Texts: distribution/listing.md. No personal e-mail address in public manifests (support = GitHub issues).
+
+PackageIdentifier: MarcKronberg.editlicious
+PackageVersion: 1.0.0
+PackageLocale: en-US
+Publisher: Marc Kronberg
+PublisherUrl: https://krocon.de/
+PublisherSupportUrl: https://github.com/krocon/editlicious/issues
+Author: Marc Kronberg
+PackageName: editlicious
+PackageUrl: https://krocon.de/products/editlicious/
+License: MIT
+LicenseUrl: https://github.com/krocon/editlicious/blob/main/LICENSE
+Copyright: © 2026 Marc Kronberg
+ShortDescription: Calm, keyboard-first text editor for huge files
+Description: |-
+  editlicious is a calm, keyboard-first text editor that opens and edits huge files – millions of lines, lines with
+  millions of characters, files up to 4 GB. The text lives in a rope inside a Rust engine and the window only renders
+  what you see. Several carets, column selection, find and replace with regular expressions, syntax colours for more
+  than 70 languages, encodings and line endings kept on save, atomic saving. No telemetry. Free and open source (MIT).
+Moniker: editlicious
+Tags:
+  - text-editor
+  - editor
+  - large-files
+  - log-viewer
+  - keyboard
+  - multiple-cursors
+  - syntax-highlighting
+  - encoding
+ReleaseNotesUrl: https://github.com/krocon/editlicious/releases/tag/v1.0.0
+ManifestType: defaultLocale
+ManifestVersion: 1.10.0

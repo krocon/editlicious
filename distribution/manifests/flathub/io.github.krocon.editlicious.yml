@@ -1,0 +1,50 @@
+# editlicious – Flatpak manifest, DRAFT for local testing (distribution/README.md, section Flathub).
+#
+# This draft repackages the official .deb. Flathub reviewers usually ask open-source apps to build from source
+# (Tauri: cargo-sources.json via flatpak-cargo-generator + offline Node sources – check whether
+# flatpak-node-generator supports this repo's pnpm lockfile). So: test locally first
+#   flatpak-builder --user --install --force-clean build io.github.krocon.editlicious.yml
+# and only then open the submission PR against flathub/flathub (branch new-pr) – after Marc agrees.
+#
+# Runtime: set to the GNOME runtime version Flathub currently supports (check flathub.org / `flatpak remote-ls`).
+# Sandbox: a text editor needs to open and save anywhere the user points it; the portal-based file dialog would be
+# the strict alternative, but "Open with" from the file manager and session restore need real paths → home:rw.
+# Open question for Marc: the MCP sidecar (/app/bin/editlicious-mcp) is only reachable by an AI client inside the
+# same sandbox – document or leave out.
+app-id: io.github.krocon.editlicious
+runtime: org.gnome.Platform
+runtime-version: '49'
+sdk: org.gnome.Sdk
+command: editlicious
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --filesystem=home
+  - --filesystem=/media
+  - --filesystem=/run/media
+  - --filesystem=/mnt
+modules:
+  - name: editlicious
+    buildsystem: simple
+    sources:
+      - type: file
+        dest-filename: editlicious.deb
+        url: https://github.com/krocon/editlicious/releases/download/v1.0.0/editlicious_1.0.0_amd64.deb
+        sha256: bacd01bf4325340079548f69b187f8df5d57a96c0cbd055da913972ee3c3b1a4
+        only-arches: [x86_64]
+      - type: file
+        path: io.github.krocon.editlicious.metainfo.xml
+    build-commands:
+      - ar -x editlicious.deb
+      - tar -xf data.tar.gz
+      - install -Dm755 usr/bin/editlicious /app/bin/editlicious
+      - install -Dm755 usr/bin/editlicious-mcp /app/bin/editlicious-mcp
+      - install -Dm644 usr/lib/editlicious/THIRD-PARTY-NOTICES.txt /app/lib/editlicious/THIRD-PARTY-NOTICES.txt
+      - install -Dm644 usr/share/applications/editlicious.desktop /app/share/applications/io.github.krocon.editlicious.desktop
+      - desktop-file-edit --set-icon=io.github.krocon.editlicious --add-category=TextEditor --add-category=Utility /app/share/applications/io.github.krocon.editlicious.desktop
+      - install -Dm644 usr/share/icons/hicolor/32x32/apps/editlicious.png /app/share/icons/hicolor/32x32/apps/io.github.krocon.editlicious.png
+      - install -Dm644 usr/share/icons/hicolor/128x128/apps/editlicious.png /app/share/icons/hicolor/128x128/apps/io.github.krocon.editlicious.png
+      - install -Dm644 usr/share/icons/hicolor/256x256@2/apps/editlicious.png /app/share/icons/hicolor/256x256/apps/io.github.krocon.editlicious.png
+      - install -Dm644 io.github.krocon.editlicious.metainfo.xml /app/share/metainfo/io.github.krocon.editlicious.metainfo.xml

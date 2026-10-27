@@ -1,0 +1,28 @@
+# Maintainer: {{AUR_MAINTAINER}}
+# editlicious – binary package from the official .deb (distribution/README.md).
+# Push needs an AUR account with SSH key: git clone ssh://aur@aur.archlinux.org/editlicious-bin.git,
+# copy PKGBUILD + .SRCINFO, `makepkg --printsrcinfo > .SRCINFO`, `namcap PKGBUILD`, commit, push.
+
+pkgname=editlicious-bin
+_pkgname=editlicious
+pkgver=1.0.0
+pkgrel=1
+pkgdesc='Calm, keyboard-first text editor for huge files'
+arch=('x86_64')
+url='https://krocon.de/products/editlicious/'
+license=('MIT')
+depends=('webkit2gtk-4.1' 'gtk3' 'hicolor-icon-theme')
+optdepends=('ffmpeg: MP4 output of "editlicious render"')
+provides=("${_pkgname}")
+conflicts=("${_pkgname}")
+options=('!strip' '!debug')
+source=("${_pkgname}-${pkgver}.deb::https://github.com/krocon/editlicious/releases/download/v${pkgver}/editlicious_${pkgver}_amd64.deb"
+        "LICENSE-${pkgver}::https://raw.githubusercontent.com/krocon/editlicious/v${pkgver}/LICENSE")
+noextract=("${_pkgname}-${pkgver}.deb")
+sha256sums=('bacd01bf4325340079548f69b187f8df5d57a96c0cbd055da913972ee3c3b1a4'
+            '786cdc49559acade1d3ff493832ec03a03382c3b3ac4ad3dd4b2047b74be1526')
+
+package() {
+  bsdtar -xOf "${_pkgname}-${pkgver}.deb" data.tar.gz | bsdtar -xf - -C "${pkgdir}"
+  install -Dm644 "LICENSE-${pkgver}" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

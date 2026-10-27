@@ -1,0 +1,22 @@
+pkgbase = editlicious-bin
+	pkgdesc = Calm, keyboard-first text editor for huge files
+	pkgver = 1.0.0
+	pkgrel = 1
+	url = https://krocon.de/products/editlicious/
+	arch = x86_64
+	license = MIT
+	depends = webkit2gtk-4.1
+	depends = gtk3
+	depends = hicolor-icon-theme
+	optdepends = ffmpeg: MP4 output of "editlicious render"
+	provides = editlicious
+	conflicts = editlicious
+	noextract = editlicious-1.0.0.deb
+	options = !strip
+	options = !debug
+	source = editlicious-1.0.0.deb::https://github.com/krocon/editlicious/releases/download/v1.0.0/editlicious_1.0.0_amd64.deb
+	source = LICENSE-1.0.0::https://raw.githubusercontent.com/krocon/editlicious/v1.0.0/LICENSE
+	sha256sums = bacd01bf4325340079548f69b187f8df5d57a96c0cbd055da913972ee3c3b1a4
+	sha256sums = 786cdc49559acade1d3ff493832ec03a03382c3b3ac4ad3dd4b2047b74be1526
+
+pkgname = editlicious-bin

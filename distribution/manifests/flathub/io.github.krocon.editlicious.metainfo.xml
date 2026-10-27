@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AppStream metadata for editlicious. Used by Flathub, AppImageHub and Linux software centres.
+     Best place long term: in the app itself (src-tauri, installed to /usr/share/metainfo via bundle.linux.*.files). -->
+<component type="desktop-application">
+  <id>io.github.krocon.editlicious</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+
+  <name>editlicious</name>
+  <summary>Calm, keyboard-first text editor for huge files</summary>
+
+  <developer id="io.github.krocon">
+    <name>Marc Kronberg</name>
+  </developer>
+
+  <description>
+    <p>
+      editlicious is a calm, keyboard-first text editor that opens and edits huge files – millions of lines, lines
+      with millions of characters, files up to 4 GB. The text lives in a rope inside a Rust engine; the window only
+      renders what you see, vertically and horizontally.
+    </p>
+    <ul>
+      <li>Distraction-free: menu bar on Alt, tabs only with a second file, F1 hides everything but the text</li>
+      <li>Command palette – every function is a command with a shortcut</li>
+      <li>Several carets, column selection and selections that grow with every double click</li>
+      <li>Find and replace with regular expressions, marks for every match in the scroll bar</li>
+      <li>Syntax colours for more than 70 languages, thirteen colour schemes, soft wrap</li>
+      <li>Encodings and line endings detected on load and kept on save; atomic saving</li>
+      <li>No telemetry, no accounts, no update pings</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">io.github.krocon.editlicious.desktop</launchable>
+  <provides>
+    <binary>editlicious</binary>
+    <mediatype>text/plain</mediatype>
+  </provides>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>A Rust file with syntax colours, the find bar and marks in the scroll bar</caption>
+      <image>https://krocon.de/products/editlicious/img/main.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>A log file with a million lines</caption>
+      <image>https://krocon.de/products/editlicious/img/big-log.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Soft wrap</caption>
+      <image>https://krocon.de/products/editlicious/img/wrap.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Command palette</caption>
+      <image>https://krocon.de/products/editlicious/img/palette.png</image>
+    </screenshot>
+  </screenshots>
+
+  <url type="homepage">https://krocon.de/products/editlicious/</url>
+  <url type="bugtracker">https://github.com/krocon/editlicious/issues</url>
+  <url type="vcs-browser">https://github.com/krocon/editlicious</url>
+
+  <categories>
+    <category>Development</category>
+    <category>TextEditor</category>
+    <category>Utility</category>
+  </categories>
+  <keywords>
+    <keyword>text</keyword>
+    <keyword>editor</keyword>
+    <keyword>log</keyword>
+    <keyword>large</keyword>
+    <keyword>files</keyword>
+  </keywords>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="1.0.0" date="2026-10-26">
+      <url type="details">https://github.com/krocon/editlicious/releases/tag/v1.0.0</url>
+    </release>
+  </releases>
+</component>

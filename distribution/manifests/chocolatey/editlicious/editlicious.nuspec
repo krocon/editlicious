@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- editlicious – Chocolatey community package (distribution/README.md).
+     {{CHOCOLATEY_USERNAME}}: Marc's Chocolatey account name – fill in before `choco pack`, never guess.
+     Push needs the choco CLI + API key on a Windows machine (choco pack, then choco push with source https://push.chocolatey.org/). -->
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>editlicious</id>
+    <version>1.0.0</version>
+    <packageSourceUrl>https://github.com/krocon/editlicious/tree/main/distribution/manifests/chocolatey</packageSourceUrl>
+    <owners>{{CHOCOLATEY_USERNAME}}</owners>
+    <title>editlicious</title>
+    <authors>Marc Kronberg</authors>
+    <projectUrl>https://krocon.de/products/editlicious/</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/krocon/editlicious/main/src-tauri/icons/128x128@2x.png</iconUrl>
+    <copyright>© 2026 Marc Kronberg</copyright>
+    <licenseUrl>https://github.com/krocon/editlicious/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/krocon/editlicious</projectSourceUrl>
+    <docsUrl>https://github.com/krocon/editlicious#readme</docsUrl>
+    <bugTrackerUrl>https://github.com/krocon/editlicious/issues</bugTrackerUrl>
+    <tags>text-editor editor large-files log-viewer multiple-cursors syntax-highlighting encoding foss</tags>
+    <summary>Calm, keyboard-first text editor for huge files</summary>
+    <description><![CDATA[editlicious is a calm, keyboard-first text editor that opens and edits huge files – millions of lines, lines with millions of characters, files up to 4 GB. The text lives in a rope inside a Rust engine; the window only renders what you see.
+
+- Menu bar on Alt, tabs only with a second file, F1 hides everything but the text; command palette for every function
+- Several carets, column selection, find and replace with regular expressions, sort lines, word markers
+- Syntax colours for more than 70 languages, thirteen colour schemes, soft wrap
+- Encodings and line endings detected on load and kept on save; atomic saving
+- No telemetry, no accounts, no update pings
+
+Free and open source (MIT). Requires the Microsoft Edge WebView2 Runtime. The installer is not code-signed.]]></description>
+    <releaseNotes>https://github.com/krocon/editlicious/releases/tag/v1.0.0</releaseNotes>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
