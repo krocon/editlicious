@@ -190,6 +190,8 @@ export interface CompletionItem {
 /** The open suggestion list (`model::Completion`). */
 export interface Completion {
   line: number;
+  /** Cell the list hangs below: the start of the word (prompt 023), else the caret. */
+  cell: number;
   items: CompletionItem[];
 }
 

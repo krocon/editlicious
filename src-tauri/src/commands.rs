@@ -181,6 +181,7 @@ fn info_of(sessions: &Registry<Session>, id: u64) -> Result<DocInfo, FsError> {
 /// `cancel_load(load_id)` stops it.
 #[tauri::command]
 pub async fn open_document(
+    app: AppHandle,
     state: State<'_, AppState>,
     path: String,
     load_id: u64,
@@ -188,7 +189,12 @@ pub async fn open_document(
 ) -> Result<DocInfo, FsError> {
     let path = file_path(&path)?;
     let sessions = state.sessions.clone();
+    // the user's own word lists may have changed (design 023 E13)
+    let words = config_dir(&app).ok();
     blocking(move || {
+        if let Some(dir) = words {
+            crate::user_words::load(&dir);
+        }
         let cancel = sessions.start_load(load_id);
         let result = load::load_file(&path, &cancel, &mut |loaded, total| {
             let _ = on_event.send(LoadEvent::Progress { loaded, total });
@@ -650,7 +656,11 @@ pub async fn load_settings(
     state: State<'_, AppState>,
 ) -> Result<crate::config_file::Loaded<crate::settings::Settings>, FsError> {
     let dir = config_dir(&app)?;
-    let loaded = blocking(move || Ok(crate::settings::load(&dir))).await?;
+    let loaded = blocking(move || {
+        crate::user_words::load(&dir);
+        Ok(crate::settings::load(&dir))
+    })
+    .await?;
     state.set_keep("settings", !loaded.persist);
     Ok(loaded)
 }

@@ -4,7 +4,7 @@
 
 use super::words::CharClass;
 use std::collections::{HashMap, HashSet};
-use std::sync::OnceLock;
+use std::sync::{Arc, RwLock};
 
 /// Most suggestions in the list.
 pub const MAX_ITEMS: usize = 12;
@@ -35,17 +35,18 @@ impl Default for WordOptions {
     }
 }
 
-/// The typical words of one language.
-#[derive(Debug)]
+/// The typical words of one language: the built-in lists plus the user's own.
+#[derive(Debug, Default)]
 pub struct Lexicon {
-    pub words: Vec<&'static str>,
+    pub words: Vec<String>,
     /// SQL & co.: the spelling follows the prefix.
     pub case_insensitive: bool,
     /// Characters that belong to a word besides letters, digits and `_` (CSS: `-`).
-    pub extra: &'static str,
+    pub extra: String,
 }
 
 const FILES: &[(&str, &str)] = &[
+    ("angular", include_str!("../../lexicon/angular.txt")),
     ("c", include_str!("../../lexicon/c.txt")),
     ("cpp", include_str!("../../lexicon/cpp.txt")),
     ("csharp", include_str!("../../lexicon/csharp.txt")),
@@ -54,40 +55,139 @@ const FILES: &[(&str, &str)] = &[
     ("html", include_str!("../../lexicon/html.txt")),
     ("java", include_str!("../../lexicon/java.txt")),
     ("javascript", include_str!("../../lexicon/javascript.txt")),
+    ("kotlin", include_str!("../../lexicon/kotlin.txt")),
     ("php", include_str!("../../lexicon/php.txt")),
     ("python", include_str!("../../lexicon/python.txt")),
     ("ruby", include_str!("../../lexicon/ruby.txt")),
     ("rust", include_str!("../../lexicon/rust.txt")),
     ("shell", include_str!("../../lexicon/shell.txt")),
+    ("spring", include_str!("../../lexicon/spring.txt")),
     ("sql", include_str!("../../lexicon/sql.txt")),
 ];
 
-fn parse(src: &'static str) -> Lexicon {
-    let mut lex = Lexicon {
-        words: Vec::new(),
-        case_insensitive: false,
-        extra: "",
-    };
+/// The built-in lists a lexicon is made of (Spring Boot for Java and Kotlin, Angular for
+/// TypeScript).
+fn parts(key: &str) -> &'static [&'static str] {
+    match key {
+        "java" => &["java", "spring"],
+        "kotlin" => &["kotlin", "spring"],
+        "typescript" => &["javascript", "angular"],
+        "javascript" => &["javascript"],
+        "python" => &["python"],
+        "sql" => &["sql"],
+        "rust" => &["rust"],
+        "c" => &["c"],
+        "cpp" => &["cpp"],
+        "csharp" => &["csharp"],
+        "go" => &["go"],
+        "php" => &["php"],
+        "ruby" => &["ruby"],
+        "shell" => &["shell"],
+        "css" => &["css"],
+        "html" => &["html"],
+        _ => &[],
+    }
+}
+
+/// Most words taken from one user list, longest user word.
+const USER_WORDS: usize = 5_000;
+
+/// Adds the words and settings of one list (`#`-lines: `case-insensitive`, `word-chars: …`).
+fn add(lex: &mut Lexicon, src: &str, seen: &mut HashSet<String>, limit: usize) {
+    let mut n = 0;
     for l in src.lines().map(str::trim).filter(|l| !l.is_empty()) {
         if let Some(c) = l.strip_prefix('#') {
             let c = c.trim();
             if c == "case-insensitive" {
                 lex.case_insensitive = true;
             } else if let Some(x) = c.strip_prefix("word-chars:") {
-                lex.extra = x.trim();
+                for ch in x.trim().chars().filter(|c| !c.is_whitespace()).take(8) {
+                    if !lex.extra.contains(ch) {
+                        lex.extra.push(ch);
+                    }
+                }
             }
-        } else {
-            lex.words.push(l);
+        } else if n < limit
+            && l.chars().count() <= MAX_WORD
+            && !l.contains(char::is_whitespace)
+            && seen.insert(l.to_owned())
+        {
+            lex.words.push(l.to_owned());
+            n += 1;
         }
     }
-    lex
 }
 
-/// Which lexicon a language of the highlighting (design 008) uses.
-fn file_of(language: &str) -> Option<&'static str> {
-    Some(match language {
+/// The user's own lists (`<config>/words/<key>.txt`, key → text), `all` for every language.
+static USER: RwLock<Option<HashMap<String, String>>> = RwLock::new(None);
+static CACHE: RwLock<Option<HashMap<String, Arc<Lexicon>>>> = RwLock::new(None);
+
+/// Puts in the user's own word lists (design 023 E13); `key` as [`key_for`] names it.
+pub fn set_user_words(lists: HashMap<String, String>) {
+    let mut user = USER.write().unwrap_or_else(|e| e.into_inner());
+    if user.as_ref() == Some(&lists) {
+        return;
+    }
+    *user = Some(lists);
+    *CACHE.write().unwrap_or_else(|e| e.into_inner()) = None;
+}
+
+/// The lexicon of `key` (built-in lists + the user's), `None` = no words at all.
+pub fn lexicon(key: &str) -> Option<Arc<Lexicon>> {
+    if let Some(l) = CACHE
+        .read()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+        .and_then(|c| c.get(key))
+    {
+        return Some(l.clone());
+    }
+    let mut lex = Lexicon::default();
+    let mut seen = HashSet::new();
+    for part in parts(key) {
+        if let Some((_, src)) = FILES.iter().find(|(k, _)| k == part) {
+            add(&mut lex, src, &mut seen, usize::MAX);
+        }
+    }
+    if let Some(user) = USER.read().unwrap_or_else(|e| e.into_inner()).as_ref() {
+        for k in [key, "all"] {
+            if let Some(src) = user.get(k) {
+                add(&mut lex, src, &mut seen, USER_WORDS);
+            }
+        }
+    }
+    if lex.words.is_empty() {
+        return None;
+    }
+    let lex = Arc::new(lex);
+    CACHE
+        .write()
+        .unwrap_or_else(|e| e.into_inner())
+        .get_or_insert_with(HashMap::new)
+        .insert(key.to_owned(), lex.clone());
+    Some(lex)
+}
+
+/// Which lexicon a file uses: Kotlin and TypeScript by the extension (syntect knows neither),
+/// else by the language of the highlighting (design 008); other languages by their name in
+/// lower case without spaces (`Markdown` → `markdown`), plain text = `text`.
+pub fn key_for(file_name: Option<&str>, language: Option<&str>) -> String {
+    let ext = file_name
+        .and_then(|n| n.rsplit_once('.'))
+        .map(|(_, e)| e.to_lowercase());
+    match (ext.as_deref(), language) {
+        (Some("kt" | "kts"), None | Some("Groovy")) => return "kotlin".into(),
+        (Some("ts" | "tsx" | "mts" | "cts"), None | Some("JavaScript")) => {
+            return "typescript".into();
+        }
+        _ => {}
+    }
+    let Some(language) = language else {
+        return "text".into();
+    };
+    match language {
         "Java" => "java",
-        "JavaScript" | "TypeScript" | "TypeScriptReact" | "JavaScript (Rails)" => "javascript",
+        "JavaScript" | "JavaScript (Rails)" => "javascript",
         "Python" => "python",
         "SQL" | "SQL (Rails)" => "sql",
         "Rust" => "rust",
@@ -100,15 +200,15 @@ fn file_of(language: &str) -> Option<&'static str> {
         "Bourne Again Shell (bash)" | "Shell-Unix-Generic" => "shell",
         "CSS" => "css",
         l if l == "HTML" || l.starts_with("HTML (") => "html",
-        _ => return None,
-    })
-}
-
-/// The lexicon of a language, `None` = none for it.
-pub fn lexicon(language: &str) -> Option<&'static Lexicon> {
-    static ALL: OnceLock<HashMap<&'static str, Lexicon>> = OnceLock::new();
-    let all = ALL.get_or_init(|| FILES.iter().map(|(k, src)| (*k, parse(src))).collect());
-    all.get(file_of(language)?)
+        other => {
+            return other
+                .chars()
+                .filter(|c| c.is_alphanumeric() || *c == '+' || *c == '#')
+                .flat_map(char::to_lowercase)
+                .collect();
+        }
+    }
+    .into()
 }
 
 /// Belongs to a word (letters, digits, `_`, combining marks and the language's `extra`).
@@ -214,7 +314,7 @@ pub fn candidates<'a>(
         let mut words: Vec<&str> = lex
             .words
             .iter()
-            .copied()
+            .map(String::as_str)
             .filter(|w| w.to_lowercase().starts_with(&low))
             .collect();
         words.sort_by_key(|w| (w.chars().count(), *w));
@@ -267,6 +367,10 @@ pub fn nearest_lines(line: usize, count: usize) -> impl Iterator<Item = usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn lex(language: &str) -> Arc<Lexicon> {
+        lexicon(&key_for(None, Some(language))).unwrap_or_else(|| panic!("{language}"))
+    }
 
     fn words(prefix: &str, lines: &[&str], lex: Option<&Lexicon>) -> Vec<String> {
         candidates(prefix, lines.iter().map(|l| (*l, None)), lex, "")
@@ -327,8 +431,8 @@ mod tests {
 
     #[test]
     fn lexicon_after_the_document() {
-        let java = lexicon("Java").unwrap();
-        let c = candidates("pub", [("publishNow()", None)].into_iter(), Some(java), "");
+        let java = lex("Java");
+        let c = candidates("pub", [("publishNow()", None)].into_iter(), Some(&java), "");
         assert_eq!(
             c,
             [
@@ -343,31 +447,31 @@ mod tests {
             ]
         );
         // a word in both counts once, as a word of the document
-        let c = candidates("Str", [("String s;", None)].into_iter(), Some(java), "");
+        let c = candidates("Str", [("String s;", None)].into_iter(), Some(&java), "");
         assert_eq!(c[0].word, "String");
         assert!(!c[0].keyword);
         assert_eq!(c.iter().filter(|c| c.word == "String").count(), 1);
         assert!(c.iter().any(|c| c.word == "StringBuilder" && c.keyword));
         // case-sensitive language: other case comes after
-        let c = words("str", &[], Some(java));
+        let c = words("str", &[], Some(&java));
         assert!(c.contains(&"strictfp".to_string()));
         assert!(c.iter().position(|w| w == "strictfp") < c.iter().position(|w| w == "String"));
     }
 
     #[test]
     fn sql_spelling_follows_the_prefix() {
-        let sql = lexicon("SQL").unwrap();
+        let sql = lex("SQL");
         assert!(sql.case_insensitive);
-        assert_eq!(words("sel", &[], Some(sql)), ["select"]);
-        assert_eq!(words("SEL", &[], Some(sql)), ["SELECT"]);
+        assert_eq!(words("sel", &[], Some(&sql)), ["select"]);
+        assert_eq!(words("SEL", &[], Some(&sql)), ["SELECT"]);
         // the file's own spelling wins over the prefix (it writes keywords in capitals)
-        assert_eq!(words("sel", &["SELECT id"], Some(sql)), ["SELECT"]);
+        assert_eq!(words("sel", &["SELECT id"], Some(&sql)), ["SELECT"]);
         // exact document words, the lexicon, then other case
         assert_eq!(
-            words("gr", &["GRANTED"], Some(sql)),
+            words("gr", &["GRANTED"], Some(&sql)),
             ["grant", "group", "GRANTED"]
         );
-        assert!(lexicon("SQL (Rails)").is_some());
+        assert_eq!(key_for(None, Some("SQL (Rails)")), "sql");
     }
 
     #[test]
@@ -389,22 +493,88 @@ mod tests {
             "HTML",
             "HTML (Rails)",
         ] {
-            let lex = lexicon(lang).unwrap_or_else(|| panic!("{lang}"));
+            let lex = lex(lang);
+            check_list(lang, &lex);
+        }
+        for key in ["kotlin", "typescript"] {
+            check_list(key, &lexicon(key).unwrap());
+        }
+        assert!(lexicon(&key_for(None, Some("Markdown"))).is_none());
+        assert_eq!(lex("CSS").extra, "-");
+        let css = lex("CSS");
+        let c = candidates("background-c", std::iter::empty(), Some(&css), "-");
+        assert_eq!(c[0].word, "background-color");
+    }
+
+    fn check_list(lang: &str, lex: &Lexicon) {
+        {
             assert!(lex.words.len() >= 40, "{lang}");
             let mut seen = HashSet::new();
             for w in &lex.words {
-                assert!(seen.insert(*w), "{lang}: {w} twice");
+                assert!(seen.insert(w.clone()), "{lang}: {w} twice");
                 assert!(
-                    w.chars().all(|c| is_word(c, lex.extra)) && !w.starts_with('-'),
+                    w.chars().all(|c| is_word(c, &lex.extra)) && !w.starts_with('-'),
                     "{lang}: {w}"
                 );
             }
         }
-        assert!(lexicon("Markdown").is_none());
-        assert_eq!(lexicon("CSS").unwrap().extra, "-");
-        let css = lexicon("CSS").unwrap();
-        let c = candidates("background-c", std::iter::empty(), Some(css), "-");
-        assert_eq!(c[0].word, "background-color");
+    }
+
+    #[test]
+    fn kotlin_spring_and_angular() {
+        assert_eq!(key_for(Some("App.kt"), None), "kotlin");
+        assert_eq!(key_for(Some("build.gradle.kts"), Some("Groovy")), "kotlin");
+        assert_eq!(key_for(Some("app.ts"), Some("JavaScript")), "typescript");
+        assert_eq!(key_for(Some("app.js"), Some("JavaScript")), "javascript");
+        // a language picked by hand wins over the extension
+        assert_eq!(key_for(Some("query.ts"), Some("SQL")), "sql");
+        assert_eq!(key_for(Some("notes.txt"), None), "text");
+        assert_eq!(
+            key_for(None, Some("Objective-C++")),
+            "objective-c++".replace('-', "")
+        );
+        let kotlin = lexicon("kotlin").unwrap();
+        assert!(words("fu", &[], Some(&kotlin)).contains(&"fun".to_string()));
+        // Spring Boot annotations after "@" in Java and Kotlin
+        let java = lex("Java");
+        assert_eq!(words("GetM", &[], Some(&java)), ["GetMapping"]);
+        assert_eq!(
+            words("RestCon", &[], Some(&kotlin)),
+            ["RestController", "RestControllerAdvice"]
+        );
+        // Angular in TypeScript only
+        let ts = lexicon("typescript").unwrap();
+        assert!(words("ngOn", &[], Some(&ts)).contains(&"ngOnInit".to_string()));
+        assert!(words("ngOn", &[], Some(&lex("JavaScript"))).is_empty());
+    }
+
+    #[test]
+    fn the_users_own_lists() {
+        let lists = HashMap::from([
+            (
+                "zz-test".to_string(),
+                "# word-chars: -\nmy-own-word\nwith space\nzzTop\n".to_string(),
+            ),
+            ("all".to_string(), "everywhereWord\n".to_string()),
+        ]);
+        set_user_words(lists);
+        let l = lexicon("zz-test").unwrap();
+        assert_eq!(l.extra, "-");
+        assert!(l.words.contains(&"my-own-word".to_string()));
+        assert!(!l.words.iter().any(|w| w.contains(' ')));
+        assert!(l.words.contains(&"everywhereWord".to_string()));
+        // built-in lists keep theirs and get "all"
+        let java = lexicon("java").unwrap();
+        assert!(java.words.contains(&"public".to_string()));
+        assert!(java.words.contains(&"everywhereWord".to_string()));
+        set_user_words(HashMap::new());
+        assert!(lexicon("zz-test").is_none());
+        assert!(
+            !lexicon("java")
+                .unwrap()
+                .words
+                .contains(&"everywhereWord".to_string())
+        );
     }
 
     #[test]

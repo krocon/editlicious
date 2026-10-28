@@ -246,10 +246,14 @@ export class EditorView {
     const f = this.frame();
     const c = f?.completion;
     if (!f || !c || c.items.length === 0) return null;
+    // below the start of the word, so it stays put while typing (design 023 E14)
     const xy = this.caretXY();
-    return {
+    const pos = this.anchor(f, c.line, c.cell) ?? {
       x: this.textLeft() + xy.x,
       y: xy.y + this.metrics().lh,
+    };
+    return {
+      ...pos,
       items: c.items,
       active: Math.min(this.completionIndex(), c.items.length - 1),
     };

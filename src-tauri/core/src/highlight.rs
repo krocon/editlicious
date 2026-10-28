@@ -123,7 +123,8 @@ pub fn languages() -> Vec<String> {
     v
 }
 
-/// The language of a file: by extension (TypeScript counts as JavaScript), then by the first
+/// The language of a file: by extension (TypeScript counts as JavaScript, Kotlin as Groovy –
+/// the nearest grammar; completion still knows them apart, design 023), then by the first
 /// line (shebang, `<?xml`). `None` = plain text.
 pub fn detect(file_name: Option<&str>, first_line: &str) -> Option<String> {
     let ss = syntax_set();
@@ -133,7 +134,7 @@ pub fn detect(file_name: Option<&str>, first_line: &str) -> Option<String> {
             "ts" | "tsx" | "mjs" | "cjs" | "jsx" | "mts" | "cts" => "js".to_owned(),
             "jsonc" | "json5" => "json".to_owned(),
             "htm" | "vue" | "svelte" => "html".to_owned(),
-            "kts" | "gradle" => "groovy".to_owned(),
+            "kt" | "kts" | "gradle" => "groovy".to_owned(),
             "zsh" | "fish" => "sh".to_owned(),
             "markdown" | "mdx" => "md".to_owned(),
             other => other.to_owned(),

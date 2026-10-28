@@ -259,6 +259,8 @@ pub struct CompletionItem {
 #[serde(rename_all = "camelCase")]
 pub struct Completion {
     pub line: usize,
+    /// Cell the list hangs below: the start of the word (prompt 023), else the caret.
+    pub cell: usize,
     pub items: Vec<CompletionItem>,
 }
 

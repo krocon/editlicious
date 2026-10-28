@@ -394,7 +394,7 @@ impl Session {
         let was_words = self.completion.as_ref().is_some_and(|c| c.words);
         let extra = self.word_extra();
         let typed_word = matches!(&cmd, Command::Type { text }
-            if !text.is_empty() && text.chars().all(|c| complete::is_word(c, extra)));
+            if !text.is_empty() && text.chars().all(|c| complete::is_word(c, &extra)));
         let backspace = matches!(cmd, Command::Backspace);
         match cmd {
             Command::Frame => reveal = Reveal::No,
@@ -1896,6 +1896,11 @@ impl Session {
             hint: self.math_hint(),
             completion: self.completion.as_ref().map(|c| model::Completion {
                 line: c.line,
+                // words: below the start of the word, steady while typing (design 023 E14)
+                cell: match c.items.first() {
+                    Some(s) if c.words => self.cell_of(Pos::new(c.line, s.from)),
+                    _ => self.cell_of(self.primary().head),
+                },
                 items: c
                     .items
                     .iter()
@@ -1993,16 +1998,24 @@ impl Session {
         }
     }
 
-    /// The lexicon of the document's language (when switched on).
-    fn word_lexicon(&self) -> Option<&'static complete::Lexicon> {
-        self.highlighter
-            .as_ref()
-            .and_then(|h| complete::lexicon(&h.language))
+    /// The lexicon of the document: by its extension and language (design 023 E6), with the
+    /// user's own lists (E13).
+    fn word_lexicon(&self) -> Option<std::sync::Arc<complete::Lexicon>> {
+        let name = self
+            .doc
+            .path
+            .as_deref()
+            .and_then(|p| p.file_name())
+            .map(|n| n.to_string_lossy().into_owned());
+        let language = self.highlighter.as_ref().map(|h| h.language.as_str());
+        complete::lexicon(&complete::key_for(name.as_deref(), language))
     }
 
     /// Characters that also belong to words in this language (CSS: `-`).
-    fn word_extra(&self) -> &'static str {
-        self.word_lexicon().map_or("", |l| l.extra)
+    fn word_extra(&self) -> String {
+        self.word_lexicon()
+            .map(|l| l.extra.clone())
+            .unwrap_or_default()
     }
 
     /// The words for the prefix at the primary caret (at least `min` characters): line and
@@ -2016,7 +2029,8 @@ impl Session {
             return None;
         }
         let lex = self.word_lexicon();
-        let extra = lex.map_or("", |l| l.extra);
+        let extra = lex.as_ref().map(|l| l.extra.clone()).unwrap_or_default();
+        let extra = extra.as_str();
         let text = self.doc.line_string(p.line);
         let chars: Vec<char> = text.chars().collect();
         let caret = p.ch.min(chars.len());
@@ -2049,7 +2063,7 @@ impl Session {
         let items = complete::candidates(
             &prefix,
             lines.iter().map(|(t, s)| (t.as_str(), *s)),
-            lex.filter(|_| self.words.keywords),
+            lex.as_deref().filter(|_| self.words.keywords),
             extra,
         )
         .into_iter()

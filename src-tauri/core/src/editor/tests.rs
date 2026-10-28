@@ -2106,6 +2106,8 @@ fn typing_filters_the_open_list() {
     let f = run(&mut s, Command::Frame);
     let l: Vec<_> = labels(&f).into_iter().map(|x| x.0).collect();
     assert_eq!(l, ["alpha", "alpine"]);
+    // the list stays below the start of the word (design 023 E14)
+    assert_eq!(f.completion.as_ref().unwrap().cell, 0);
     run(&mut s, Command::Backspace);
     assert_eq!(labels(&run(&mut s, Command::Frame)).len(), 3);
     // a move closes it, as does a character that is no word character
@@ -2136,6 +2138,8 @@ fn auto_mode_opens_from_two_characters() {
     typ(&mut s, " 2+3=");
     let f = run(&mut s, Command::Frame);
     assert_eq!(labels(&f)[0].1, "result");
+    // arithmetic hangs below the caret
+    assert_eq!(f.completion.unwrap().cell, 7);
 }
 
 #[test]

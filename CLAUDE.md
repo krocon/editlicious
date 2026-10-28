@@ -81,6 +81,7 @@ src-tauri/                    Rust (Tauri 2), Crate `editlicious`, Lib `ed_lib`
   src/keymap_file.rs          keymap.json laden
   src/session_file.rs         session.json (offene Dateien, zuletzt benutzt, Tab-Modus)
   src/settings.rs             settings.json (Einstellungen, nachsichtig laden, Werte begrenzen)
+  src/user_words.rs           eigene Wortlisten words/*.txt für die Vervollständigung (023)
   src/export.rs               „Als Video exportieren …“ (Thread, Fortschritt, Abbruch)
   src/mcp.rs                  KI-Steuerung: Brücken-Server (127.0.0.1 + Token) und Werkzeuge auf den Sitzungen
   src/playback.rs             Aufnahmen/Skripte lesen und speichern, Wiedergabe-Thread (Frames über Channel)
@@ -108,7 +109,8 @@ src-tauri/                    Rust (Tauri 2), Crate `editlicious`, Lib `ed_lib`
   tauri.windows.conf.json, windows/open-with.nsh   Windows: „Öffnen mit“ per NSIS-Hook statt Standard-Zuordnung
   linux/editlicious.desktop   .desktop-Vorlage (Exec mit %F, MimeType text/plain)
 docs/                         architecture.md (Entscheidungen, Commands, Abhängigkeiten), legacy-analysis.md,
-                              scripts.md (Aufnahmen und Tipp-Skripte), mcp.md (KI-Steuerung) – für Nutzer
+                              scripts.md (Aufnahmen und Tipp-Skripte), mcp.md (KI-Steuerung),
+                              completion.md (Vervollständigung, eigene Wortlisten) – für Nutzer
 prompts/                      Feature-Prompts (Index README.md), done/
 site/                         Werbe-Webseite (index.html ohne JS) + demo/ (Engine als WebAssembly, pkg/ vom Workflow)
   src-tauri/wasm/             Crate `ed-wasm` (wasm-bindgen-Bindung von ed-core, außerhalb des Workspaces)

@@ -9,6 +9,7 @@
 //! - [`session_file`]  open files, recent files and tab mode between starts (design 004)
 //! - [`app_menu`]      native menu bar of macOS from the frontend's menu model (design 005)
 //! - [`keymap_file`]   the user's shortcut overrides `keymap.json` (design 005)
+//! - [`user_words`]    the user's own word lists for the completion `words/*.txt` (design 023)
 //! - [`about`]         data for the About dialog (version, platform)
 //! - [`export`]        "Export as video…" with the renderer of `ed-video` (design 017)
 //! - [`mcp`]           AI control: bridge server for the MCP sidecar and its tools (design 016)
@@ -28,6 +29,7 @@ pub mod model;
 pub mod playback;
 pub mod session_file;
 pub mod settings;
+pub mod user_words;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

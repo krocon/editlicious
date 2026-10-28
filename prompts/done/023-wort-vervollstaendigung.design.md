@@ -28,8 +28,13 @@
   C#, Go, PHP (+ „PHP Source“), Ruby, Shell (bash, „Shell-Unix-Generic“), CSS, HTML (Elemente und Attribute,
   + Varianten „HTML (…)“). Inhalt: Schlüsselwörter, eingebaute Typen und die häufigsten Bezeichner der
   Standardbibliothek – bewusst kurz (≈ 50–150 Wörter), damit die Liste ruhig bleibt. Handgepflegt statt aus den
-  syntect-Grammatiken gelesen: dort stecken Wörter in Regexen. Keine neue Abhängigkeit. Eigene Wortlisten des
-  Nutzers: Folge-Idee.
+  syntect-Grammatiken gelesen: dort stecken Wörter in Regexen. Keine neue Abhängigkeit.
+  **Nachtrag 28.10.2026 (Marc):** Kotlin, Spring Boot und Angular. syntect kennt weder Kotlin noch TypeScript,
+  deshalb wählt `complete::key_for` das Lexikon zuerst nach Dateiendung (`kt`/`kts` → `kotlin`, `ts`/`tsx`/`mts`/
+  `cts` → `typescript`), sonst nach Sprache; eine von Hand gewählte andere Sprache gewinnt. Lexika setzen sich aus
+  Listen zusammen: `java` = Java + Spring, `kotlin` = Kotlin + Spring, `typescript` = JavaScript + Angular.
+  Spring-Annotationen stehen ohne `@` in der Liste (`@` ist kein Wortzeichen, das Präfix beginnt danach).
+  `.kt` wird mit der Groovy-Grammatik hervorgehoben (nächstverwandte, vorher Klartext).
 - **E7 Einzelkandidat**: Strg+Leertaste mit genau einem Wort-Kandidaten setzt ihn sofort ein (ein Undo-Schritt),
   ohne Liste. Im Auto-Modus nie (dort würde Tippen sonst überraschend Text einfügen).
 - **E8 Weitertippen filtert**: Ist eine Wortliste offen, öffnet `type` mit Wortzeichen bzw. `backspace` sie danach
@@ -39,6 +44,15 @@
 - **E10 Einstellungen** (009): `wordSuggest` (aus), `keywordSuggest` (an) → `configure.words { auto, keywords }`.
 - **E11 Aufnahmen** (015/020 E10): unverändert – `applyCompletion` wird als Auswahl + Einfügen aufgezeichnet; das
   Öffnen/Filtern zeichnet nichts auf.
+- **E13 Eigene Wortlisten** (Nachtrag 28.10.2026): `<Konfigordner>/words/<key>.txt` (Schlüssel wie `key_for`:
+  `java`, `kotlin`, `typescript`, `sql` …, sonst Sprachname klein ohne Leerzeichen, Klartext `text`) und `all.txt`
+  für alle Dateien; gleiches Format wie die eingebauten Listen. Die App liest den Ordner beim Laden der
+  Einstellungen und bei jedem Öffnen einer Datei (`user_words.rs`, höchstens 64 Dateien à 256 KB, 5 000 Wörter je
+  Datei) und gibt ihn an `complete::set_user_words`; ed-core hält die zusammengesetzten Lexika in einem Cache, der
+  bei geänderten Listen verworfen wird. Eigene Wörter kommen nach den eingebauten; der Schalter „Typische Wörter der
+  Sprache“ gilt für beide. Doku für Nutzer: `docs/completion.md`.
+- **E14 Liste am Wortanfang** (Nachtrag 28.10.2026): `Frame.completion.cell` = Zelle des Wortanfangs (Wortliste)
+  bzw. des Carets (Rechnen); die UI hängt die Liste darunter, sie bleibt beim Weitertippen stehen.
 - **E12 UI**: `kindLabel` kennt `word` („Wort“) und `keyword` („Schlüsselwort“); Hinweis `no_suggestions`
   („Keine Vorschläge.“), wenn Strg+Leertaste weder Ausdruck noch Wort findet (ersetzt dort `no_expression`; die
   Aktionen „Ausrechnen“/„Ergebnis kopieren“ melden weiter `no_expression`). Kein neues Bedienelement.

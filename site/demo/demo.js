@@ -183,7 +183,10 @@ function draw() {
     suggestEl.innerHTML = f.completion.items
       .map((it, i) => `<li role="option"${i === 0 ? ' aria-selected="true"' : ''}>${esc(it.label)}</li>`)
       .join('');
-    suggestEl.style.left = `${tl + p.x * cw}px`;
+    // words: below the start of the word (prompt 023), arithmetic: below the caret
+    const cl = f.lines.find((l) => l.line === f.completion.line);
+    const cx = cl && f.completion.cell !== undefined ? px(cl, f.completion.cell).x : p.x * cw;
+    suggestEl.style.left = `${tl + cx}px`;
     suggestEl.style.top = below;
   }
   const c = f.carets[f.primary];

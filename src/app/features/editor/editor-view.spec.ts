@@ -469,6 +469,7 @@ describe('EditorView – arithmetic (prompt 020)', () => {
     api.nextFrame = textFrame(['255/8='], {
       completion: {
         line: 0,
+        cell: 0,
         items: [
           { kind: 'result', label: '31.875' },
           { kind: 'replace', label: '31.875' },
@@ -510,7 +511,7 @@ describe('EditorView – arithmetic (prompt 020)', () => {
   it('a click takes an entry', async () => {
     const api = new FakeEditorApi();
     api.nextFrame = textFrame(['1+1='], {
-      completion: { line: 0, items: [{ kind: 'result', label: '2' }] },
+      completion: { line: 0, cell: 4, items: [{ kind: 'result', label: '2' }] },
     });
     const { el } = await setup(api);
     el.querySelector('[role="option"]')!.dispatchEvent(
@@ -538,11 +539,26 @@ describe('EditorView – word completion (prompt 023)', () => {
     expect(last()).toEqual({ auto: true, keywords: false });
   });
 
+  it('hangs the list below the start of the word, not the caret', async () => {
+    const api = new FakeEditorApi();
+    api.nextFrame = textFrame(['  printA'], {
+      carets: [{ line: 0, cell: 8 }],
+      caretXy: [{ row: 0, x: 8 }],
+      caretCh: 8,
+      completion: { line: 0, cell: 2, items: [{ kind: 'word', label: 'printAll' }] },
+    });
+    const { el } = await setup(api);
+    const list = el.querySelector<HTMLElement>('.completion')!;
+    const input = el.querySelector<HTMLElement>('textarea')!;
+    expect(parseFloat(list.style.left)).toBeLessThan(parseFloat(input.style.left));
+  });
+
   it('names words of the document and of the language', async () => {
     const api = new FakeEditorApi();
     api.nextFrame = textFrame(['pr'], {
       completion: {
         line: 0,
+        cell: 0,
         items: [
           { kind: 'word', label: 'printAll' },
           { kind: 'keyword', label: 'private' },
