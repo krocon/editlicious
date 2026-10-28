@@ -142,6 +142,20 @@ pub fn lexicon(key: &str) -> Option<Arc<Lexicon>> {
     {
         return Some(l.clone());
     }
+    // held while building: new user lists cannot slip in between (same lock order as
+    // `set_user_words`)
+    let user = USER.read().unwrap_or_else(|e| e.into_inner());
+    let lex = Arc::new(build(key, user.as_ref())?);
+    CACHE
+        .write()
+        .unwrap_or_else(|e| e.into_inner())
+        .get_or_insert_with(HashMap::new)
+        .insert(key.to_owned(), lex.clone());
+    Some(lex)
+}
+
+/// The built-in lists of `key`, then the user's `<key>` and `all` lists; `None` = no words.
+fn build(key: &str, user: Option<&HashMap<String, String>>) -> Option<Lexicon> {
     let mut lex = Lexicon::default();
     let mut seen = HashSet::new();
     for part in parts(key) {
@@ -149,23 +163,12 @@ pub fn lexicon(key: &str) -> Option<Arc<Lexicon>> {
             add(&mut lex, src, &mut seen, usize::MAX);
         }
     }
-    if let Some(user) = USER.read().unwrap_or_else(|e| e.into_inner()).as_ref() {
-        for k in [key, "all"] {
-            if let Some(src) = user.get(k) {
-                add(&mut lex, src, &mut seen, USER_WORDS);
-            }
+    for k in [key, "all"] {
+        if let Some(src) = user.and_then(|u| u.get(k)) {
+            add(&mut lex, src, &mut seen, USER_WORDS);
         }
     }
-    if lex.words.is_empty() {
-        return None;
-    }
-    let lex = Arc::new(lex);
-    CACHE
-        .write()
-        .unwrap_or_else(|e| e.into_inner())
-        .get_or_insert_with(HashMap::new)
-        .insert(key.to_owned(), lex.clone());
-    Some(lex)
+    (!lex.words.is_empty()).then_some(lex)
 }
 
 /// Which lexicon a file uses: Kotlin and TypeScript by the extension (syntect knows neither),
@@ -552,29 +555,33 @@ mod tests {
     fn the_users_own_lists() {
         let lists = HashMap::from([
             (
-                "zz-test".to_string(),
+                "zz-own".to_string(),
                 "# word-chars: -\nmy-own-word\nwith space\nzzTop\n".to_string(),
             ),
-            ("all".to_string(), "everywhereWord\n".to_string()),
+            ("all".to_string(), "everywhereWord\npublic\n".to_string()),
         ]);
-        set_user_words(lists);
-        let l = lexicon("zz-test").unwrap();
+        let l = build("zz-own", Some(&lists)).unwrap();
         assert_eq!(l.extra, "-");
-        assert!(l.words.contains(&"my-own-word".to_string()));
-        assert!(!l.words.iter().any(|w| w.contains(' ')));
-        assert!(l.words.contains(&"everywhereWord".to_string()));
-        // built-in lists keep theirs and get "all"
-        let java = lexicon("java").unwrap();
-        assert!(java.words.contains(&"public".to_string()));
-        assert!(java.words.contains(&"everywhereWord".to_string()));
-        set_user_words(HashMap::new());
-        assert!(lexicon("zz-test").is_none());
-        assert!(
-            !lexicon("java")
-                .unwrap()
-                .words
-                .contains(&"everywhereWord".to_string())
+        assert_eq!(
+            l.words,
+            ["my-own-word", "zzTop", "everywhereWord", "public"]
         );
+        // built-in lists keep theirs and get "all" after them, without doubles
+        let java = build("java", Some(&lists)).unwrap();
+        assert_eq!(java.words.iter().filter(|w| *w == "public").count(), 1);
+        assert_eq!(
+            java.words.last().map(String::as_str),
+            Some("everywhereWord")
+        );
+        assert!(build("zz-other", None).is_none());
+        // through the engine (a key no other test uses – the lists are global)
+        set_user_words(HashMap::from([(
+            "zz-global".to_string(),
+            "globalWord\n".to_string(),
+        )]));
+        assert_eq!(lexicon("zz-global").unwrap().words, ["globalWord"]);
+        set_user_words(HashMap::new());
+        assert!(lexicon("zz-global").is_none());
     }
 
     #[test]
