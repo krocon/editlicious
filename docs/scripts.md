@@ -78,3 +78,23 @@ boxes – never a random system font. `.mp4` = H.264 (`-preset veryfast`, `--bes
 ProRes, `.webm` = VP9.
 
 "Save the last recording as a script" turns a recording into such a script – a good start for editing by hand.
+
+## Scripts in a web page (videos made from HTML)
+
+The WebAssembly build of the engine (`site/demo/pkg`) can play scripts on a virtual clock inside a page – for
+videos rendered from HTML frame by frame (e.g. HyperFrames), where the editor sits next to other animated content:
+
+```js
+import init, { Player, scriptDuration } from './pkg/ed_wasm.js';
+await init();
+const p = new Player('.card-title {\n}\n', 'CSS');
+p.setup(JSON.stringify({ type: 'resize', lines: 14, cols: 40 })); // holds after every jump back
+const typing = 'tempo human cpm=300 seed=3\ngoto 2:1\ntype "  white-space: nowrap;\\n"';
+p.add(typing, 12_000 - scriptDuration(typing));                   // ends exactly at 12 s
+const frame = JSON.parse(p.seek(11_500));                         // the same picture for every seek
+```
+
+`seek(ms)` replays the steps up to that moment (backwards from the start text), so frames can be asked for in any
+order. `add` never lets a script start before the one before ends. `events()` lists the steps with their time and kind
+(`char`, `space`, `enter`, `delete`, `move`, `keys`) – for key sounds; `finalText()` is the text after all scripts.
+`type @file` is not available in the page.
