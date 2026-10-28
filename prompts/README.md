@@ -46,10 +46,11 @@ Kritischer Pfad zum ersten nutzbaren Editor: **001 → 002 → 003 → 004**. Da
 | 019 | [019-marker-ausbau-html.md](done/019-marker-ausbau-html.md) | Wort-Marker im „Als HTML kopieren“ (deckende Farben für E-Mail), Auswahl markieren, feste Farbe 1…0, nächstes/voriges Vorkommen, Anzahl in der Statusleiste, Marker in der Sitzung | 007, 010 | S–M | ✅ 26.10.2026 |
 | 020 | [020-rechnen-tooltips-autocomplete.md](done/020-rechnen-tooltips-autocomplete.md) | Math-Parser in Rust (Vorlage `java-k-editor/MathParser`), Ergebnis als Hinweis am Caret und als Vorschlag (`255/8=` → `31.875`); allgemeine Bausteine Tooltip- und Vorschlags-Anbieter | 005, 009, 010 | M–L | ✅ 26.10.2026 |
 | 021 | [021-more-themes.md](done/021-more-themes.md) | Neun weitere Farbschemata (inspiriert von gruvbox light hard, Liquid Glass light, Chalkdraw paper, One Dark, Moonlight, gruvbox material dark, Cozy Latte dark, Russian Hacker amber, Graphite Pop), Reihenfolge hell → dunkel, Farbschema-Auswahl mit Vorschaubildern | 008, 009 | M | ✅ 26.10.2026 |
+| 023 | [023-wort-vervollstaendigung.md](done/023-wort-vervollstaendigung.md) | Wort-Vervollständigung (Strg+Leertaste) aus den Wörtern um den Caret und einem Lexikon typischer Wörter je Sprache (Java, SQL, Python, JS/TS, Rust, C/C++, C#, Go, PHP, Ruby, Shell, CSS, HTML); Filtern beim Tippen, optional automatisch ab 2 Zeichen | 008, 009, 020 | S–M | ✅ 28.10.2026 |
 
 ## Folge-Ideen (noch ohne Prompt)
 
-- Mehrere Cursor, Code-Faltung (legacy: Fold Selection / Unfold All), Zen Coding / Emmet, Autovervollständigung (Wörter; Grundlage aus 020).
+- Mehrere Cursor, Code-Faltung (legacy: Fold Selection / Unfold All), Zen Coding / Emmet, eigene Wortlisten für die Vervollständigung (`words/<sprache>.txt` im Konfigurationsordner, Ergänzung zu 023).
 - Log-Modus (legacy `Todos.java`): Filter nach Level, Auto-Reload, „nur zeigen/ignorieren“ mit Regex.
 - Textvergleich (Diff) zweier Dateien.
 - Hex-Ansicht für Binärdateien.

@@ -81,6 +81,7 @@ export type Command =
       colors?: boolean;
       expandWeights?: Record<string, number>;
       math?: MathConfig;
+      words?: WordConfig;
     }
   | { type: 'setLineEnding'; lineEnding: LineEnding }
   | {
@@ -153,6 +154,14 @@ export type Command =
   | { type: 'evaluate' }
   | { type: 'copyResult' };
 
+/** Settings of the word completion (`model::WordConfig`, prompt 023). */
+export interface WordConfig {
+  /** Open the list while typing (from two characters). */
+  auto: boolean;
+  /** Offer the words of the language's lexicon. */
+  keywords: boolean;
+}
+
 /** Settings of the arithmetic (`model::MathConfig`, prompt 020). */
 export interface MathConfig {
   hints: boolean;
@@ -174,7 +183,7 @@ export interface MathHint {
 }
 
 export interface CompletionItem {
-  kind: 'result' | 'replace' | 'rounded' | 'hex';
+  kind: 'result' | 'replace' | 'rounded' | 'hex' | 'word' | 'keyword';
   label: string;
 }
 

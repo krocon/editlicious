@@ -252,6 +252,7 @@ fn backspace_removes_a_soft_tab() {
             colors: None,
             expand_weights: None,
             math: None,
+            words: None,
         },
     );
     put(&mut s, 0, 0);
@@ -288,6 +289,7 @@ fn indent_and_outdent_lines() {
             colors: None,
             expand_weights: None,
             math: None,
+            words: None,
         },
     );
     s.set_cursors(vec![Cursor {
@@ -768,6 +770,7 @@ fn whitespace_commands() {
             colors: None,
             expand_weights: None,
             math: None,
+            words: None,
         },
     );
     run(&mut s, Command::ConvertIndentation { spaces: true });
@@ -981,6 +984,7 @@ fn configure_detect_follows_the_file() {
             colors: None,
             expand_weights: None,
             math: None,
+            words: None,
         },
     );
     assert!(f.insert_spaces);
@@ -997,6 +1001,7 @@ fn configure_detect_follows_the_file() {
             colors: None,
             expand_weights: None,
             math: None,
+            words: None,
         },
     );
     assert!(!f.insert_spaces);
@@ -1013,6 +1018,7 @@ fn configure_detect_follows_the_file() {
             colors: None,
             expand_weights: None,
             math: None,
+            words: None,
         },
     );
     assert!(!f.insert_spaces);
@@ -1032,6 +1038,7 @@ fn frame_lines_carry_their_indentation() {
             colors: None,
             expand_weights: None,
             math: None,
+            words: None,
         },
     );
     let f = run(&mut s, Command::Frame);
@@ -1055,6 +1062,7 @@ fn wrapped(text: &str, lines: f64, cols: f64) -> Session {
             colors: None,
             expand_weights: None,
             math: None,
+            words: None,
         },
     );
     s
@@ -1173,6 +1181,7 @@ fn wrap_scrolls_and_clicks_by_rows() {
             colors: None,
             expand_weights: None,
             math: None,
+            words: None,
         },
     );
     let f = run(&mut s, Command::Frame);
@@ -1320,6 +1329,7 @@ fn measure_wrap_and_line_endings() {
             colors: None,
             expand_weights: None,
             math: None,
+            words: None,
         },
     );
     let t = Instant::now();
@@ -1372,6 +1382,7 @@ fn wrap_width_follows_the_view() {
             colors: None,
             expand_weights: None,
             math: None,
+            words: None,
         },
         &mut clip,
     )
@@ -1506,6 +1517,7 @@ fn colour_swatches_and_converting() {
             colors: Some(false),
             expand_weights: None,
             math: None,
+            words: None,
         },
     );
     assert!(f.lines.iter().all(|l| l.colors.is_empty()));
@@ -1549,6 +1561,7 @@ fn measure_colours_per_frame() {
             colors: Some(false),
             expand_weights: None,
             math: None,
+            words: None,
         },
     );
     run(
@@ -1712,6 +1725,7 @@ fn custom_weights_from_the_settings() {
             colors: None,
             expand_weights: Some(w),
             math: None,
+            words: None,
         },
     );
     assert_eq!(dbl(&mut s, 0, 0), "a");
@@ -1939,11 +1953,11 @@ fn complete_evaluate_and_copy_result() {
     assert_eq!(caret(&s), (0, 8));
     run(&mut s, Command::Undo);
     assert_eq!(text(&s), "a 255/8 b");
-    // nothing there
+    // nothing there: neither arithmetic nor words (design 023 E12)
     put(&mut s, 0, 1);
     assert_eq!(
         run(&mut s, Command::Complete).notice.as_deref(),
-        Some("no_expression")
+        Some("no_suggestions")
     );
     assert_eq!(
         run(&mut s, Command::Evaluate).notice.as_deref(),
@@ -1965,6 +1979,7 @@ fn complete_evaluate_and_copy_result() {
                 decimals: Some(1),
                 comma: true,
             }),
+            words: None,
         },
     );
     put(&mut s, 0, 7);
@@ -2005,4 +2020,205 @@ fn arithmetic_is_recorded_as_the_edit_it_makes() {
     assert!(matches!(cmds[1], Command::Select { .. }));
     assert_eq!(cmds[2], &Command::Insert { text: "9".into() });
     assert_eq!(cmds.len(), 3);
+}
+
+// ---------------------------------------------------------------- word completion (prompt 023)
+
+fn labels(f: &Frame) -> Vec<(String, String)> {
+    f.completion
+        .as_ref()
+        .map(|c| {
+            c.items
+                .iter()
+                .map(|i| (i.label.clone(), i.kind.clone()))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn words_config(auto: bool, keywords: bool) -> Command {
+    Command::Configure {
+        tab_width: None,
+        insert_spaces: None,
+        detect: false,
+        wrap: None,
+        colors: None,
+        expand_weights: None,
+        math: None,
+        words: Some(model::WordConfig { auto, keywords }),
+    }
+}
+
+#[test]
+fn completes_words_of_the_document() {
+    let mut s = session("printLine(x);\nprintAll();\nint pri");
+    put(&mut s, 2, 7);
+    let f = run(&mut s, Command::Complete);
+    // nearest line first
+    assert_eq!(
+        labels(&f),
+        [
+            ("printAll".to_string(), "word".to_string()),
+            ("printLine".to_string(), "word".to_string())
+        ]
+    );
+    run(&mut s, Command::ApplyCompletion { index: 1 });
+    assert_eq!(text(&s), "printLine(x);\nprintAll();\nint printLine");
+    assert_eq!(caret(&s), (2, 13));
+    run(&mut s, Command::Undo);
+    assert_eq!(text(&s), "printLine(x);\nprintAll();\nint pri");
+}
+
+#[test]
+fn a_single_word_goes_in_right_away_and_is_recorded() {
+    let mut s = session("configuration\ncon");
+    put(&mut s, 1, 3);
+    s.start_recording("test");
+    let f = run(&mut s, Command::Complete);
+    assert!(f.completion.is_none());
+    assert_eq!(text(&s), "configuration\nconfiguration");
+    assert_eq!(caret(&s), (1, 13));
+    let rec = s.stop_recording().unwrap();
+    let cmds: Vec<_> = rec.steps.iter().map(|s| &s.cmd).collect();
+    assert_eq!(cmds.len(), 2);
+    assert!(matches!(cmds[0], Command::Select { .. }));
+    assert_eq!(
+        cmds[1],
+        &Command::Insert {
+            text: "configuration".into()
+        }
+    );
+    // nothing to complete: a notice, no change
+    let mut s = session("zzz qq");
+    put(&mut s, 0, 3);
+    let f = run(&mut s, Command::Complete);
+    assert_eq!(f.notice.as_deref(), Some("no_suggestions"));
+    assert_eq!(text(&s), "zzz qq");
+}
+
+#[test]
+fn typing_filters_the_open_list() {
+    let mut s = session("alpha alpine album\nal");
+    put(&mut s, 1, 2);
+    let f = run(&mut s, Command::Complete);
+    assert_eq!(labels(&f).len(), 3);
+    typ(&mut s, "p");
+    let f = run(&mut s, Command::Frame);
+    let l: Vec<_> = labels(&f).into_iter().map(|x| x.0).collect();
+    assert_eq!(l, ["alpha", "alpine"]);
+    run(&mut s, Command::Backspace);
+    assert_eq!(labels(&run(&mut s, Command::Frame)).len(), 3);
+    // a move closes it, as does a character that is no word character
+    mv(&mut s, Motion::Left);
+    assert!(run(&mut s, Command::Frame).completion.is_none());
+    put(&mut s, 1, 2);
+    run(&mut s, Command::Complete);
+    typ(&mut s, " ");
+    assert!(run(&mut s, Command::Frame).completion.is_none());
+    // without an open list typing opens nothing (auto is off by default)
+    typ(&mut s, "al");
+    assert!(run(&mut s, Command::Frame).completion.is_none());
+}
+
+#[test]
+fn auto_mode_opens_from_two_characters() {
+    let mut s = session("visible value\n");
+    run(&mut s, words_config(true, true));
+    put(&mut s, 1, 0);
+    typ(&mut s, "v");
+    assert!(run(&mut s, Command::Frame).completion.is_none());
+    typ(&mut s, "i");
+    let f = run(&mut s, Command::Frame);
+    assert_eq!(labels(&f), [("visible".to_string(), "word".to_string())]);
+    // a single candidate is never put in by itself while typing
+    assert_eq!(text(&s), "visible value\nvi");
+    // arithmetic still wins after "="
+    typ(&mut s, " 2+3=");
+    let f = run(&mut s, Command::Frame);
+    assert_eq!(labels(&f)[0].1, "result");
+}
+
+#[test]
+fn lexicon_of_the_language() {
+    let mut s = session("class A {\n  pr\n}");
+    run(
+        &mut s,
+        Command::SetLanguage {
+            name: Some("Java".into()),
+        },
+    );
+    put(&mut s, 1, 4);
+    let f = run(&mut s, Command::Complete);
+    let l = labels(&f);
+    assert!(l.contains(&("private".to_string(), "keyword".to_string())));
+    assert!(l.contains(&("println".to_string(), "keyword".to_string())));
+    run(&mut s, Command::CloseCompletion);
+    // switched off: nothing left
+    run(&mut s, words_config(false, false));
+    let f = run(&mut s, Command::Complete);
+    assert!(f.completion.is_none());
+    assert_eq!(f.notice.as_deref(), Some("no_suggestions"));
+    // SQL: the spelling follows the prefix, a single keyword goes in right away
+    let mut s = session("sel");
+    run(
+        &mut s,
+        Command::SetLanguage {
+            name: Some("SQL".into()),
+        },
+    );
+    put(&mut s, 0, 3);
+    run(&mut s, Command::Complete);
+    assert_eq!(text(&s), "select");
+    // CSS: words with "-"
+    let mut s = session("a { background-co }");
+    run(
+        &mut s,
+        Command::SetLanguage {
+            name: Some("CSS".into()),
+        },
+    );
+    put(&mut s, 0, 17);
+    run(&mut s, Command::Complete);
+    assert_eq!(text(&s), "a { background-color }");
+}
+
+#[test]
+fn several_cursors_selections_and_long_lines_get_no_words() {
+    let mut s = session("alpha\nal\nal");
+    s.set_cursors(vec![
+        Cursor::caret(Pos::new(1, 2)),
+        Cursor::caret(Pos::new(2, 2)),
+    ]);
+    assert_eq!(
+        run(&mut s, Command::Complete).notice.as_deref(),
+        Some("no_suggestions")
+    );
+    let long = format!("alpha\n{} al", "x".repeat(2_000_000));
+    let mut s = session(&long);
+    put(&mut s, 1, 2_000_003);
+    assert!(run(&mut s, Command::Complete).completion.is_none());
+}
+
+#[test]
+fn words_in_a_big_file_cost_a_bounded_window() {
+    // 200 000 lines; the word far away is not looked at, the near one is
+    let mut t = String::from("faraway\n");
+    for _ in 0..200_000 {
+        t.push_str("lorem ipsum dolor sit amet\n");
+    }
+    t.push_str("nearby\nn");
+    let mut s = session(&t);
+    let last = s.doc.line_count() - 1;
+    put(&mut s, last, 1);
+    let start = std::time::Instant::now();
+    run(&mut s, Command::Complete);
+    assert!(start.elapsed().as_millis() < 2_000);
+    assert!(s.doc.line_string(last).starts_with("nearby"));
+    let far = format!("{}\nf", t.trim_end_matches("nearby\nn"));
+    let mut s = session(&far);
+    put(&mut s, last, 1);
+    assert_eq!(
+        run(&mut s, Command::Complete).notice.as_deref(),
+        Some("no_suggestions")
+    );
 }

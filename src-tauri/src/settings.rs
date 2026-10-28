@@ -67,6 +67,10 @@ pub struct Settings {
     pub math_decimals: i32,
     /// Decimal separator of results: `auto` (by language), `point`, `comma`.
     pub decimal_separator: String,
+    /// Word suggestions open while typing, from two characters (prompt 023) – off: calm.
+    pub word_suggest: bool,
+    /// Suggestions include typical words of the language (prompt 023).
+    pub keyword_suggest: bool,
 }
 
 impl Default for Settings {
@@ -97,6 +101,8 @@ impl Default for Settings {
             math_suggest: true,
             math_decimals: -1,
             decimal_separator: "auto".into(),
+            word_suggest: false,
+            keyword_suggest: true,
         }
     }
 }

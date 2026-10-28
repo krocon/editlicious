@@ -275,6 +275,10 @@ export class EditorView {
         return this.texts.replaceExpression;
       case 'rounded':
         return this.texts.rounded;
+      case 'word':
+        return this.texts.wordKind;
+      case 'keyword':
+        return this.texts.keywordKind;
       default:
         return this.texts.hexadecimal;
     }
@@ -397,6 +401,7 @@ export class EditorView {
               decimals: s.mathDecimals < 0 ? null : s.mathDecimals,
               comma,
             },
+            words: { auto: s.wordSuggest, keywords: s.keywordSuggest },
           }),
       );
     });

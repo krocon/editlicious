@@ -17,7 +17,7 @@ belegt. ✅ = vorhanden, ◐ = anders gelöst, ✗ = fehlt (→ Folge-Ideen unte
 | Undo / Redo (> 200 Schritte) | Ctrl+Z / Ctrl+Shift+Z | `edit.undo/redo` (10 000 Schritte, 256 MB) | gleich (+Ctrl+Y) | ✅ | Rust `shared_cases`, `save_marks_clean_and_undo_back_is_dirty` |
 | Upper and Lowercase | Ctrl+U | `edit.toggleCase` (+ upper/lower/title) | Ctrl+U | ✅ | Rust `case_changes`, `case_of_selection_and_word` |
 | Sort Lines Asc/Desc | Ctrl+Shift+Alt+A/D | `edit.sortAsc/Desc` (+ numerisch, ohne Duplikate) | gleich | ✅ | Rust `natural_order`, `numeric_descending_unique`, `sort_selection_or_document` |
-| Auto Completion | Ctrl+Space | – | – | ✗ | – |
+| Auto Completion | Ctrl+Space | `edit.complete`: Wörter des Dokuments um den Caret + Lexikon der Sprache, Rechenvorschläge haben Vorrang (023) | Ctrl+Space / ⌥Esc | ✅ | Rust `completes_words_of_the_document`, `lexicon_of_the_language`, `complete::tests`; editor-view.spec „word completion“ |
 | Zen Coding | Ctrl+Alt+Z | – (bewusst nicht) | – | ✗ | – |
 | Change Tab Length 2/4/6/8 | – | Einstellungen „Tabweite“ (2/3/4/6/8), „wie die Datei“ | Ctrl+, | ✅ | Rust `configure_detect_follows_the_file`; settings-dialog.spec |
 | Mark Text / Clear All Markers (10 Farben) | Ctrl+Shift+F7 / F8 | `edit.toggleMarker` / `edit.clearMarkers` (10 Farben, in der Scrollleiste) | gleich | ✅ | Rust `markers_colour_words`; editor-view.spec „draws word markers …“ |
@@ -49,7 +49,7 @@ Zeilenenden umwandeln, Sitzung wiederherstellen, Änderungen von außen, Deutsch
 
 1. **Code-Faltung** (Fold Selection / Unfold All) – in der Engine als ausgeblendete Zeilenbereiche; Frames
    überspringen sie. Mittel.
-2. **Autovervollständigung** aus Wörtern des Dokuments (Ctrl+Space) – Wortindex der sichtbaren Umgebung. Klein.
+2. ~~**Autovervollständigung** aus Wörtern des Dokuments (Ctrl+Space)~~ – erledigt in 023 (mit Sprach-Lexikon).
 3. **Ein- und Ausblenden mit Übergang** (Ctrl+Shift+F1) – reine Oberfläche. Klein.
 4. **Farbschema importieren** (TextMate `.tmTheme` statt Webmatrix) → `--syn-*`-Tokens. Mittel.
 5. **Update-Prüfung** (tauri-plugin-updater) – nach Signierung, s. `docs/release.md`.

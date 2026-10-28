@@ -218,6 +218,8 @@ function keyCommand(e) {
     return { type: 'applyCompletion', index: 0 };
   }
   if (frame?.completion && k === 'Escape') return { type: 'closeCompletion' };
+  // suggestions: arithmetic or words (prompts 020, 023)
+  if (e.ctrlKey && k === ' ') return { type: 'complete' };
   if (MOTION[k]) {
     let to = MOTION[k];
     if (mod && (k === 'Home' || k === 'End')) to = k === 'Home' ? 'docStart' : 'docEnd';

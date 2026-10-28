@@ -41,6 +41,9 @@ pub enum Command {
         /// Arithmetic hints and suggestions (prompt 020); `None` = unchanged.
         #[serde(default)]
         math: Option<MathConfig>,
+        /// Word completion (prompt 023); `None` = unchanged.
+        #[serde(default)]
+        words: Option<WordConfig>,
     },
     Scroll {
         lines: f64,
@@ -220,6 +223,16 @@ pub struct MathConfig {
     pub comma: bool,
 }
 
+/// Settings of the word completion (prompt 023).
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WordConfig {
+    /// Open the list while typing (from two characters).
+    pub auto: bool,
+    /// Offer the words of the language's lexicon.
+    pub keywords: bool,
+}
+
 /// The arithmetic hint at the caret (prompt 020): where, the expression, the result.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -236,7 +249,7 @@ pub struct MathHint {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CompletionItem {
-    /// `result`, `replace`, `rounded`, `hex`.
+    /// `result`, `replace`, `rounded`, `hex` (prompt 020), `word`, `keyword` (prompt 023).
     pub kind: String,
     pub label: String,
 }

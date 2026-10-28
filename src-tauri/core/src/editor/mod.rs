@@ -3,6 +3,7 @@
 //! renders (Marc, 26.10.2026; design 002 E13).
 
 pub mod colors;
+pub mod complete;
 pub mod expand;
 pub mod hints;
 pub mod layout;
@@ -139,6 +140,8 @@ pub struct Session {
     /// Arithmetic hints and the open suggestion list (prompt 020).
     math: hints::MathOptions,
     completion: Option<OpenCompletion>,
+    /// Word completion (prompt 023).
+    words: complete::WordOptions,
     /// Colour swatches on (design 018) and whether one ever showed (the gutter column stays).
     colors: bool,
     color_column: bool,
@@ -148,12 +151,14 @@ pub struct Session {
     last_recording: Option<recording::Recording>,
 }
 
-/// Suggestions shown for a line (prompt 020).
+/// Suggestions shown for a line (prompt 020): arithmetic or words (prompt 023).
 #[derive(Debug, Clone)]
 struct OpenCompletion {
     line: usize,
     items: Vec<hints::Suggestion>,
     revision: u64,
+    /// Word suggestions: typing filters them (design 023 E8).
+    words: bool,
 }
 
 /// The steps of a progressive selection and the current one (prompt 018a).
@@ -199,6 +204,7 @@ impl Session {
             weights: expand::Weights::default(),
             math: hints::MathOptions::default(),
             completion: None,
+            words: complete::WordOptions::default(),
             recorder: None,
             last_recording: None,
         }
@@ -294,9 +300,20 @@ impl Session {
         Ok(frame)
     }
 
-    /// The change `ApplyCompletion`/`Evaluate` will make: line, characters `from..to`, text.
+    /// The change `ApplyCompletion`/`Evaluate` (or `Complete` with a single word, design 023
+    /// E7) will make: line, characters `from..to`, text.
     fn planned_math_edit(&self, cmd: &Command) -> Option<(usize, usize, usize, String)> {
         match cmd {
+            Command::Complete => {
+                if self.math_suggestions().is_some() {
+                    return None;
+                }
+                let (line, items) = self.word_completion(1)?;
+                let [s] = items.as_slice() else {
+                    return None;
+                };
+                Some((line, s.from, s.to, s.text.clone()))
+            }
             Command::ApplyCompletion { index } => {
                 let c = self.completion.as_ref()?;
                 let s = c.items.get(*index)?;
@@ -373,6 +390,12 @@ impl Session {
         let mut keep_completion =
             cmd.is_view_only() || matches!(cmd, Command::Complete | Command::CloseCompletion);
         let typed_eq = matches!(&cmd, Command::Type { text } if text.ends_with('='));
+        // word suggestions follow typing (design 023 E8, E9)
+        let was_words = self.completion.as_ref().is_some_and(|c| c.words);
+        let extra = self.word_extra();
+        let typed_word = matches!(&cmd, Command::Type { text }
+            if !text.is_empty() && text.chars().all(|c| complete::is_word(c, extra)));
+        let backspace = matches!(cmd, Command::Backspace);
         match cmd {
             Command::Frame => reveal = Reveal::No,
             Command::Resize { lines, cols } => {
@@ -389,7 +412,14 @@ impl Session {
                 colors,
                 expand_weights,
                 math,
+                words,
             } => {
+                if let Some(w) = words {
+                    self.words = complete::WordOptions {
+                        auto: w.auto,
+                        keywords: w.keywords,
+                    };
+                }
                 if let Some(m) = math {
                     self.math = hints::MathOptions {
                         hints: m.hints,
@@ -642,8 +672,9 @@ impl Session {
             }
             Command::ConvertColor => self.convert_color()?,
             Command::Complete => {
-                self.open_completion(true);
-                reveal = Reveal::No;
+                if !self.complete_manually()? {
+                    reveal = Reveal::No;
+                }
             }
             Command::ApplyCompletion { index } => self.apply_completion(index)?,
             Command::CloseCompletion => {
@@ -701,6 +732,19 @@ impl Session {
         if typed_eq && self.math.suggest {
             // "255/8 =" – the result is offered right away (prompt 020)
             self.open_completion(false);
+            keep_completion = self.completion.is_some();
+        } else if (was_words && (typed_word || backspace)) || (typed_word && self.words.auto) {
+            // filter the open list, or open it from two characters on
+            let min = if was_words { 1 } else { complete::AUTO_MIN };
+            self.completion = self
+                .word_completion(min)
+                .filter(|(_, items)| !items.is_empty())
+                .map(|(line, items)| OpenCompletion {
+                    line,
+                    items,
+                    revision: self.doc.revision(),
+                    words: true,
+                });
             keep_completion = self.completion.is_some();
         }
         if !keep_completion {
@@ -1900,28 +1944,124 @@ impl Session {
         })
     }
 
-    /// Opens the suggestions for the expression at the caret; `notice` when there is none.
+    /// The suggestions for the expression at the caret, `None` = no expression or none.
+    fn math_suggestions(&self) -> Option<(usize, Vec<hints::Suggestion>)> {
+        let (line, f) = self.math_at_caret()?;
+        let items = hints::suggestions(&f, self.primary().head.ch, &self.math);
+        (!items.is_empty()).then_some((line, items))
+    }
+
+    /// Opens the suggestions for the expression at the caret (after a typed `=`).
     fn open_completion(&mut self, notice: bool) {
-        let found = self.math_at_caret();
-        let items = found
-            .as_ref()
-            .map(|(_, f)| hints::suggestions(f, self.primary().head.ch, &self.math))
-            .unwrap_or_default();
-        match found {
-            Some((line, _)) if !items.is_empty() => {
+        self.completion = self.math_suggestions().map(|(line, items)| OpenCompletion {
+            line,
+            items,
+            revision: self.doc.revision(),
+            words: false,
+        });
+        if self.completion.is_none() && notice {
+            self.notice = Some("no_expression".into());
+        }
+    }
+
+    /// "Show suggestions": the arithmetic at the caret first (design 023 E2), else the words; a
+    /// single word goes in right away (E7). `true` = the text changed.
+    fn complete_manually(&mut self) -> Result<bool, FsError> {
+        self.open_completion(false);
+        if self.completion.is_some() {
+            return Ok(false);
+        }
+        match self.word_completion(1) {
+            Some((line, items)) if items.len() == 1 => {
+                let s = &items[0];
+                self.replace_in_line(line, s.from, s.to, &s.text)?;
+                Ok(true)
+            }
+            Some((line, items)) if !items.is_empty() => {
                 self.completion = Some(OpenCompletion {
                     line,
                     items,
                     revision: self.doc.revision(),
+                    words: true,
                 });
+                Ok(false)
             }
             _ => {
-                self.completion = None;
-                if notice {
-                    self.notice = Some("no_expression".into());
-                }
+                self.notice = Some("no_suggestions".into());
+                Ok(false)
             }
         }
+    }
+
+    /// The lexicon of the document's language (when switched on).
+    fn word_lexicon(&self) -> Option<&'static complete::Lexicon> {
+        self.highlighter
+            .as_ref()
+            .and_then(|h| complete::lexicon(&h.language))
+    }
+
+    /// Characters that also belong to words in this language (CSS: `-`).
+    fn word_extra(&self) -> &'static str {
+        self.word_lexicon().map_or("", |l| l.extra)
+    }
+
+    /// The words for the prefix at the primary caret (at least `min` characters): line and
+    /// suggestions; `None` = no prefix (one caret without selection, no long line).
+    fn word_completion(&self, min: usize) -> Option<(usize, Vec<hints::Suggestion>)> {
+        if self.cursors.len() != 1 || !self.primary().is_empty() {
+            return None;
+        }
+        let p = self.primary().head;
+        if self.doc.is_long(p.line) {
+            return None;
+        }
+        let lex = self.word_lexicon();
+        let extra = lex.map_or("", |l| l.extra);
+        let text = self.doc.line_string(p.line);
+        let chars: Vec<char> = text.chars().collect();
+        let caret = p.ch.min(chars.len());
+        let start = complete::prefix_start(&chars, caret, extra)?;
+        if caret - start < min {
+            return None;
+        }
+        let prefix: String = chars[start..caret].iter().collect();
+        let mut end = caret;
+        while end < chars.len() && complete::is_word(chars[end], extra) {
+            end += 1;
+        }
+        // the lines around the caret, nearest first, bounded (design 023 E4)
+        let mut budget = complete::BUDGET_CHARS;
+        let lines: Vec<(String, Option<(usize, usize)>)> =
+            complete::nearest_lines(p.line, self.doc.line_count())
+                .map_while(|l| {
+                    if budget == 0 {
+                        return None;
+                    }
+                    let (t, skip) = if l == p.line {
+                        (text.clone(), Some((start, end)))
+                    } else {
+                        (self.doc.line_slice(l, 0, complete::LINE_CHARS), None)
+                    };
+                    budget = budget.saturating_sub(t.len().max(1));
+                    Some((t, skip))
+                })
+                .collect();
+        let items = complete::candidates(
+            &prefix,
+            lines.iter().map(|(t, s)| (t.as_str(), *s)),
+            lex.filter(|_| self.words.keywords),
+            extra,
+        )
+        .into_iter()
+        .map(|c| hints::Suggestion {
+            kind: if c.keyword { "keyword" } else { "word" },
+            label: c.word.clone(),
+            from: start,
+            to: caret,
+            text: c.word,
+        })
+        .collect();
+        Some((p.line, items))
     }
 
     fn apply_completion(&mut self, index: usize) -> Result<(), FsError> {

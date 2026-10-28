@@ -94,7 +94,9 @@ src-tauri/                    Rust (Tauri 2), Crate `editlicious`, Lib `ed_lib`
                               ops (Sortieren, Groß/klein, Zeilen, Blockauswahl, mehrere Cursor, Marker),
                               recording (*.edrec.jsonl), script (*.edscript), playback (Zeitachse, Tempo),
                               colors (Farbwerte erkennen/umrechnen), expand (Doppelklick-Auswahl wächst),
-                              hints (Rechenausdruck am Caret, Hinweis und Vorschläge)
+                              hints (Rechenausdruck am Caret, Hinweis und Vorschläge),
+                              complete (Wort-Vervollständigung: Präfix, Kandidaten, Lexikon)
+    lexicon/*.txt             Wortlisten je Sprache für die Vervollständigung (023)
     src/math.rs               Rechen-Parser (Vorlage MathParser): Rangfolge, Funktionen, Zahlenformate
     testdata/document.cases.json  datengetriebene Bearbeitungsfälle; math.cases.json Rechenfälle
   mcp/                        Crate `ed-mcp` (Workspace): MCP-Sidecar `editlicious-mcp` (stdio), Tools, Brücke

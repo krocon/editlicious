@@ -193,6 +193,26 @@
     </fieldset>
 
     <fieldset>
+      <legend>{{ t.completion }}</legend>
+      <label class="check">
+        <input
+          type="checkbox"
+          [checked]="s.wordSuggest"
+          (change)="set('wordSuggest', checked($event))"
+        />
+        {{ t.wordSuggest }}
+      </label>
+      <label class="check">
+        <input
+          type="checkbox"
+          [checked]="s.keywordSuggest"
+          (change)="set('keywordSuggest', checked($event))"
+        />
+        {{ t.keywordSuggest }}
+      </label>
+    </fieldset>
+
+    <fieldset>
       <legend>{{ t.appearance }}</legend>
       <label class="row" for="set-scheme">
         <span>{{ t.scheme }}</span>

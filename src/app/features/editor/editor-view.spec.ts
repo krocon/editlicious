@@ -83,6 +83,7 @@ describe('EditorView', () => {
       colors: true,
       expandWeights: {},
       math: { hints: true, suggest: true, decimals: null, comma: false },
+      words: { auto: false, keywords: true },
     });
     // one guide per indent step, none at the left edge
     expect(el.querySelectorAll('.row')[2].querySelectorAll('.guide').length).toBe(1);
@@ -102,6 +103,7 @@ describe('EditorView', () => {
       colors: true,
       expandWeights: {},
       math: { hints: true, suggest: true, decimals: null, comma: false },
+      words: { auto: false, keywords: true },
     });
     settings.update({ lineNumbers: 'off', indentGuides: false });
     await fixture.whenStable();
@@ -516,5 +518,43 @@ describe('EditorView – arithmetic (prompt 020)', () => {
     );
     await flush();
     expect(api.sent('applyCompletion')).toEqual([{ type: 'applyCompletion', index: 0 }]);
+  });
+});
+
+describe('EditorView – word completion (prompt 023)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    cleanups.splice(0).forEach((f) => f());
+  });
+
+  it('configures the engine from the settings', async () => {
+    const { api, fixture } = await setup();
+    const last = () =>
+      (api.sent('configure').at(-1) as Extract<Command, { type: 'configure' }>).words;
+    expect(last()).toEqual({ auto: false, keywords: true });
+    TestBed.inject(SettingsStore).update({ wordSuggest: true, keywordSuggest: false });
+    await fixture.whenStable();
+    await flush();
+    expect(last()).toEqual({ auto: true, keywords: false });
+  });
+
+  it('names words of the document and of the language', async () => {
+    const api = new FakeEditorApi();
+    api.nextFrame = textFrame(['pr'], {
+      completion: {
+        line: 0,
+        items: [
+          { kind: 'word', label: 'printAll' },
+          { kind: 'keyword', label: 'private' },
+        ],
+      },
+    });
+    const { el } = await setup(api);
+    const options = [...el.querySelectorAll('[role="option"]')];
+    expect(options.map((o) => o.querySelector('.label')?.textContent)).toEqual([
+      'printAll',
+      'private',
+    ]);
+    expect(options.map((o) => o.querySelector('.kind')?.textContent)).toEqual(['word', 'keyword']);
   });
 });

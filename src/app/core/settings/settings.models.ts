@@ -55,6 +55,10 @@ export interface Settings {
   mathDecimals: number;
   /** `auto` = by the UI language. */
   decimalSeparator: 'auto' | 'point' | 'comma';
+  /** Word suggestions open while typing, from two characters (prompt 023). */
+  wordSuggest: boolean;
+  /** Suggestions include typical words of the language (prompt 023). */
+  keywordSuggest: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -83,6 +87,8 @@ export const DEFAULT_SETTINGS: Settings = {
   mathSuggest: true,
   mathDecimals: -1,
   decimalSeparator: 'auto',
+  wordSuggest: false,
+  keywordSuggest: true,
 };
 
 export interface LoadedSettings {
