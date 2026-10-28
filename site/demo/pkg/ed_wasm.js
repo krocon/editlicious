@@ -91,6 +91,149 @@ export class Editor {
 if (Symbol.dispose) Editor.prototype[Symbol.dispose] = Editor.prototype.free;
 
 /**
+ * A typing script on a virtual clock (screen videos, e.g. a HyperFrames composition): the page
+ * asks for the frame at any time and gets the same picture every time – the engine replays the
+ * steps up to that moment (backwards: from the start text). Several scripts can follow each
+ * other, each from its own start time.
+ */
+export class Player {
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        PlayerFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_player_free(ptr, 0);
+    }
+    /**
+     * Adds a script that starts at `start_ms` (not before the end of the one before);
+     * returns when it ends (ms).
+     * @param {string} text
+     * @param {number} start_ms
+     * @returns {number}
+     */
+    add(text, start_ms) {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.player_add(this.__wbg_ptr, ptr0, len0, start_ms);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return ret[0];
+    }
+    /**
+     * End of the last step (ms).
+     * @returns {number}
+     */
+    duration() {
+        const ret = wasm.player_duration(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * The steps as `[{ "at": ms, "kind": "char" | "space" | "enter" | "delete" | "move" | "other",
+     * "keys": caption? }]` – for key sounds and captions in a video.
+     * @returns {string}
+     */
+    events() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.player_events(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * The text after all scripts (to compare with the expected file).
+     * @returns {string}
+     */
+    finalText() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.player_finalText(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * A player on `text`; `language` = name of a grammar (`None`: plain text).
+     * @param {string} text
+     * @param {string | null} [language]
+     */
+    constructor(text, language) {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        var ptr1 = isLikeNone(language) ? 0 : passStringToWasm0(language, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len1 = WASM_VECTOR_LEN;
+        const ret = wasm.player_new(ptr0, len0, ptr1, len1);
+        this.__wbg_ptr = ret;
+        PlayerFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * The frame at `ms` (JSON) – deterministic, whatever was asked before.
+     * @param {number} ms
+     * @returns {string}
+     */
+    seek(ms) {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const ret = wasm.player_seek(this.__wbg_ptr, ms);
+            var ptr1 = ret[0];
+            var len1 = ret[1];
+            if (ret[3]) {
+                ptr1 = 0; len1 = 0;
+                throw takeFromExternrefTable0(ret[2]);
+            }
+            deferred2_0 = ptr1;
+            deferred2_1 = len1;
+            return getStringFromWasm0(ptr1, len1);
+        } finally {
+            wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+        }
+    }
+    /**
+     * A command that also holds after every jump back (JSON, e.g. `resize`, `configure`).
+     * @param {string} cmd
+     */
+    setup(cmd) {
+        const ptr0 = passStringToWasm0(cmd, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.player_setup(this.__wbg_ptr, ptr0, len0);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
+     * The whole text at the moment of the last `seek`.
+     * @returns {string}
+     */
+    text() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.player_text(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+}
+if (Symbol.dispose) Player.prototype[Symbol.dispose] = Player.prototype.free;
+
+/**
  * Names of all grammars (JSON array).
  * @returns {string}
  */
@@ -105,6 +248,21 @@ export function languages() {
     } finally {
         wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
     }
+}
+
+/**
+ * How long a typing script takes (ms) – to place it so that it ends on a spoken word.
+ * @param {string} text
+ * @returns {number}
+ */
+export function scriptDuration(text) {
+    const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.scriptDuration(ptr0, len0);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return ret[0];
 }
 function __wbg_get_imports() {
     const import0 = {
@@ -164,6 +322,9 @@ function __wbg_get_imports() {
 const EditorFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_editor_free(ptr, 1));
+const PlayerFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_player_free(ptr, 1));
 
 function addToExternrefTable0(obj) {
     const idx = wasm.__externref_table_alloc();
