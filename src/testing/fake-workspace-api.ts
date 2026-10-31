@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { WorkspaceApi } from '../app/core/workspace/workspace-api';
-import { SessionFile } from '../app/core/workspace/workspace.models';
+import { FsError } from '../app/core/errors/fs-error';
+import { PathCompletion, SessionFile } from '../app/core/workspace/workspace.models';
 
 /** Test double of {@link WorkspaceApi}. Never imported by app code. */
 @Injectable()
@@ -25,6 +26,24 @@ export class FakeWorkspaceApi extends WorkspaceApi {
   }
   pickSavePath(): Promise<string | null> {
     return Promise.resolve(this.saveAnswer);
+  }
+  /** "Open path…": start text, files that exist (input → path), completions by input. */
+  pathStart = '~/';
+  existing: Record<string, string> = {};
+  completions: Record<string, PathCompletion> = {};
+  completeCalls: string[] = [];
+  openPathStart(): Promise<string> {
+    return Promise.resolve(this.pathStart);
+  }
+  resolveOpenPath(input: string): Promise<string> {
+    const p = this.existing[input];
+    if (p) return Promise.resolve(p);
+    const e: FsError = { code: 'not_found', message: 'not found', path: input };
+    return Promise.reject(e);
+  }
+  completeOpenPath(input: string): Promise<PathCompletion> {
+    this.completeCalls.push(input);
+    return Promise.resolve(this.completions[input] ?? { entries: [], common: null, more: false });
   }
   loadSession(): Promise<SessionFile> {
     return Promise.resolve(this.session);

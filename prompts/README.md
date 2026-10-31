@@ -47,6 +47,7 @@ Kritischer Pfad zum ersten nutzbaren Editor: **001 → 002 → 003 → 004**. Da
 | 020 | [020-rechnen-tooltips-autocomplete.md](done/020-rechnen-tooltips-autocomplete.md) | Math-Parser in Rust (Vorlage `java-k-editor/MathParser`), Ergebnis als Hinweis am Caret und als Vorschlag (`255/8=` → `31.875`); allgemeine Bausteine Tooltip- und Vorschlags-Anbieter | 005, 009, 010 | M–L | ✅ 26.10.2026 |
 | 021 | [021-more-themes.md](done/021-more-themes.md) | Neun weitere Farbschemata (inspiriert von gruvbox light hard, Liquid Glass light, Chalkdraw paper, One Dark, Moonlight, gruvbox material dark, Cozy Latte dark, Russian Hacker amber, Graphite Pop), Reihenfolge hell → dunkel, Farbschema-Auswahl mit Vorschaubildern | 008, 009 | M | ✅ 26.10.2026 |
 | 023 | [023-wort-vervollstaendigung.md](done/023-wort-vervollstaendigung.md) | Wort-Vervollständigung (Strg+Leertaste) aus den Wörtern um den Caret und einem Lexikon typischer Wörter je Sprache (Java, SQL, Python, JS/TS, Rust, C/C++, C#, Go, PHP, Ruby, Shell, CSS, HTML, dazu Kotlin, Spring Boot, Angular); eigene Wortlisten `words/<sprache>.txt`; Filtern beim Tippen, optional automatisch ab 2 Zeichen | 008, 009, 020 | S–M | ✅ 28.10.2026 |
+| 024 | [024-pfad-oeffnen.md](done/024-pfad-oeffnen.md) | „Pfad öffnen …“ (Mod+Shift+O): Pfad tippen oder einfügen (`~/…`, in Anführungszeichen, `file://…`, relativ zur aktiven Datei), Tab ergänzt wie in der Shell, passende Einträge als Liste | 004, 005 | S | ✅ 31.10.2026 |
 
 ## Folge-Ideen (noch ohne Prompt)
 

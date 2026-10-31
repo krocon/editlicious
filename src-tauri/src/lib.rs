@@ -10,6 +10,7 @@
 //! - [`app_menu`]      native menu bar of macOS from the frontend's menu model (design 005)
 //! - [`keymap_file`]   the user's shortcut overrides `keymap.json` (design 005)
 //! - [`user_words`]    the user's own word lists for the completion `words/*.txt` (design 023)
+//! - [`path_input`]    "Open path…": typed paths (`~`, quotes, `file://`) and their completion (prompt 024)
 //! - [`about`]         data for the About dialog (version, platform)
 //! - [`export`]        "Export as video…" with the renderer of `ed-video` (design 017)
 //! - [`mcp`]           AI control: bridge server for the MCP sidecar and its tools (design 016)
@@ -26,6 +27,7 @@ pub mod fs_atomic;
 pub mod keymap_file;
 pub mod mcp;
 pub mod model;
+pub mod path_input;
 pub mod playback;
 pub mod session_file;
 pub mod settings;
@@ -90,6 +92,9 @@ pub fn run() {
             commands::disk_state,
             commands::pick_open_files,
             commands::pick_save_path,
+            commands::open_path_start,
+            commands::resolve_open_path,
+            commands::complete_open_path,
             commands::load_session,
             commands::load_settings,
             commands::save_settings,

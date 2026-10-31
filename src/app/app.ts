@@ -24,6 +24,7 @@ import { StatusBar } from './features/editor/status-bar';
 import { Frame } from './core/editor/editor.models';
 import { ChromeStore, Scheme, SCHEMES, schemeAttributes } from './features/menus/chrome.store';
 import { PickDialog } from './shared/pick/pick-dialog';
+import { OpenPathDialog } from './features/documents/open-path-dialog';
 import { CommandPalette } from './features/menus/command-palette';
 import { MenuBar } from './features/menus/menu-bar';
 import { MenuService } from './features/menus/menu.service';
@@ -49,6 +50,7 @@ import { McpStore } from './features/mcp/mcp.store';
     CommandPalette,
     EditorView,
     MenuBar,
+    OpenPathDialog,
     PickDialog,
     SettingsDialog,
     StatusBar,
@@ -110,6 +112,9 @@ import { McpStore } from './features/mcp/mcp.store';
       }
       @case ('scheme') {
         <app-scheme-picker />
+      }
+      @case ('openPath') {
+        <app-open-path-dialog />
       }
     }
   `,
@@ -213,6 +218,7 @@ export class App {
       ...Object.fromEntries(SCHEMES.map((s) => [`view.scheme.${s}`, scheme(s)])),
       'file.new': { run: () => after(s.newDoc()) },
       'file.open': { run: () => after(s.openDialog()) },
+      'file.openPath': { run: () => this.dialogs.show('openPath') },
       'file.save': { run: () => after(s.save()), enabled: () => s.active() !== null },
       'file.saveAs': { run: () => after(s.saveAs()), enabled: () => s.active() !== null },
       'file.saveAll': { run: () => after(s.saveAll()) },

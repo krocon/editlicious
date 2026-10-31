@@ -41,6 +41,12 @@ const EN = {
   lossy: (name: string, enc: string) =>
     `Some bytes of “${name}” are not valid ${enc} and are shown as “�”. Saving writes “�” in their place – the original bytes are lost. Try “Encoding…” to read the file in another encoding first.`,
   saveAnyway: 'Save anyway',
+  openPathTitle: 'Open path',
+  openPathPlaceholder: 'e.g. ~/Documents/notes.txt',
+  openPathHint: 'Tab completes · ↑/↓ choose · Enter opens',
+  openPathEntries: 'Matching files and folders',
+  openPathMore: 'More entries – keep typing to narrow them down.',
+  openPathOpen: 'Open',
 };
 
 export const DOC_TEXTS = translatable('documents', EN, {
@@ -84,5 +90,11 @@ export const DOC_TEXTS = translatable('documents', EN, {
     lossy: (name: string, enc: string) =>
       `Einige Bytes von „${name}“ sind kein gültiges ${enc} und werden als „�“ gezeigt. Beim Speichern steht dort „�“ – die ursprünglichen Bytes gehen verloren. Mit „Zeichenkodierung …“ lässt sich die Datei vorher in einer anderen Kodierung lesen.`,
     saveAnyway: 'Trotzdem speichern',
+    openPathTitle: 'Pfad öffnen',
+    openPathPlaceholder: 'z. B. ~/Dokumente/notizen.txt',
+    openPathHint: 'Tab ergänzt · ↑/↓ wählen · Enter öffnet',
+    openPathEntries: 'Passende Dateien und Ordner',
+    openPathMore: 'Weitere Einträge – weitertippen grenzt sie ein.',
+    openPathOpen: 'Öffnen',
   },
 });

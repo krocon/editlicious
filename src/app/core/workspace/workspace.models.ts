@@ -19,3 +19,21 @@ export interface SessionFile {
   findHistory: string[];
   replaceHistory: string[];
 }
+
+/** Mirror of Rust `path_input.rs` (prompt 024): one folder entry matching the typed path. */
+export interface PathEntry {
+  /** The name as shown (folders end with a separator). */
+  label: string;
+  /** The whole input text after choosing this entry. */
+  value: string;
+  dir: boolean;
+}
+
+/** Completions of a typed path (Rust `PathCompletion`). */
+export interface PathCompletion {
+  entries: PathEntry[];
+  /** The input extended by what all matches share (Tab); `null` = nothing to add. */
+  common: string | null;
+  /** More entries matched than were sent. */
+  more: boolean;
+}

@@ -4,6 +4,7 @@ import { MARKER_COLOURS, MAX_RECENT_ACTIONS, MAX_SWITCH_ACTIONS } from './action
 const FIXED: Record<string, string> = {
   'file.new': 'Neue Datei',
   'file.open': 'Datei öffnen …',
+  'file.openPath': 'Pfad öffnen …',
   'file.save': 'Speichern',
   'file.saveAs': 'Speichern unter …',
   'file.saveAll': 'Alle speichern',

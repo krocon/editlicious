@@ -70,6 +70,8 @@ export const ACTIONS: readonly ActionDef[] = [
   // file (design 004)
   G('file.new', 'New file'),
   G('file.open', 'Open file…'),
+  // prompt 024: type or paste a path (`~/…`, `file://…`) with Tab completion
+  G('file.openPath', 'Open path…'),
   G('file.save', 'Save'),
   G('file.saveAs', 'Save as…'),
   G('file.saveAll', 'Save all'),

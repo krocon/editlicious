@@ -38,6 +38,7 @@ export function buildMenuModel(os: Os, input: MenuInputs): TopMenuNode[] {
   const file: MenuNode[] = [
     a('file.new'),
     a('file.open'),
+    a('file.openPath'),
     ...(recent.length ? [{ kind: 'submenu', label: t.recent, items: recent } as MenuNode] : []),
     sep,
     a('file.save'),

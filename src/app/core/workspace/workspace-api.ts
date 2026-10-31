@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { call } from '../backend/call';
-import { SessionFile } from './workspace.models';
+import { PathCompletion, SessionFile } from './workspace.models';
 
 /**
  * The app around the editor (design 004): native file dialogs, the session file, window title,
@@ -12,6 +12,12 @@ export abstract class WorkspaceApi {
   /** `near`: a file whose folder the dialog starts in. `null` = cancelled. */
   abstract pickOpenFiles(near?: string | null): Promise<string[] | null>;
   abstract pickSavePath(name: string, near?: string | null): Promise<string | null>;
+  /** "Open path…" (prompt 024): the text the field starts with – the folder of `near`. */
+  abstract openPathStart(near?: string | null): Promise<string>;
+  /** The typed text (`~`, quotes, `file://`, relative to `near`) → an existing file. */
+  abstract resolveOpenPath(input: string, near?: string | null): Promise<string>;
+  /** Folder entries matching the typed text. */
+  abstract completeOpenPath(input: string, near?: string | null): Promise<PathCompletion>;
   abstract loadSession(): Promise<SessionFile>;
   abstract saveSession(session: SessionFile): Promise<void>;
   abstract setTitle(title: string): Promise<void>;
@@ -34,6 +40,18 @@ export class TauriWorkspaceApi extends WorkspaceApi {
 
   pickSavePath(name: string, near?: string | null): Promise<string | null> {
     return call<string | null>('pick_save_path', { name, near: near ?? null });
+  }
+
+  openPathStart(near?: string | null): Promise<string> {
+    return call<string>('open_path_start', { near: near ?? null });
+  }
+
+  resolveOpenPath(input: string, near?: string | null): Promise<string> {
+    return call<string>('resolve_open_path', { input, near: near ?? null });
+  }
+
+  completeOpenPath(input: string, near?: string | null): Promise<PathCompletion> {
+    return call<PathCompletion>('complete_open_path', { input, near: near ?? null });
   }
 
   loadSession(): Promise<SessionFile> {

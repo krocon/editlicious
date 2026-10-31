@@ -643,6 +643,58 @@ pub async fn pick_save_path(
     .await
 }
 
+/// Home folder and folder of `near` for "Open path…" (prompt 024).
+fn path_context(app: &AppHandle, near: Option<&str>) -> (Option<PathBuf>, Option<PathBuf>) {
+    (app.path().home_dir().ok(), folder_of(near))
+}
+
+/// "Open path…": the text the field starts with (folder of `near`, `~` for home).
+#[tauri::command]
+pub async fn open_path_start(app: AppHandle, near: Option<String>) -> Result<String, FsError> {
+    blocking(move || {
+        let home = app.path().home_dir().ok();
+        let near = near.as_deref().and_then(|p| file_path(p).ok());
+        Ok(crate::path_input::start_text(
+            near.as_deref(),
+            home.as_deref(),
+        ))
+    })
+    .await
+}
+
+/// "Open path…": the typed text → an existing file (`~`, quotes, `file://`, relative to `near`).
+#[tauri::command]
+pub async fn resolve_open_path(
+    app: AppHandle,
+    input: String,
+    near: Option<String>,
+) -> Result<String, FsError> {
+    blocking(move || {
+        let (home, base) = path_context(&app, near.as_deref());
+        crate::path_input::resolve(&input, home.as_deref(), base.as_deref())
+    })
+    .await
+}
+
+/// "Open path…": folder entries matching the typed text (Tab completion).
+#[tauri::command]
+pub async fn complete_open_path(
+    app: AppHandle,
+    input: String,
+    near: Option<String>,
+) -> Result<crate::path_input::PathCompletion, FsError> {
+    blocking(move || {
+        let (home, base) = path_context(&app, near.as_deref());
+        Ok(crate::path_input::complete(
+            &input,
+            home.as_deref(),
+            base.as_deref(),
+            crate::path_input::MAX_ENTRIES,
+        ))
+    })
+    .await
+}
+
 fn config_dir(app: &AppHandle) -> Result<PathBuf, FsError> {
     app.path()
         .app_config_dir()
