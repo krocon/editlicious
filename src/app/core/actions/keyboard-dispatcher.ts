@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { ActionContext } from './action-catalog';
 import { ActionService } from './action.service';
 import { chordOf } from './shortcut';
+import { isTextField, TEXT_FIELD_ACTIONS } from './text-field';
 
 /** Where the keyboard is: contexts in order of preference, or `null` (a dialog owns it). */
 export type ContextProvider = (target: Element | null) => ActionContext[] | null;
@@ -17,24 +18,11 @@ const SLIDER_KEYS = new Set([
   'PageDown',
 ]);
 
-function isTextField(el: Element | null): boolean {
-  if (!el) return false;
-  // the editor's hidden input is no text field: all its keys are actions of the engine
-  if (el instanceof HTMLElement && el.dataset['editorInput'] !== undefined) return false;
-  if (el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) return true;
-  if (el instanceof HTMLInputElement) {
-    return !['checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'file', 'color'].includes(
-      el.type,
-    );
-  }
-  return (el as HTMLElement).isContentEditable === true;
-}
-
 /**
  * The one `keydown` listener of the app (taken over from comic-commander design 008, CLAUDE.md §4): event → chord → action of
  * the first context that has one. Widgets with their own keys (menus, lists, the modal's focus
  * trap) handle theirs first and call `preventDefault`; text fields keep everything except
- * `Mod` shortcuts (E5); buttons keep Space/Enter, sliders their arrows.
+ * `Mod` shortcuts (E5) – and of those the clipboard, undo and select-all ones; buttons keep Space/Enter, sliders their arrows.
  */
 @Injectable({ providedIn: 'root' })
 export class KeyboardDispatcher {
@@ -107,6 +95,8 @@ export class KeyboardDispatcher {
     for (const ctx of contexts) {
       const id = keymap.byContext[ctx].get(chord);
       if (!id || !this.actions.available(id)) continue;
+      // ⌘V, ⌘C, ⌘Z … in the find field belong to the field, not to the document
+      if (TEXT_FIELD_ACTIONS.has(id) && isTextField(target)) return;
       e.preventDefault();
       e.stopPropagation();
       if (e.repeat && !this.actions.def(id)?.repeat) return;

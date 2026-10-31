@@ -1,5 +1,6 @@
 import { computed, effect, inject, Injectable, Injector, signal, untracked } from '@angular/core';
 import { ActionService } from '../../core/actions/action.service';
+import { TextFieldEdit } from '../../core/actions/text-field';
 import { MenuApi } from '../../core/menu/menu-api';
 import { DialogService } from '../../shared/dialog/dialog.service';
 import { baseName, DocumentsStore } from '../documents/documents.store';
@@ -20,6 +21,7 @@ export class MenuService {
   private readonly api = inject(MenuApi);
   private readonly docs = inject(DocumentsStore);
   private readonly dialogs = inject(DialogService);
+  private readonly textField = inject(TextFieldEdit);
   private readonly injector = inject(Injector);
   /** Bumped after every native click: muda toggles a check item itself. */
   private readonly clicks = signal(0);
@@ -50,6 +52,9 @@ export class MenuService {
     this.started = true;
     void this.api.onAction((id) => {
       this.clicks.update((n) => n + 1);
+      // ⌘V & Co. of the native menu go to a focused text field (find, "Open path…") – also
+      // in a dialog; the webview never sees these keys on macOS
+      if (this.textField.run(id)) return;
       // a dialog owns the app – native shortcuts and clicks wait, quitting does not
       if (this.dialogs.open() !== null && id !== 'app.quit') return;
       this.actions.run(id);

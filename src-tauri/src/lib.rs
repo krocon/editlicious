@@ -95,6 +95,8 @@ pub fn run() {
             commands::open_path_start,
             commands::resolve_open_path,
             commands::complete_open_path,
+            commands::read_clipboard_text,
+            commands::write_clipboard_text,
             commands::load_session,
             commands::load_settings,
             commands::save_settings,

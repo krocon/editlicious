@@ -40,6 +40,7 @@
 | `reload_document(id, encoding?)` / `disk_state(id)` | Änderungen von außen erkennen und neu laden | 004 |
 | `pick_open_files(near)` / `pick_save_path(name, near)` | native Dateidialoge (nur Rust-API) | 004 |
 | `open_path_start(near)` / `resolve_open_path(input, near)` / `complete_open_path(input, near)` | „Pfad öffnen …“: Startordner, getippten Pfad prüfen (`~`, Anführungszeichen, `file://`, relativ), Ordnereinträge zur Ergänzung (`path_input.rs`) | 024 |
+| `read_clipboard_text()` / `write_clipboard_text(text)` | Zwischenablage für die kleinen Textfelder (Suche, „Pfad öffnen …“), weil das native macOS-Menü ⌘C/⌘X/⌘V vor der WebView abfängt; höchstens 1 MiB | 024 |
 | `load_session` / `save_session` | `session.json` | 004 |
 | `set_title` / `take_over_close` / `quit_app`, Ereignis `close-requested` | Fenster, Beenden mit Frage | 004 |
 | `count_matches(id, query)` | Treffer zählen auf einem Schnappschuss (abbrechbar) | 006 |

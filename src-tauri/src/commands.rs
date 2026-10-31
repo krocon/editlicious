@@ -271,6 +271,50 @@ pub async fn editor_command(
     .await
 }
 
+/// Most text the app's small fields take from the clipboard (find, "Open path…").
+const MAX_FIELD_CLIPBOARD: usize = 1 << 20;
+
+/// Clipboard text for a focused text field of the UI: the native macOS menu takes ⌘V before
+/// the webview sees it. `None` = no text; more than 1 MiB is `selection_too_large`.
+#[tauri::command]
+pub async fn read_clipboard_text(state: State<'_, AppState>) -> Result<Option<String>, FsError> {
+    let clipboard = state.clipboard.clone();
+    blocking(move || {
+        let text = clipboard.lock().unwrap_or_else(|e| e.into_inner()).get();
+        match text {
+            Some(t) if t.len() > MAX_FIELD_CLIPBOARD => Err(FsError::new(
+                FsErrorCode::SelectionTooLarge,
+                "clipboard text too large for a field",
+                None,
+            )),
+            t => Ok(t),
+        }
+    })
+    .await
+}
+
+/// Text copied or cut in a text field of the UI (⌘C/⌘X of the native macOS menu).
+#[tauri::command]
+pub async fn write_clipboard_text(state: State<'_, AppState>, text: String) -> Result<(), FsError> {
+    let clipboard = state.clipboard.clone();
+    blocking(move || {
+        if clipboard
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .set(text)
+        {
+            Ok(())
+        } else {
+            Err(FsError::new(
+                FsErrorCode::Io,
+                "clipboard not available",
+                None,
+            ))
+        }
+    })
+    .await
+}
+
 // ---------------------------------------------------------------- recording (design 015)
 
 #[tauri::command]

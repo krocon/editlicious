@@ -29,7 +29,7 @@ describe('KeyboardDispatcher', () => {
   let host: HTMLDivElement;
   beforeEach(() => {
     host = document.createElement('div');
-    host.innerHTML = `<div class="ed"><textarea id="ed" data-editor-input></textarea></div>
+    host.innerHTML = `<div class="ed"><textarea id="ed" data-editor-input></textarea><input id="find" type="text"></div>
       <input id="t" type="text">`;
     document.body.appendChild(host);
   });
@@ -60,6 +60,37 @@ describe('KeyboardDispatcher', () => {
     expect(key(el('t'), 'ArrowLeft').defaultPrevented).toBe(false);
     key(el('t'), 'o', { ctrlKey: true });
     expect(ran).toEqual(['file.open']);
+  });
+
+  it('text fields in the editor keep clipboard, undo and select-all keys (bugfix 024)', () => {
+    const { ran, reg } = setup();
+    for (const id of [
+      'edit.paste',
+      'edit.copy',
+      'edit.cut',
+      'edit.undo',
+      'edit.redo',
+      'edit.selectAll',
+    ]) {
+      reg(id);
+    }
+    reg('file.save');
+    // Ctrl+V in the find field: the browser pastes into the field, the document gets nothing
+    for (const [k, init] of [
+      ['v', { ctrlKey: true }],
+      ['c', { ctrlKey: true }],
+      ['x', { ctrlKey: true }],
+      ['z', { ctrlKey: true }],
+      ['y', { ctrlKey: true }],
+      ['a', { ctrlKey: true }],
+    ] as const) {
+      expect(key(el('find'), k, init).defaultPrevented, k).toBe(false);
+    }
+    expect(ran).toEqual([]);
+    // other shortcuts still work there, and the editor input still pastes into the document
+    key(el('find'), 's', { ctrlKey: true });
+    expect(key(el('ed'), 'v', { ctrlKey: true }).defaultPrevented).toBe(true);
+    expect(ran).toEqual(['file.save', 'edit.paste']);
   });
 
   it('opens the menu bar on a lone Alt (Windows/Linux)', () => {
