@@ -215,6 +215,34 @@ pub fn count(
     ok.then_some((total, ahead))
 }
 
+/// Answer of `count_matches`: all matches and the number of the selected one (0 = none).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct MatchCount {
+    pub total: usize,
+    pub current: usize,
+}
+
+/// Counts the matches of `re` on a search snapshot (`Session::search_snapshot`: text and the
+/// primary selection `start..end` in chars) – shared by the app and the WebAssembly binding
+/// (design 025 E2). `None` when cancelled.
+pub fn match_count(
+    rope: &Rope,
+    re: &Regex,
+    start: usize,
+    end: usize,
+    cancel: &AtomicBool,
+) -> Option<MatchCount> {
+    // the selected match counts as "before" so its number is `ahead`
+    let before = if end > start { start + 1 } else { start };
+    let (total, ahead) = count(rope, re, before, cancel)?;
+    let current = if end > start && find_next(rope, re, start) == Some((start, end)) {
+        ahead
+    } else {
+        0
+    };
+    Some(MatchCount { total, current })
+}
+
 /// The first `max` matches from the start as char ranges of the rope (AI `find`, design 016).
 pub fn first_matches(rope: &Rope, re: &Regex, max: usize) -> Vec<(usize, usize)> {
     let mut out = Vec::new();

@@ -7,13 +7,14 @@
 
 ### Engine (Rust)
 
-- **E1 Schreibschutz in der Sitzung**: `Configure { readOnly: Option<bool> }` setzt `Session.read_only`.
+- **E1 Schreibschutz in der Sitzung**: eigener Befehl `setReadOnly { readOnly }` (Ansichtsbefehl, wird nicht
+  aufgezeichnet) setzt `Session.read_only` – nicht als Feld von `configure`, weil `Configure` an 17 Stellen voll
+  ausgeschrieben gebaut wird.
   `Command::is_edit()` (neben `is_view_only()`) zählt die textverändernden Befehle auf: `type`, `insert`,
   `newline`, `backspace`, `delete`, `deleteWord*`, `indent`, `outdent`, `undo`, `redo`, `cut`, `paste`, `replace`,
   `replaceAll`, `sortLines`, `changeCase`, `duplicateLines`, `deleteLines`, `moveLines`, `joinLines`,
   `trimTrailingWhitespace`, `convertIndentation`, `setLineEnding`, `convertColor`, `applyCompletion`, `evaluate`.
-  `complete` ist **kein** Schreibbefehl, darf aber im Schreibschutz keinen Einzelkandidaten einsetzen (023 E7) und
-  öffnet dort keine Wortliste (Rechen-Hinweise bleiben). Abgelehnt wird mit dem neuen Fehlercode **`read_only`**
+  Dazu `complete` (setzt evtl. einen Einzelkandidaten ein, 023 E7) – die Rechen-*Hinweise* am Caret bleiben. Abgelehnt wird mit dem neuen Fehlercode **`read_only`**
   (`error.rs`, `fs-error.ts`, `describeFsError`) – vor jeder Änderung, also ohne Teilwirkung. Erlaubt bleiben
   Navigation, Auswahl, Klicks, Mehrfach-Cursor, `copy`, `copyHtml`, `copyResult`, `find`, `goTo`, Marker,
   `setLanguage`, `toggleOverwrite`. `Frame.readOnly` meldet den Zustand (UI: kein Caret-Blinken nötig, Status).

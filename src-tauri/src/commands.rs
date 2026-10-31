@@ -108,12 +108,7 @@ pub fn paths_from_args(args: impl IntoIterator<Item = String>, cwd: Option<&Path
         .collect()
 }
 
-/// Answer of `count_matches`: all matches and the number of the selected one (0 = none).
-#[derive(serde::Serialize)]
-pub struct MatchCount {
-    pub total: usize,
-    pub current: usize,
-}
+pub use crate::search::MatchCount;
 
 /// The system clipboard (design 003 E5): one long-lived `arboard` handle – on Linux the text
 /// lives only as long as the handle.
@@ -479,17 +474,8 @@ pub async fn count_matches(
         old.store(true, Ordering::Relaxed);
     }
     blocking(move || {
-        // the selected match counts as "before" so its number is `ahead`
-        let before = if end > start { start + 1 } else { start };
-        let (total, ahead) = crate::search::count(&rope, &re, before, &cancel)
-            .ok_or_else(|| FsError::new(FsErrorCode::Cancelled, "cancelled", None))?;
-        let current =
-            if end > start && crate::search::find_next(&rope, &re, start) == Some((start, end)) {
-                ahead
-            } else {
-                0
-            };
-        Ok(MatchCount { total, current })
+        crate::search::match_count(&rope, &re, start, end, &cancel)
+            .ok_or_else(|| FsError::new(FsErrorCode::Cancelled, "cancelled", None))
     })
     .await
 }

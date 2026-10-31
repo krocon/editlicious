@@ -207,6 +207,11 @@ pub enum Command {
     Evaluate,
     /// The result of the expression at the caret to the clipboard.
     CopyResult,
+    /// Read-only (design 025 E1): every command that changes the text fails with `read_only`;
+    /// moving, selecting, copying, finding and markers keep working.
+    SetReadOnly {
+        read_only: bool,
+    },
 }
 
 /// Settings of the arithmetic (prompt 020).
@@ -278,6 +283,43 @@ impl Command {
                 | Command::CopyHtml { .. }
                 | Command::Copy
                 | Command::CopyResult
+                | Command::SetReadOnly { .. }
+        )
+    }
+
+    /// Changes the text (or inserts a suggestion) – refused while the session is read-only
+    /// (design 025 E1).
+    pub fn is_edit(&self) -> bool {
+        matches!(
+            self,
+            Command::Type { .. }
+                | Command::Insert { .. }
+                | Command::Newline
+                | Command::Backspace
+                | Command::Delete
+                | Command::DeleteWordLeft
+                | Command::DeleteWordRight
+                | Command::Indent
+                | Command::Outdent
+                | Command::Undo
+                | Command::Redo
+                | Command::Cut
+                | Command::Paste
+                | Command::Replace { .. }
+                | Command::ReplaceAll { .. }
+                | Command::SortLines { .. }
+                | Command::ChangeCase { .. }
+                | Command::DuplicateLines
+                | Command::DeleteLines
+                | Command::MoveLines { .. }
+                | Command::JoinLines
+                | Command::TrimTrailingWhitespace
+                | Command::ConvertIndentation { .. }
+                | Command::SetLineEnding { .. }
+                | Command::ConvertColor
+                | Command::Complete
+                | Command::ApplyCompletion { .. }
+                | Command::Evaluate
         )
     }
 }
@@ -427,4 +469,6 @@ pub struct Frame {
     /// Arithmetic at the caret (prompt 020).
     pub hint: Option<MathHint>,
     pub completion: Option<Completion>,
+    /// The session refuses edits (design 025 E1).
+    pub read_only: bool,
 }

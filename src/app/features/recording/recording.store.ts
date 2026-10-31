@@ -36,6 +36,7 @@ export const VIEW_ONLY_COMMANDS: ReadonlySet<string> = new Set([
   'configure',
   'copyHtml',
   'copy',
+  'setReadOnly',
 ]);
 
 /**

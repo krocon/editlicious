@@ -31,6 +31,8 @@ export type FsErrorCode =
   | 'revision_conflict'
   | 'invalid_request'
   | 'ffmpeg_missing'
+  /** The session refuses edits (design 025 E1). */
+  | 'read_only'
   /** Frontend only: no Tauri backend (e.g. `pnpm start` in a browser). */
   | 'backend_unavailable'
   /** Frontend only: something that is no `FsError` was thrown. */
@@ -69,6 +71,7 @@ const KNOWN: readonly FsErrorCode[] = [
   'revision_conflict',
   'invalid_request',
   'ffmpeg_missing',
+  'read_only',
   'backend_unavailable',
   'unknown',
 ];
@@ -115,6 +118,7 @@ const EN: Record<FsErrorCode, string> = {
   revision_conflict: 'The document changed meanwhile.',
   invalid_request: 'The request is not valid.',
   ffmpeg_missing: 'ffmpeg was not found – install it or set its path in the settings.',
+  read_only: 'The text is read-only.',
   backend_unavailable: 'The desktop backend is not available (running in a browser?).',
   unknown: 'Something went wrong.',
 };
@@ -148,6 +152,7 @@ const TEXTS = translatable('fsErrors', EN, {
     invalid_request: 'Die Anfrage ist ungültig.',
     ffmpeg_missing:
       'ffmpeg wurde nicht gefunden – bitte installieren oder den Pfad in den Einstellungen angeben.',
+    read_only: 'Der Text ist schreibgeschützt.',
     backend_unavailable: 'Das Desktop-Backend ist nicht verfügbar (läuft im Browser?).',
     unknown: 'Etwas ist schiefgegangen.',
   },

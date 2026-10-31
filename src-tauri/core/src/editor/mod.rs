@@ -149,6 +149,8 @@ pub struct Session {
     recorder: Option<recording::Recorder>,
     /// … and the last finished one (save it, play it again as a macro).
     last_recording: Option<recording::Recording>,
+    /// Edits are refused (design 025 E1).
+    read_only: bool,
 }
 
 /// Suggestions shown for a line (prompt 020): arithmetic or words (prompt 023).
@@ -207,6 +209,7 @@ impl Session {
             words: complete::WordOptions::default(),
             recorder: None,
             last_recording: None,
+            read_only: false,
         }
     }
 
@@ -222,6 +225,19 @@ impl Session {
             .and_then(|p| p.file_name())
             .map(|n| n.to_string_lossy().into_owned());
         highlight::detect(name.as_deref(), &first).and_then(|l| Highlighter::new(&l))
+    }
+
+    /// A file name for a text without a file (embedded editor, design 025 E3): the language
+    /// follows its extension, the word completion its lexicon (`app.ts` → TypeScript words).
+    /// `None` = no name (language: plain text unless set otherwise).
+    pub fn set_file_name(&mut self, name: Option<&str>) {
+        self.doc.path = name.map(std::path::PathBuf::from);
+        self.highlighter = Self::detect_highlighter(&self.doc);
+    }
+
+    /// The language shown (`None` = plain text).
+    pub fn language(&self) -> Option<&str> {
+        self.highlighter.as_ref().map(|h| h.language.as_str())
     }
 
     pub fn cursors(&self) -> &[Cursor] {
@@ -383,6 +399,13 @@ impl Session {
     }
 
     fn run_inner(&mut self, cmd: Command, clip: &mut dyn Clipboard) -> Result<Frame, FsError> {
+        if self.read_only && cmd.is_edit() {
+            return Err(FsError::new(
+                crate::error::FsErrorCode::ReadOnly,
+                "the document is read-only",
+                None,
+            ));
+        }
         self.notice = None;
         let mut reveal = Reveal::Margin;
         let mut keep_block = false;
@@ -398,6 +421,13 @@ impl Session {
         let backspace = matches!(cmd, Command::Backspace);
         match cmd {
             Command::Frame => reveal = Reveal::No,
+            Command::SetReadOnly { read_only } => {
+                self.read_only = read_only;
+                if read_only {
+                    self.completion = None;
+                }
+                reveal = Reveal::No;
+            }
             Command::Resize { lines, cols } => {
                 // bounded: a frame never holds more than this (design 013 review #13)
                 self.view_lines = lines.clamp(1.0, MAX_VIEW_ROWS);
@@ -1910,6 +1940,7 @@ impl Session {
                     })
                     .collect(),
             }),
+            read_only: self.read_only,
         }
     }
 

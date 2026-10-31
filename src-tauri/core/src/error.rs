@@ -60,6 +60,8 @@ pub enum FsErrorCode {
     InvalidRequest,
     /// The video export found no `ffmpeg` (design 017).
     FfmpegMissing,
+    /// The session is read-only (design 025 E1): the command would change the text.
+    ReadOnly,
 }
 
 /// The one error type every command returns.

@@ -2226,3 +2226,104 @@ fn words_in_a_big_file_cost_a_bounded_window() {
         Some("no_suggestions")
     );
 }
+
+// ---------------------------------------------------------------- read-only (design 025 E1)
+
+#[test]
+fn read_only_refuses_edits_and_keeps_viewing() {
+    let mut s = session("beta\nalpha\nbeta 255/8\n");
+    let f = run(&mut s, Command::SetReadOnly { read_only: true });
+    assert!(f.read_only);
+    let q = || crate::search::Query {
+        pattern: "beta".into(),
+        regex: false,
+        case_sensitive: false,
+        whole_word: false,
+    };
+    let edits = vec![
+        Command::Type { text: "x".into() },
+        Command::Insert { text: "x".into() },
+        Command::Newline,
+        Command::Backspace,
+        Command::Delete,
+        Command::DeleteWordLeft,
+        Command::Indent,
+        Command::Undo,
+        Command::Cut,
+        Command::Paste,
+        Command::Replace {
+            query: q(),
+            replacement: "x".into(),
+        },
+        Command::ReplaceAll {
+            query: q(),
+            replacement: "x".into(),
+        },
+        Command::SortLines {
+            options: SortOptions {
+                mode: SortMode::Natural,
+                descending: false,
+                ignore_case: false,
+                unique: false,
+            },
+        },
+        Command::ChangeCase {
+            to: CaseChange::Upper,
+        },
+        Command::DuplicateLines,
+        Command::DeleteLines,
+        Command::JoinLines,
+        Command::Complete,
+        Command::ApplyCompletion { index: 0 },
+        Command::Evaluate,
+    ];
+    let mut clip = MemoryClipboard(Some("pasted".into()));
+    for c in edits {
+        assert!(c.is_edit(), "{c:?}");
+        let e = s.run(c.clone(), &mut clip).unwrap_err();
+        assert_eq!(e.code, crate::error::FsErrorCode::ReadOnly, "{c:?}");
+    }
+    assert_eq!(text(&s), "beta\nalpha\nbeta 255/8\n");
+    assert!(!s.doc.info(1).dirty);
+    // viewing, selecting, copying, finding and markers still work
+    let views = vec![
+        Command::Move {
+            to: Motion::Down,
+            select: false,
+        },
+        Command::Click {
+            line: 0.0,
+            cell: 1.0,
+            count: 2,
+            extend: false,
+            add: false,
+        },
+        Command::Copy,
+        Command::Find {
+            query: q(),
+            backwards: false,
+            incremental: false,
+        },
+        Command::ToggleMarker,
+        Command::GoTo {
+            line: 2,
+            ch: 10,
+            select: false,
+        },
+        Command::SelectAll,
+        Command::ToggleOverwrite,
+    ];
+    for c in views {
+        assert!(!c.is_edit(), "{c:?}");
+        s.run(c.clone(), &mut clip)
+            .unwrap_or_else(|e| panic!("{c:?}: {e:?}"));
+    }
+    assert_eq!(clip.0.as_deref(), Some("beta"));
+    assert_eq!(text(&s), "beta\nalpha\nbeta 255/8\n");
+    // off again: edits work
+    let f = run(&mut s, Command::SetReadOnly { read_only: false });
+    assert!(!f.read_only);
+    put(&mut s, 0, 0);
+    typ(&mut s, "x");
+    assert!(text(&s).starts_with('x'));
+}

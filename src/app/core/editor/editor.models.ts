@@ -152,7 +152,9 @@ export type Command =
   | { type: 'applyCompletion'; index: number }
   | { type: 'closeCompletion' }
   | { type: 'evaluate' }
-  | { type: 'copyResult' };
+  | { type: 'copyResult' }
+  /** Read-only (design 025 E1): edits fail with `read_only`. */
+  | { type: 'setReadOnly'; readOnly: boolean };
 
 /** Settings of the word completion (`model::WordConfig`, prompt 023). */
 export interface WordConfig {
@@ -337,4 +339,6 @@ export interface Frame {
   /** Arithmetic at the caret (prompt 020). */
   hint: MathHint | null;
   completion: Completion | null;
+  /** The session refuses edits (design 025 E1). */
+  readOnly: boolean;
 }

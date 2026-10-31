@@ -83,6 +83,7 @@ export function textFrame(lines: string[], over: Partial<Frame> = {}): Frame {
     caretMarker: null,
     hint: null,
     completion: null,
+    readOnly: false,
     ...over,
   };
 }
