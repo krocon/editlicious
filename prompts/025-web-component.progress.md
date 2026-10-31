@@ -15,8 +15,7 @@
 
 - [ ] `playScript(edscript, tempo?)` (optional im Prompt): Idee – `Player` aus `ed-wasm` im Worker, Frames per
       Zeitachse in die Ansicht schieben (wie `EDITOR_PLAYBACK.pushed`), am Ende `setText(finalText)`.
-- [ ] Debug-Build der Desktop-App + kurzer Ende-zu-Ende-Lauf unter Xvfb (keine Regression; Unit-Tests und
-      `pnpm build` sind grün).
+- [x] Debug-Build der Desktop-App + kurzer Lauf unter Xvfb (Datei öffnen, tippen, Strg+F, Statusleiste): unverändert.
 - [ ] Manuell im echten Browser (Safari/Firefox): Zwischenablage (ClipboardItem mit Promise), IME im Shadow DOM.
 - [ ] `uiLanguage` gilt seitenweit für alle Editoren (Texte hängen an einem globalen Sprach-Signal) – bewusst so,
       `<html lang>` bleibt unberührt; ggf. später je Instanz.
