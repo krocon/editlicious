@@ -19,7 +19,7 @@
 - [ ] Manuell im echten Browser (Safari/Firefox): Zwischenablage (ClipboardItem mit Promise), IME im Shadow DOM.
 - [ ] `uiLanguage` gilt seitenweit für alle Editoren (Texte hängen an einem globalen Sprach-Signal) – bewusst so,
       `<html lang>` bleibt unberührt; ggf. später je Instanz.
-- [ ] Optional: npm-Paket aus `dist/element/editlicious-editor/` (package.json, Typen) – nicht verlangt.
+- [ ] npm-Paket aus `dist/element/editlicious-editor/` (package.json, Typen) mit aussagekräftiger README.md.
 - [ ] Abschluss: Prompt + Design nach `done/` (`git mv`), Status in `prompts/README.md`, diese Datei löschen.
 
 ## Hinweise für die nächste Sitzung
