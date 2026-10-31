@@ -10,7 +10,20 @@ export class Editor {
         wasm.__wbg_editor_free(ptr, 0);
     }
     /**
-     * What the last copy/cut put on the (in-memory) clipboard.
+     * The HTML of the last „copy as HTML“ (`undefined` after a plain copy).
+     * @returns {string | undefined}
+     */
+    clipboardHtml() {
+        const ret = wasm.editor_clipboardHtml(this.__wbg_ptr);
+        let v1;
+        if (ret[0] !== 0) {
+            v1 = getStringFromWasm0(ret[0], ret[1]);
+            wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        }
+        return v1;
+    }
+    /**
+     * What the last copy/cut put on the clipboard (text).
      * @returns {string | undefined}
      */
     clipboard() {
@@ -23,7 +36,8 @@ export class Editor {
         return v1;
     }
     /**
-     * Runs one command (JSON, like `editor_command` in the app) and returns the frame (JSON).
+     * Runs one command (JSON, like `editor_command` in the app) and returns the frame (JSON);
+     * errors are `FsError` JSON.
      * @param {string} cmd
      * @returns {string}
      */
@@ -48,7 +62,71 @@ export class Editor {
         }
     }
     /**
-     * A session on `text`; `language` = name of a grammar (`None`: plain text).
+     * How often the marked word at the caret occurs (`undefined` = no marked word there).
+     * @returns {number | undefined}
+     */
+    countMarker() {
+        const ret = wasm.editor_countMarker(this.__wbg_ptr);
+        return ret === Number.MAX_SAFE_INTEGER ? undefined : ret;
+    }
+    /**
+     * All matches of a query (JSON `Query`) and the number of the selected one (JSON
+     * `MatchCount`), counted like the app's `count_matches`.
+     * @param {string} query
+     * @returns {string}
+     */
+    countMatches(query) {
+        let deferred3_0;
+        let deferred3_1;
+        try {
+            const ptr0 = passStringToWasm0(query, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            const len0 = WASM_VECTOR_LEN;
+            const ret = wasm.editor_countMatches(this.__wbg_ptr, ptr0, len0);
+            var ptr2 = ret[0];
+            var len2 = ret[1];
+            if (ret[3]) {
+                ptr2 = 0; len2 = 0;
+                throw takeFromExternrefTable0(ret[2]);
+            }
+            deferred3_0 = ptr2;
+            deferred3_1 = len2;
+            return getStringFromWasm0(ptr2, len2);
+        } finally {
+            wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+        }
+    }
+    /**
+     * The document info (JSON `DocInfo`).
+     * @returns {string}
+     */
+    info() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.editor_info(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * The language shown (`undefined` = plain text).
+     * @returns {string | undefined}
+     */
+    language() {
+        const ret = wasm.editor_language(this.__wbg_ptr);
+        let v1;
+        if (ret[0] !== 0) {
+            v1 = getStringFromWasm0(ret[0], ret[1]);
+            wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        }
+        return v1;
+    }
+    /**
+     * A session on `text`; `language` = grammar name, alias or file name (design 025 E3),
+     * `None`: plain text.
      * @param {string} text
      * @param {string | null} [language]
      */
@@ -63,16 +141,64 @@ export class Editor {
         return this;
     }
     /**
+     * Matches (bit 1) and markers (bit 2) per slice of the lines (design 010 E3).
+     * @param {number} buckets
+     * @returns {Uint8Array}
+     */
+    overview(buckets) {
+        const ret = wasm.editor_overview(this.__wbg_ptr, buckets);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
      * Text the page pasted from the system clipboard.
      * @param {string} text
      */
-    set_clipboard(text) {
+    setClipboard(text) {
         const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        wasm.editor_set_clipboard(this.__wbg_ptr, ptr0, len0);
+        wasm.editor_setClipboard(this.__wbg_ptr, ptr0, len0);
     }
     /**
-     * The whole text (the demo is small).
+     * The language by grammar name, alias or (virtual) file name (design 025 E3).
+     * @param {string} spec
+     */
+    setLanguage(spec) {
+        const ptr0 = passStringToWasm0(spec, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.editor_setLanguage(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Replaces the whole text (a new document: clean, no undo history); language, settings and
+     * read-only stay, the caret goes to the start.
+     * @param {string} text
+     */
+    setText(text) {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.editor_setText(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Lines `from..to` (0-based, end exclusive) with their line breaks.
+     * @param {number} from
+     * @param {number} to
+     * @returns {string}
+     */
+    slice(from, to) {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.editor_slice(this.__wbg_ptr, from, to);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * The whole text – only on request (`getValue()`), never per keystroke.
      * @returns {string}
      */
     text() {
@@ -234,6 +360,23 @@ export class Player {
 if (Symbol.dispose) Player.prototype[Symbol.dispose] = Player.prototype.free;
 
 /**
+ * Encodings the app offers (JSON array) – in the browser only for display.
+ * @returns {string}
+ */
+export function encodings() {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.encodings();
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
  * Names of all grammars (JSON array).
  * @returns {string}
  */
@@ -330,6 +473,11 @@ function addToExternrefTable0(obj) {
     const idx = wasm.__externref_table_alloc();
     wasm.__wbindgen_externrefs.set(idx, obj);
     return idx;
+}
+
+function getArrayU8FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getUint8ArrayMemory0().subarray(ptr / 1, ptr / 1 + len);
 }
 
 function getStringFromWasm0(ptr, len) {
