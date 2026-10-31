@@ -129,7 +129,8 @@ export class FakeEditorApi extends EditorApi {
   /** Next answer of `save` (an error to throw, or nothing). */
   saveError: unknown = null;
 
-  close(): Promise<void> {
+  close(id?: number): Promise<void> {
+    void id;
     return Promise.resolve();
   }
 

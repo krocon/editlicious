@@ -665,6 +665,20 @@ export class EditorView {
     this.input().nativeElement.focus({ preventScroll: true });
   }
 
+  /** Resolves when the commands sent so far are done. */
+  idle(): Promise<unknown> {
+    return this.chain;
+  }
+
+  /**
+   * Runs `fn` in the view's command order (after the commands sent so before) and draws again –
+   * e.g. replacing the whole text from outside (design 025 E9).
+   */
+  enqueue(fn: () => Promise<unknown>): Promise<unknown> {
+    this.chain = this.chain.then(fn).catch(() => undefined);
+    return this.chain.then(() => this.send({ type: 'frame' }));
+  }
+
   /** Runs a command from outside (menus, actions in prompt 005). */
   run(cmd: Command): Promise<unknown> {
     return this.send(cmd);

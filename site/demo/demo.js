@@ -60,7 +60,14 @@ function send(cmd) {
     frame = JSON.parse(ed.command(JSON.stringify(cmd)));
     draw();
   } catch (e) {
-    statusEl.textContent = String(e);
+    // errors come as FsError JSON (design 025 E2)
+    let text = String(e);
+    try {
+      text = JSON.parse(text).message ?? text;
+    } catch {
+      // plain text
+    }
+    statusEl.textContent = text;
   }
 }
 

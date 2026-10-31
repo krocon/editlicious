@@ -92,6 +92,48 @@
               "src/**/*.html"
             ]
           }
+        },
+        "element": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "src/element.ts",
+            "outputPath": "dist/element",
+            "index": false,
+            "tsConfig": "tsconfig.element.json",
+            "webWorkerTsConfig": "tsconfig.worker.json",
+            "inlineStyleLanguage": "css",
+            "assets": [
+              {
+                "glob": "ed_wasm*",
+                "input": "site/demo/pkg",
+                "output": "."
+              }
+            ],
+            "styles": [],
+            "outputHashing": "none"
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kB",
+                  "maximumError": "800kB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "40kB",
+                  "maximumError": "60kB"
+                }
+              ]
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
         }
       }
     }

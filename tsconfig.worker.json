@@ -1,0 +1,9 @@
+/* The engine worker of the embedded editor (design 025 E4). */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["es2022", "webworker"],
+    "types": []
+  },
+  "include": ["src/**/*.worker.ts"]
+}

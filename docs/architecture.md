@@ -25,6 +25,7 @@
 | A8 | Video-Export kopflos in Rust (`ed-video`: Engine-Frames + eigener Rasterizer) statt Aufnahme der WebView | CLI/CI-fähig, deterministisch (Hash-Test), beliebige Größe ohne Fenster; die Farben kommen aus `src/styles.css` (zur Bauzeit gelesen), das Layout folgt der Editor-Ansicht; Kodieren über ein externes `ffmpeg` (Lizenz/Größe), sonst PNG-Folge (017) |
 | A9 | Rechnen am Caret mit eigenem Parser in `ed-core` (`math.rs`, `editor/hints.rs`) statt `meval`/`evalexpr`/`fasteval` | die Crates kennen weder Dezimalkomma, `0x`/`0b`/`_`, implizites Mal, `×÷−`, `fac`/Γ und `convert` der Vorlage noch Längen-/Tiefengrenzen, und sie liefern keinen aufgeräumten Ausdruck für den Hinweis; ~600 Zeilen, WASM-fähig, Fuzz-Test ohne `proptest` (eigener Zufall aus `playback::Rng`) (020) |
 | A10 | Wort-Vervollständigung in `ed-core` (`editor/complete.rs`) mit handgepflegten Wortlisten je Sprache (`core/lexicon/*.txt`, `include_str!`) | Wörter aus einem begrenzten Fenster um den Caret (≤ 20 000 Zeilen / 400 000 Zeichen) – konstante Kosten bei jeder Dateigröße, nur ≤ 12 Einträge über die IPC; Schlüsselwörter aus den syntect-Grammatiken zu lesen scheitert an deren Regexen; keine neue Abhängigkeit, läuft auch in der WASM-Demo; eigene Listen des Nutzers liest die App (`user_words.rs`) und reicht sie an die Engine (023) |
+| A11 | Zusätzlich (A5 erweitert, 31.10.2026): einbettbare Komponente `<ed-editor>` / `<editlicious-editor>` aus derselben Angular-UI und `ed-wasm` | eine UI-Codebasis; die Desktop-App bleibt nativ. Engine im Web Worker (große Texte blockieren die Seite nie), Shadow DOM je Instanz, Farben aus `src/styles.css` generiert (`host-theme.css`), Tastatur nur am eigenen Shadow Root (025) |
 | A4 | Dev-Server-Port 1440 | comic-commander nutzt 1430, files-and-folders 1420 – alle drei parallel startbar |
 
 ## Commands
@@ -77,6 +78,7 @@
 | JetBrains Mono 2.304 (OFL-1.1, Schrift im Programm) | feste Schrift des Video-Exports (Ersatzschriften nur ausdrücklich) | 017 |
 | `ed-mcp` (eigener Crate, nur `serde`/`serde_json`) | MCP-Sidecar `editlicious-mcp` und Brücken-Nachrichten | 016 |
 | `@angular/*`, `@tauri-apps/api`, `rxjs`, `tslib` | Frontend | 001 |
+| `@angular/elements` (MIT, gleiche Version wie Angular) | macht die Editor-Komponente zum Custom Element `<editlicious-editor>` (Attribute ↔ Inputs, Events); nur im Bundle `pnpm build:element`, nicht in der App | 025 |
 
 ## Messwerte
 
@@ -126,4 +128,15 @@ flach); Sortieren ohne String je Zeile, natürlicher Vergleich ohne Allokation; 
 per `wasm-bindgen` an (`Editor.command(json) → frame json`). Abhängigkeiten: `wasm-bindgen` (Bindung),
 `web-time` in `ed-core` (`Instant`, das es auf wasm32 sonst nicht gibt; nativ = std). Gebaut vom Workflow
 „Site demo“, der `site/demo/pkg` zurück auf `main` committet (im Container fehlt das wasm32-Ziel).
+
+## Einbettbare Komponente (025)
+
+`src/app/embed/`: Fassade `EditliciousEditor` (`<ed-editor>`, Shadow DOM) um `EditorView`/`StatusBar`, je Instanz
+eigene `ActionService`, `KeyboardDispatcher` (am Shadow Root, ohne Kontextmenü-Sperre), `FindStore`,
+`DialogService`/`PickService` und `EmbeddedSettings` (statt `SettingsStore`, nichts auf `<html>`).
+`WasmEditorApi` spricht den Engine-Worker (`engine.worker.ts` → `engine-host.ts`) an; alle Instanzen teilen ein
+WASM-Modul (`initEditlicious`). `src/element.ts` registriert `<editlicious-editor>` (`@angular/elements`, zoneless).
+Bauen: `pnpm build:element` → `dist/element/editlicious-editor/` und `site/embed/lib/` (Beispielseite
+`site/embed/`). Prüfen: `node scripts/embed-e2e.mjs` (Playwright, falls vorhanden). Größen 31.10.2026:
+`editlicious-editor.js` 324 KB (98 KB gzip), Worker 2 KB, `ed_wasm.js` 22 KB, `ed_wasm_bg.wasm` 3,5 MB (1,2 MB gzip).
 

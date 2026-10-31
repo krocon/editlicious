@@ -37,6 +37,24 @@ built with [Tauri 2](https://tauri.app), Angular 22 (zoneless, signals) and Rust
 real editing engine (`ed-core`) in the browser as WebAssembly. See [`site/README.md`](site/README.md);
 `pnpm site:demo` rebuilds the engine, `pnpm site:test` checks the page.
 
+## Embedding the editor in a web page
+
+The same editor view and engine (as WebAssembly in a worker) also come as a standalone component:
+
+```html
+<script type="module" src="editlicious-editor.js"></script>
+<editlicious-editor language="Rust" scheme="one" word-wrap status-bar></editlicious-editor>
+```
+
+Attributes / properties: `value`, `language` (grammar, `TypeScript`, or a file name like `app.ts`), `scheme`
+(`auto` or one of the 13 schemes), `readonly`, `word-wrap`, `line-numbers`, `status-bar`, `tab-width`,
+`insert-spaces`, `font-size`, `font-family`, `indent-guides`, `color-swatches`, `overview`, `math-hints`,
+`word-suggest`, `ui-language`. Events `ed-change` (revision, dirty, line and character count – never the text),
+`ed-caret`, `ed-ready`; methods `getValue()`, `getSlice()`, `setValue()`, `loadText()`, `focus()`, `runCommand()`,
+`runAction()`, `find()`, `goTo()`. In Angular: `<ed-editor [value]="…" language="TypeScript" [readOnly]="true" />`
+(`src/app/embed/editlicious-editor.ts`). Build with `pnpm build:element` (→ `dist/element/editlicious-editor/`);
+`site/embed/` shows two editors side by side.
+
 ## Development
 
 ```bash

@@ -26,6 +26,14 @@ const current = signal<Language>('en');
 /** The UI language (reactive). */
 export const language = current.asReadonly();
 
+/**
+ * Only the language of the texts – `<html lang>` stays (the embedded editor must not touch the
+ * page, design 025 E9). Shared by all editors of a page.
+ */
+export function useLanguage(lang: Language): void {
+  current.set(lang);
+}
+
 export function setLanguage(lang: Language): void {
   current.set(lang);
   if (typeof document !== 'undefined') {

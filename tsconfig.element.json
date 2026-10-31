@@ -1,0 +1,9 @@
+/* The custom element <editlicious-editor> (design 025 E11): its own program, so the desktop build stays as it is. */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": []
+  },
+  "files": ["src/element.ts"],
+  "include": ["src/**/*.d.ts"]
+}

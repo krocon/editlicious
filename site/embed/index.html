@@ -1,0 +1,158 @@
+<!doctype html>
+<!--
+  Test and example page of the embeddable editor (prompt 025): two <editlicious-editor>
+  elements side by side. Plain HTML, no framework. `pnpm build:element` puts the element into
+  lib/ (not committed); serve the site folder over http (ES modules and WebAssembly).
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>editlicious – embedded</title>
+    <script type="module" src="lib/editlicious-editor.js"></script>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --page-bg: #fbfaf7;
+        --page-text: #1d2026;
+        --page-muted: #6b6f78;
+        --page-line: #ddd9cf;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --page-bg: #121418;
+          --page-text: #e4e5e8;
+          --page-muted: #969ba5;
+          --page-line: #2c3038;
+        }
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        font: 15px/1.5 system-ui, sans-serif;
+        color: var(--page-text);
+        background: var(--page-bg);
+      }
+      h1 {
+        margin: 0 0 4px;
+        font-size: 20px;
+      }
+      p {
+        margin: 0 0 12px;
+        color: var(--page-muted);
+      }
+      .pair {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+        gap: 16px;
+      }
+      figure {
+        margin: 0;
+        min-width: 0;
+      }
+      figcaption {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 6px;
+      }
+      editlicious-editor {
+        height: 360px;
+        border: 1px solid var(--page-line);
+        border-radius: 8px;
+      }
+      button,
+      label {
+        font: inherit;
+      }
+      #log {
+        height: 140px;
+        margin: 16px 0 0;
+        padding: 8px;
+        overflow: auto;
+        font: 12px/1.4 ui-monospace, monospace;
+        border: 1px solid var(--page-line);
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>&lt;editlicious-editor&gt;</h1>
+    <p>Two independent editors on one page, one shared engine (WebAssembly in a worker).</p>
+    <div class="pair">
+      <figure>
+        <figcaption>
+          <strong>A</strong> Rust · paper
+          <label><input type="checkbox" data-ro="a" /> read-only</label>
+          <button type="button" data-million="a">1 million lines</button>
+          <button type="button" data-long="a">5 million characters in one line</button>
+        </figcaption>
+        <editlicious-editor id="a" language="Rust" scheme="paper" status-bar></editlicious-editor>
+      </figure>
+      <figure>
+        <figcaption>
+          <strong>B</strong> TypeScript · night
+          <label><input type="checkbox" data-ro="b" /> read-only</label>
+          <button type="button" data-million="b">1 million lines</button>
+          <button type="button" data-get="b">getValue()</button>
+        </figcaption>
+        <editlicious-editor
+          id="b"
+          language="TypeScript"
+          scheme="night"
+          word-wrap
+          tab-width="2"
+        ></editlicious-editor>
+      </figure>
+    </div>
+    <pre id="log" aria-live="polite"></pre>
+    <script type="module">
+      const a = document.getElementById('a');
+      const b = document.getElementById('b');
+      // properties work before and after the element is defined
+      a.value = 'fn main() {\n    let x = 255 / 8;\n    println!("{x} #3f7fdf");\n}\n';
+      b.value = "import { Component } from '@angular/core';\n\nexport class Demo {\n  ngOnInit() {}\n}\n";
+      const log = document.getElementById('log');
+      const write = (line) => {
+        log.textContent += line + '\n';
+        log.scrollTop = log.scrollHeight;
+      };
+      for (const el of [a, b]) {
+        el.addEventListener('ed-ready', () => write(`${el.id} ready`));
+        el.addEventListener('ed-change', (e) => write(`${el.id} change ${JSON.stringify(e.detail)}`));
+        el.addEventListener('ed-caret', (e) => write(`${el.id} caret ${JSON.stringify(e.detail)}`));
+      }
+      for (const box of document.querySelectorAll('[data-ro]')) {
+        box.addEventListener('change', () => {
+          document.getElementById(box.dataset.ro).readOnly = box.checked;
+        });
+      }
+      const million = () => {
+        const lines = new Array(1_000_000);
+        for (let i = 0; i < lines.length; i++) lines[i] = `line ${i + 1}: the quick brown fox ${i % 97}`;
+        return lines.join('\n');
+      };
+      for (const btn of document.querySelectorAll('[data-million]')) {
+        btn.addEventListener('click', async () => {
+          const t0 = performance.now();
+          await document.getElementById(btn.dataset.million).setValue(million());
+          write(`${btn.dataset.million} 1 000 000 lines in ${Math.round(performance.now() - t0)} ms`);
+        });
+      }
+      for (const btn of document.querySelectorAll('[data-long]')) {
+        btn.addEventListener('click', async () => {
+          const t0 = performance.now();
+          await document.getElementById(btn.dataset.long).setValue('x'.repeat(5_000_000) + '\n');
+          write(`${btn.dataset.long} 5 000 000 characters in ${Math.round(performance.now() - t0)} ms`);
+        });
+      }
+      for (const btn of document.querySelectorAll('[data-get]')) {
+        btn.addEventListener('click', async () => {
+          const text = await document.getElementById(btn.dataset.get).getValue();
+          write(`${btn.dataset.get} getValue(): ${text.length} characters`);
+        });
+      }
+    </script>
+  </body>
+</html>

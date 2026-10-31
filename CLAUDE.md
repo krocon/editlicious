@@ -28,6 +28,7 @@
 | Frontend-Tests | `pnpm test` (Vitest + jsdom über `ng test`), `pnpm test:watch` |
 | Lint / Format | `pnpm lint`, `pnpm format`, `pnpm format:check` |
 | Frontend-Build | `pnpm build` |
+| Einbettbare Komponente | `pnpm build:element` (→ `dist/element/editlicious-editor/`, `site/embed/lib/`), danach `node scripts/embed-e2e.mjs` (Playwright, headless); `pnpm host-theme` nach Änderungen an `src/styles.css` |
 | Rust | `pnpm rust:fmt`, `pnpm rust:lint` (clippy `-D warnings`), `pnpm rust:test` (ganzer Workspace inkl. `ed-core`) |
 | Messungen | `cd src-tauri && cargo test -p ed-core --release -- --ignored --nocapture measure_` |
 | Alles prüfen | `pnpm check` |
@@ -68,6 +69,10 @@ src/                          Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/core/mcp/               McpApi (KI-Steuerung an/aus, Aktionen/aktives Dokument melden, Ereignisse)
   app/features/mcp/           McpStore (führt aus, was die KI verlangt: Tabs, Aktionen, Wiedergabe, Status)
   app/features/about/         About-Dialog
+  app/embed/                  einbettbare Komponente (025): EditliciousEditor (`<ed-editor>`, Shadow DOM),
+                              WasmEditorApi + Engine-Worker, EmbeddedSettings, BrowserClipboard,
+                              host-theme.css (generiert aus styles.css – nie von Hand ändern)
+  element.ts                  Custom Element `<editlicious-editor>` (@angular/elements), Ziel `element`
   app/core/i18n/              translatable(), Sprache (Signal), System-Sprache, catalogs.spec (Vollständigkeit)
   app/core/settings/          Settings-DTO (= Rust settings.rs), SettingsApi
   app/features/settings/      SettingsStore (laden, sofort anwenden, gebündelt speichern, Zoom), SettingsDialog
@@ -113,6 +118,7 @@ docs/                         architecture.md (Entscheidungen, Commands, Abhäng
                               completion.md (Vervollständigung, eigene Wortlisten) – für Nutzer
 prompts/                      Feature-Prompts (Index README.md), done/
 site/                         Werbe-Webseite (index.html ohne JS) + demo/ (Engine als WebAssembly, pkg/ vom Workflow)
+                              + embed/ (Beispielseite mit zwei `<editlicious-editor>`, lib/ von `pnpm build:element`)
   src-tauri/wasm/             Crate `ed-wasm` (wasm-bindgen-Bindung von ed-core, außerhalb des Workspaces)
 ```
 
@@ -123,8 +129,10 @@ site/                         Werbe-Webseite (index.html ohne JS) + demo/ (Engin
   (`src-tauri/core`, ohne Tauri, WASM-fähig). Die UI übersetzt Eingaben in Befehle und zeichnet Frames (sichtbare
   Zeilen bzw. Spaltenfenster). Nichts, was proportional zur Dateigröße ist, geht über die IPC-Grenze – auch nicht
   beim Kopieren großer Auswahlen, Suchen oder Sortieren. Ausnahme: IME-Komposition bis zum Abschluss.
-- **Angular bleibt die UI** (Entscheidung 26.10.2026): WebAssembly nur für die Webseiten-Demo; die Engine läuft
-  nativ (große Dateien, Threads, kein 4-GB-Limit, kein Kopieren der Datei über die Brücke).
+- **Angular bleibt die UI** (Entscheidung 26.10.2026): WebAssembly nur für die Webseiten-Demo und die einbettbare
+  Komponente (025, A11); die Desktop-App nutzt die Engine nativ (große Dateien, Threads, kein 4-GB-Limit, kein
+  Kopieren der Datei über die Brücke). Die Editor-Ansicht bleibt mehrinstanzfähig: Einstellungen über
+  `ViewSettings`, Desktop-Teile über `EDITOR_*`-Tokens (`features/editor/editor-host.ts`), nichts auf `document`.
 - **Frontend ruft das Backend nur über typisierte Fassaden** (`AboutApi`, `DocumentApi` …, in `app/core/`);
   `invoke()` steht nur in `core/backend/call.ts`. Tests und der Browser-Modus ersetzen die Fassade.
 - **DTO-Vertrag**: Rust `model.rs` ↔ TS `*.models.ts` von Hand synchron; jede Änderung auf beiden Seiten + Test.

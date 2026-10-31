@@ -1,0 +1,28 @@
+/* The embedded editor's box (design 025 E8); colours and fonts come from host-theme.css. */
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 24rem;
+  min-height: 8rem;
+  overflow: hidden;
+  /* dialogs (`position: fixed`) stay inside the editor, nothing leaks onto the page */
+  contain: content;
+  text-align: start;
+  background: var(--ed-bg);
+}
+
+:host([hidden]) {
+  display: none;
+}
+
+.editor {
+  flex: 1;
+  min-height: 0;
+}
+
+input,
+button,
+select,
+textarea {
+  font: inherit;
+}

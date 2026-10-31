@@ -5,5 +5,11 @@
     "types": []
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["src/**/*.spec.ts", "src/test-setup.ts"]
+  "exclude": [
+    "src/**/*.spec.ts",
+    "src/test-setup.ts",
+    "src/**/*.worker.ts",
+    "src/element.ts",
+    "src/app/embed/**"
+  ]
 }

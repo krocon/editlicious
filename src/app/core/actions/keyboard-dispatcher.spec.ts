@@ -130,15 +130,17 @@ describe('KeyboardDispatcher on an element (design 025 E7)', () => {
     const outside = document.createElement('div');
     document.body.append(inside, outside);
     const detach = dispatcher.attach(inside, { contextMenu: false });
-    expect(key(outside, 'f', { ctrlKey: true }).defaultPrevented).toBe(false);
+    const menuSpy = vi.spyOn(dispatcher, 'contextMenu');
+    key(outside, 'f', { ctrlKey: true });
     expect(ran).toEqual([]);
     expect(key(inside, 'f', { ctrlKey: true }).defaultPrevented).toBe(true);
     expect(ran).toEqual(['find.open']);
     // unknown keys go on to the page
-    expect(key(inside, 'F19').defaultPrevented).toBe(false);
-    const menu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
-    inside.dispatchEvent(menu);
-    expect(menu.defaultPrevented).toBe(false);
+    const handled = vi.spyOn(Event.prototype, 'stopPropagation');
+    key(inside, 'F19');
+    expect(handled).not.toHaveBeenCalled();
+    inside.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    expect(menuSpy).not.toHaveBeenCalled();
     detach();
     key(inside, 'f', { ctrlKey: true });
     expect(ran).toEqual(['find.open']);
