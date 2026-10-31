@@ -29,7 +29,7 @@ export class KeyboardDispatcher {
   private readonly actions = inject(ActionService);
   private provider: ContextProvider = () => ['global'];
   private readonly fallbacks = new Map<ActionContext, (e: KeyboardEvent) => boolean>();
-  private attached: Document | null = null;
+  private attached: EventTarget | null = null;
 
   setContextProvider(p: ContextProvider): void {
     this.provider = p;
@@ -45,12 +45,27 @@ export class KeyboardDispatcher {
     if (this.fallbacks.get(ctx) === fn) this.fallbacks.delete(ctx);
   }
 
-  attach(doc: Document): void {
-    if (this.attached) return;
-    this.attached = doc;
-    doc.addEventListener('keydown', (e) => this.handle(e));
-    doc.addEventListener('keyup', (e) => this.keyup(e));
-    doc.addEventListener('contextmenu', (e) => this.contextMenu(e));
+  /**
+   * Listens on `target`: the app on its `document` (with the webview's context menu blocked),
+   * an embedded editor only on its own host element and never on the page's context menu
+   * (design 025 E7). Returns the detach function; a second attach is ignored.
+   */
+  attach(target: EventTarget, options: { contextMenu?: boolean } = {}): () => void {
+    if (this.attached) return () => undefined;
+    this.attached = target;
+    const down = (e: Event) => this.handle(e as KeyboardEvent);
+    const up = (e: Event) => this.keyup(e as KeyboardEvent);
+    const menu = (e: Event) => this.contextMenu(e as MouseEvent);
+    const blockMenu = options.contextMenu ?? true;
+    target.addEventListener('keydown', down);
+    target.addEventListener('keyup', up);
+    if (blockMenu) target.addEventListener('contextmenu', menu);
+    return () => {
+      target.removeEventListener('keydown', down);
+      target.removeEventListener('keyup', up);
+      if (blockMenu) target.removeEventListener('contextmenu', menu);
+      if (this.attached === target) this.attached = null;
+    };
   }
 
   /**

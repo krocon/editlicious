@@ -12,8 +12,7 @@ import { EditorApi } from '../../core/editor/editor-api';
 import { ActionService } from '../../core/actions/action.service';
 import { Frame } from '../../core/editor/editor.models';
 import { locale } from '../../core/i18n/i18n';
-import { McpStore } from '../mcp/mcp.store';
-import { RecordingStore } from '../recording/recording.store';
+import { EDITOR_MCP, EDITOR_PLAYBACK } from './editor-host';
 import { RECORDING_TEXTS } from '../recording/recording-texts';
 import { EDITOR_TEXTS } from './editor-texts';
 
@@ -113,8 +112,9 @@ export class StatusBar {
   protected readonly t = EDITOR_TEXTS;
   protected readonly rt = RECORDING_TEXTS;
   private readonly actions = inject(ActionService);
-  private readonly rec = inject(RecordingStore);
-  private readonly mcp = inject(McpStore);
+  /** App only (design 025 E7): `null` when embedded. */
+  private readonly rec = inject(EDITOR_PLAYBACK);
+  private readonly mcp = inject(EDITOR_MCP);
 
   /** "row · 7×" when the caret is on a marked word (design 019): counted in the engine. */
   private readonly markerTally = signal<{ key: string; n: number } | null>(null);
@@ -154,24 +154,24 @@ export class StatusBar {
 
   /** "Video 37 %" while a video is rendered (design 017); a click cancels. */
   protected readonly video = computed(() => {
-    const e = this.rec.exporting();
+    const e = this.rec?.exporting();
     if (!e) return '';
     return this.rt.video(e.total ? Math.floor((e.done * 100) / e.total) : 0);
   });
 
   /** "AI" while an AI is connected (design 016 E9); a click disconnects it. */
-  protected readonly ai = computed(() => this.mcp.connections() > 0);
+  protected readonly ai = computed(() => (this.mcp?.connections() ?? 0) > 0);
 
   /** "● REC" while this document records (design 015 E11). */
   protected readonly recording = computed(() => {
     const f = this.frame();
-    return !!f && this.rec.recording().has(f.info.id);
+    return !!f && !!this.rec?.recording().has(f.info.id);
   });
 
   /** "▶ 37 %" / "❚❚ 37 %" while a playback types here. */
   protected readonly playback = computed(() => {
     const f = this.frame();
-    const p = this.rec.playback();
+    const p = this.rec?.playback();
     if (!f || !p || p.docId !== f.info.id) return '';
     const pct = p.total ? Math.floor((p.done * 100) / p.total) : 0;
     return `${p.ai ? this.rt.aiTyping + ' ' : ''}${p.paused ? '❚❚' : '▶'} ${this.rt.progress(pct)}`;

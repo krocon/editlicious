@@ -117,3 +117,32 @@ describe('KeyboardDispatcher', () => {
     expect(ran).toEqual([]);
   });
 });
+
+describe('KeyboardDispatcher on an element (design 025 E7)', () => {
+  it('listens only on its target, leaves the context menu alone and detaches', () => {
+    TestBed.configureTestingModule({ providers: [{ provide: OS, useValue: 'other' }] });
+    const actions = TestBed.inject(ActionService);
+    const dispatcher = TestBed.inject(KeyboardDispatcher);
+    const ran: string[] = [];
+    actions.register('find.open', { run: () => ran.push('find.open') });
+    dispatcher.setContextProvider(() => ['editor', 'global']);
+    const inside = document.createElement('div');
+    const outside = document.createElement('div');
+    document.body.append(inside, outside);
+    const detach = dispatcher.attach(inside, { contextMenu: false });
+    expect(key(outside, 'f', { ctrlKey: true }).defaultPrevented).toBe(false);
+    expect(ran).toEqual([]);
+    expect(key(inside, 'f', { ctrlKey: true }).defaultPrevented).toBe(true);
+    expect(ran).toEqual(['find.open']);
+    // unknown keys go on to the page
+    expect(key(inside, 'F19').defaultPrevented).toBe(false);
+    const menu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    inside.dispatchEvent(menu);
+    expect(menu.defaultPrevented).toBe(false);
+    detach();
+    key(inside, 'f', { ctrlKey: true });
+    expect(ran).toEqual(['find.open']);
+    inside.remove();
+    outside.remove();
+  });
+});

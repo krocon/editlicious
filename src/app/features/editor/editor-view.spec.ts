@@ -14,6 +14,7 @@ import { Command } from '../../core/editor/editor.models';
 import { SettingsStore } from '../settings/settings.store';
 import { KeyboardDispatcher } from '../../core/actions/keyboard-dispatcher';
 import { OS } from '../../core/actions/platform';
+import { EDITOR_CLIPBOARD } from './editor-host';
 
 const cleanups: (() => void)[] = [];
 /** Lets the serial command chain of the view run. */
@@ -446,7 +447,9 @@ describe('EditorView – arithmetic (prompt 020)', () => {
     const hint = el.querySelector('.hint')!;
     expect(hint.getAttribute('role')).toBe('tooltip');
     expect(hint.textContent?.trim()).toBe('255 / 8 = 31.875');
-    expect(input.getAttribute('aria-describedby')).toBe('math-hint');
+    // ids are unique per view (design 025 E7) and point at the hint
+    expect(input.getAttribute('aria-describedby')).toMatch(/^ed\d+-math-hint$/);
+    expect(input.getAttribute('aria-describedby')).toBe(hint.id);
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await fixture.whenStable();
     expect(el.querySelector('.hint')).toBeNull();
@@ -489,7 +492,8 @@ describe('EditorView – arithmetic (prompt 020)', () => {
     expect(options.length).toBe(3);
     expect(options[2].textContent).toContain('rounded');
     const input = el.querySelector('textarea')!;
-    expect(input.getAttribute('aria-activedescendant')).toBe('completion-0');
+    expect(input.getAttribute('aria-activedescendant')).toBe(options[0].id);
+    expect(input.getAttribute('aria-controls')).toBe(list.id);
     const key = (k: string) =>
       input.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
     key('ArrowDown');
@@ -497,7 +501,7 @@ describe('EditorView – arithmetic (prompt 020)', () => {
     key('ArrowDown');
     key('ArrowUp');
     await fixture.whenStable();
-    expect(input.getAttribute('aria-activedescendant')).toBe('completion-2');
+    expect(input.getAttribute('aria-activedescendant')).toBe(options[2].id);
     expect(api.sent('move').length).toBe(0);
     key('Tab');
     await flush();
@@ -572,5 +576,37 @@ describe('EditorView – word completion (prompt 023)', () => {
       'private',
     ]);
     expect(options.map((o) => o.querySelector('.kind')?.textContent)).toEqual(['word', 'keyword']);
+  });
+});
+
+describe('EditorView with a browser clipboard (design 025 E6)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    cleanups.splice(0).forEach((f) => f());
+  });
+
+  it('hands copies to the bridge and pastes what it reads', async () => {
+    const writes: { id: number; html: boolean }[] = [];
+    const bridge = {
+      write: (id: number, html: boolean, done: Promise<unknown>) => {
+        writes.push({ id, html });
+        void done;
+      },
+      read: () => Promise.resolve('from page'),
+    };
+    TestBed.configureTestingModule({
+      providers: [{ provide: EDITOR_CLIPBOARD, useValue: bridge }],
+    });
+    const { fixture, api } = await setup();
+    const view = fixture.componentInstance;
+    await view.run({ type: 'copy' });
+    await view.run({ type: 'cut' });
+    expect(writes).toEqual([
+      { id: 7, html: false },
+      { id: 7, html: false },
+    ]);
+    await view.run({ type: 'paste' });
+    expect(api.sent('paste').length).toBe(0);
+    expect(api.sent('insert').at(-1)).toEqual({ type: 'insert', text: 'from page' });
   });
 });

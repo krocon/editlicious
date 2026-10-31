@@ -6,8 +6,8 @@
 | Etappe | Inhalt | Stand |
 |---|---|---|
 | 1 | Design-Dokument, Prompt 024 → 025 umbenannt | ✅ 31.10.2026 |
-| 2 | Rust: `readOnly` (E1), Zählen/Übersicht nach `ed-core` (E2), `ed-wasm` ausbauen (E2, E3) | offen |
-| 3 | Frontend-Entkopplung (E7): `ViewSettings`, Dispatcher am Host, Tokens, ARIA-IDs | offen |
+| 2 | Rust: `readOnly` (E1), Zählen/Übersicht nach `ed-core` (E2), `ed-wasm` ausbauen (E2, E3) | ✅ 31.10.2026 |
+| 3 | Frontend-Entkopplung (E7): `ViewSettings`, Dispatcher am Host, Tokens, ARIA-IDs, Clipboard-Brücke | ✅ 31.10.2026 |
 | 4 | `WasmEditorApi`, Worker, Fassade, `element.ts`, `build:element`, Host-Theme (E4–E11) | offen |
 | 5 | Demo `site/embed`, E2E, Doku, Lizenzen, `done/` (E12) | offen |
 

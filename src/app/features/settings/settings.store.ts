@@ -4,6 +4,7 @@ import { setLanguage, systemLanguage } from '../../core/i18n/i18n';
 import { SettingsApi } from '../../core/settings/settings-api';
 import { DEFAULT_SETTINGS, Settings } from '../../core/settings/settings.models';
 import { ChromeStore } from '../menus/chrome.store';
+import type { ViewSettings } from './view-settings';
 
 /** Bundled writes (zoom with a held key). */
 const SAVE_DELAY = 400;
@@ -16,7 +17,7 @@ export const MAX_FONT = 72;
  * written back from there.
  */
 @Injectable({ providedIn: 'root' })
-export class SettingsStore {
+export class SettingsStore implements ViewSettings {
   private readonly api = inject(SettingsApi);
   private readonly chrome = inject(ChromeStore);
   private readonly doc = inject(DOCUMENT);

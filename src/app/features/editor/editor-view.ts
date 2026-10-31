@@ -22,13 +22,14 @@ import { ActionService } from '../../core/actions/action.service';
 import { ACTIONS } from '../../core/actions/action-catalog';
 import { EDITOR_TEXTS, noticeText } from './editor-texts';
 import { FindBar } from '../find/find-bar';
-import { RecordingStore, VIEW_ONLY_COMMANDS } from '../recording/recording.store';
+import { VIEW_ONLY_COMMANDS } from '../recording/recording.store';
 import { FindStore } from '../find/find.store';
 import { FIND_TEXTS } from '../find/find-texts';
 import { GotoBar } from '../find/goto-bar';
 import { PickService } from '../../shared/pick/pick.service';
 import { MENUS_TEXTS } from '../menus/menus-texts';
-import { SettingsStore } from '../settings/settings.store';
+import { ViewSettings } from '../settings/view-settings';
+import { EDITOR_CLIPBOARD, EDITOR_EMBEDDED, EDITOR_PLAYBACK } from './editor-host';
 import { language } from '../../core/i18n/i18n';
 
 /** Cells of padding left of the text. */
@@ -36,6 +37,8 @@ const PAD_CELLS = 1;
 /** Width of the quiet scrollbars in px. */
 const BAR = 10;
 const MIN_THUMB = 28;
+/** Numbers the views of a page – unique ARIA ids in light DOM and shadow roots (design 025 E7). */
+let viewSeq = 0;
 
 interface Metrics {
   /** width of one cell */
@@ -90,14 +93,19 @@ export class EditorView {
   protected readonly composing = signal(false);
   protected readonly status = signal('');
   protected readonly find = inject(FindStore);
-  protected readonly settings = inject(SettingsStore);
+  protected readonly settings = inject(ViewSettings);
+  /** Prefix of the ARIA ids of this view (`ed3-completion-list` …). */
+  protected readonly uid = `ed${++viewSeq}-`;
   protected readonly gotoOpen = signal(false);
   protected readonly findCount = signal('');
   protected readonly findInvalid = signal(false);
   private countTimer: ReturnType<typeof setTimeout> | null = null;
 
   private readonly api = inject(EditorApi);
-  private readonly rec = inject(RecordingStore);
+  /** Recording and playback (app only, design 015); `null` when embedded. */
+  private readonly rec = inject(EDITOR_PLAYBACK);
+  private readonly embedded = inject(EDITOR_EMBEDDED);
+  private readonly clipboard = inject(EDITOR_CLIPBOARD);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly input = viewChild.required<ElementRef<HTMLTextAreaElement>>('input');
   private readonly measure = viewChild.required<ElementRef<HTMLElement>>('measure');
@@ -411,7 +419,7 @@ export class EditorView {
     });
     // a playback pushes its frames (design 015 E9)
     effect(() => {
-      const f = this.rec.pushed();
+      const f = this.rec?.pushed();
       untracked(() => {
         if (f && f.info.id === this.docId()) this.show(f);
       });
@@ -447,13 +455,13 @@ export class EditorView {
         'find.prev': { run: () => this.findStep(true) },
         'edit.escape': {
           run: () => {
-            if (this.rec.isPlaying(this.docId())) void this.rec.stopPlayback();
+            if (this.rec?.isPlaying(this.docId())) void this.rec.stopPlayback();
             else if (this.hintBox()) this.hiddenHint.set(this.hintKey(this.frame()));
             else if (f.open() || this.gotoOpen() || this.frame()?.search) this.closeFind();
             else void this.send({ type: 'singleCursor' });
           },
           enabled: () =>
-            this.rec.playback()?.docId === this.docId() ||
+            this.rec?.playback()?.docId === this.docId() ||
             f.open() ||
             this.gotoOpen() ||
             !!this.hintBox() ||
@@ -462,13 +470,16 @@ export class EditorView {
         },
         'goto.line': { run: () => this.gotoOpen.set(true) },
         'view.language': { run: () => void this.chooseLanguage() },
-        'file.encoding': { run: () => void this.chooseEncoding() },
         'file.lineEnding': { run: () => void this.chooseLineEnding() },
         'edit.copyHtml': { run: () => void this.copyHtml(false) },
         'edit.copyHtmlNumbers': { run: () => void this.copyHtml(true) },
       },
       this.destroyRef,
     );
+    // an embedded text has no file to read again (design 025 E7)
+    if (!this.embedded) {
+      actions.register('file.encoding', { run: () => void this.chooseEncoding() }, this.destroyRef);
+    }
   }
 
   private readonly picker = inject(PickService);
@@ -752,16 +763,30 @@ export class EditorView {
   private send(cmd: Command): Promise<unknown> {
     const id = this.docId();
     // a playback types here: only the view may change (design 015 E10)
-    if (this.rec.isPlaying(id) && !VIEW_ONLY_COMMANDS.has(cmd.type)) return this.chain;
-    this.chain = this.chain.then(async () => {
-      try {
-        const f = await this.api.command(id, cmd);
-        if (id === this.docId()) this.show(f);
-      } catch (e) {
-        this.status.set(describeFsError(toFsError(e)));
-      }
-    });
+    if (this.rec?.isPlaying(id) && !VIEW_ONLY_COMMANDS.has(cmd.type)) return this.chain;
+    // in a browser the page's clipboard comes in and goes out here (design 025 E6)
+    if (this.clipboard && cmd.type === 'paste') {
+      const clip = this.clipboard;
+      this.chain = this.chain.then(async () => {
+        const text = await clip.read();
+        if (text) await this.runNow(id, { type: 'insert', text });
+      });
+      return this.chain;
+    }
+    this.chain = this.chain.then(() => this.runNow(id, cmd));
+    if (this.clipboard && (cmd.type === 'copy' || cmd.type === 'cut' || cmd.type === 'copyHtml')) {
+      this.clipboard.write(id, cmd.type === 'copyHtml', this.chain);
+    }
     return this.chain;
+  }
+
+  private async runNow(id: number, cmd: Command): Promise<void> {
+    try {
+      const f = await this.api.command(id, cmd);
+      if (id === this.docId()) this.show(f);
+    } catch (e) {
+      this.status.set(describeFsError(toFsError(e)));
+    }
   }
 
   /** Draws a frame – unless a newer one is already shown (playback and commands interleave). */
