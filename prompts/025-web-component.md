@@ -1,4 +1,4 @@
-# Prompt 024: Einbettbare Editor-Komponente – Angular & Web Component (`<editlicious-editor>`)
+# Prompt 025: Einbettbare Editor-Komponente – Angular & Web Component (`<editlicious-editor>`)
 
 > Lies zuerst [000-arbeitsweise.md](000-arbeitsweise.md). Braucht: 003, 005, 006, 008–011, 018–021, 023.
 > Bewusste Erweiterung von Entscheidung A5 (`docs/architecture.md`, `CLAUDE.md` §4): Die Desktop-App nutzt weiterhin
