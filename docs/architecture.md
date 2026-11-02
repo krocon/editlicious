@@ -137,6 +137,9 @@ eigene `ActionService`, `KeyboardDispatcher` (am Shadow Root, ohne Kontextmenü-
 `WasmEditorApi` spricht den Engine-Worker (`engine.worker.ts` → `engine-host.ts`) an; alle Instanzen teilen ein
 WASM-Modul (`initEditlicious`). `src/element.ts` registriert `<editlicious-editor>` (`@angular/elements`, zoneless).
 Bauen: `pnpm build:element` → `dist/element/editlicious-editor/` und `site/embed/lib/` (Beispielseite
-`site/embed/`). Prüfen: `node scripts/embed-e2e.mjs` (Playwright, falls vorhanden). Größen 31.10.2026:
-`editlicious-editor.js` 324 KB (98 KB gzip), Worker 2 KB, `ed_wasm.js` 22 KB, `ed_wasm_bg.wasm` 3,5 MB (1,2 MB gzip).
+`site/embed/`). Prüfen: `node scripts/embed-e2e.mjs` (Playwright, falls vorhanden). Größen 02.11.2026:
+`editlicious-editor.js` 325 KB (98 KB gzip), Worker 2 KB, `ed_wasm.js` 22 KB, `ed_wasm_bg.wasm` 3,6 MB (1,2 MB gzip).
+`dist/element/editlicious-editor/` ist zugleich das npm-Paket `editlicious-editor` (Vorlagen für `package.json`,
+Typen und README in `packages/editlicious-editor/`; veröffentlicht wird nur auf Anweisung). `playScript()` spielt
+Tipp-Skripte auf der eigenen Sitzung ab (`scriptSteps` aus `ed-wasm`, 025 E13).
 

@@ -29,6 +29,17 @@ export abstract class EmbedEngineApi extends EditorApi {
   abstract slice(id: number, from: number, to: number): Promise<string>;
   /** What the last copy put on the engine's clipboard. */
   abstract clipboard(id: number): Promise<{ text: string | null; html: string | null }>;
+  /** Puts `text` on the engine's clipboard (a script's `paste`) – not on the page's. */
+  abstract setClipboard(id: number, text: string): Promise<void>;
+  /** The steps of a typing script (`*.edscript`, docs/scripts.md) on its own clock. */
+  abstract scriptSteps(script: string): Promise<ScriptStep[]>;
+}
+
+/** One step of a typing script: run `cmd` at `at` ms (after putting `clip` on the clipboard). */
+export interface ScriptStep {
+  at: number;
+  cmd: Command;
+  clip: string | null;
 }
 
 function unsupported(what: string): Promise<never> {
@@ -80,6 +91,14 @@ export class WasmEditorApi extends EmbedEngineApi {
   /** What the last copy put on the engine's clipboard. */
   clipboard(id: number): Promise<{ text: string | null; html: string | null }> {
     return this.call('clipboard', id) as Promise<{ text: string | null; html: string | null }>;
+  }
+
+  setClipboard(id: number, text: string): Promise<void> {
+    return this.call('setClipboard', id, text).then(() => undefined);
+  }
+
+  async scriptSteps(script: string): Promise<ScriptStep[]> {
+    return JSON.parse((await this.call('scriptSteps', script)) as string) as ScriptStep[];
   }
 
   open(): Loading {

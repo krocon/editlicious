@@ -61,6 +61,12 @@ function withMethods(base: NgElementConstructor<unknown>): CustomElementConstruc
     goTo(line: number, ch?: number): Promise<void> {
       return facade(this).then((f) => f.goTo(line, ch));
     }
+    playScript(script: string, tempo?: number): Promise<void> {
+      return facade(this).then((f) => f.playScript(script, tempo));
+    }
+    stopScript(): void {
+      void facade(this).then((f) => f.stopScript());
+    }
   };
 }
 

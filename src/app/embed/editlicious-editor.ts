@@ -188,6 +188,8 @@ export class EditliciousEditor {
   private lastChange = '';
   private lastCaret = '';
   private started: Promise<number | null>;
+  /** Counts `playScript` runs – a new run, `stopScript` or `setValue` ends the one before. */
+  private playing = 0;
   private startResolve!: (id: number | null) => void;
 
   constructor() {
@@ -360,6 +362,7 @@ export class EditliciousEditor {
 
   /** Replaces the whole text (clean, no undo back into the old one). */
   async setValue(text: string): Promise<void> {
+    this.playing++;
     this.lastValue = text;
     const id = await this.started;
     if (id === null) return;
@@ -414,6 +417,35 @@ export class EditliciousEditor {
     await this.runCommand({ type: 'find', query, backwards: false, incremental: false });
     const id = await this.started;
     return id === null ? { total: 0, current: 0 } : this.api.countMatches(id, query);
+  }
+
+  /**
+   * Plays a typing script (`*.edscript`, docs/scripts.md – prompt 015) on this editor in real
+   * time: `tempo` 2 = twice as fast. Resolves at its end (or when stopped). `copy`/`paste` in the
+   * script use the engine's clipboard, never the page's. Steps that do not apply (read-only,
+   * nothing to undo) are skipped, like in a video.
+   */
+  async playScript(script: string, tempo = 1): Promise<void> {
+    const run = ++this.playing;
+    const id = await this.started;
+    if (id === null) return;
+    const steps = await this.api.scriptSteps(script);
+    const speed = Number.isFinite(tempo) && tempo > 0 ? tempo : 1;
+    const t0 = performance.now();
+    for (const s of steps) {
+      const wait = s.at / speed - (performance.now() - t0);
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      if (run !== this.playing || this.destroyed) return;
+      await this.inOrder(async () => {
+        if (s.clip !== null) await this.api.setClipboard(id, s.clip);
+        await this.api.command(id, s.cmd);
+      });
+    }
+  }
+
+  /** Stops a running {@link playScript}. */
+  stopScript(): void {
+    this.playing++;
   }
 
   /** Puts the caret at line `line`, column `ch` (both 1-based). */

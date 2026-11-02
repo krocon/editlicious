@@ -172,6 +172,28 @@ describe('EditliciousEditor (design 025)', () => {
     expect(await ea.getSlice(1, 1)).toBe('set');
   });
 
+  it('plays a typing script on its own session, in order and stoppable', async () => {
+    const { api, ea } = await setup();
+    const id = [...api.texts.keys()][0];
+    api.steps = [
+      { at: 0, cmd: { type: 'goTo', line: 0, ch: 0, select: false }, clip: null },
+      { at: 5, cmd: { type: 'type', text: 'a' }, clip: null },
+      { at: 10, cmd: { type: 'paste' }, clip: 'from script' },
+    ];
+    const before = api.commands.length;
+    await ea.playScript('ignored by the fake', 10);
+    const played = api.commands.slice(before).filter((c) => c.id === id && c.cmd.type !== 'frame');
+    expect(played.map((c) => c.cmd.type)).toEqual(['goTo', 'type', 'paste']);
+    expect(api.clips).toEqual(['from script']);
+    // a long script stops on stopScript
+    api.steps = [{ at: 30, cmd: { type: 'type', text: 'late' }, clip: null }];
+    const n = api.commands.length;
+    const done = ea.playScript('');
+    ea.stopScript();
+    await done;
+    expect(api.commands.slice(n).some((c) => c.cmd.type === 'type')).toBe(false);
+  });
+
   it('closes its session when destroyed', async () => {
     const { api, fixture } = await setup();
     const ids = [...api.texts.keys()];

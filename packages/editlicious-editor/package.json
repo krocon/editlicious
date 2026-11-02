@@ -1,0 +1,45 @@
+{
+  "name": "editlicious-editor",
+  "version": "0.0.0",
+  "description": "A calm, keyboard-driven code editor as a web component for very large texts – millions of lines, lines with millions of characters. Rust engine in WebAssembly, shadow DOM, 13 colour schemes.",
+  "license": "MIT",
+  "author": "Marc Kronberg (https://krocon.de/)",
+  "homepage": "https://krocon.de/products/editlicious/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/krocon/editlicious.git"
+  },
+  "bugs": "https://github.com/krocon/editlicious/issues",
+  "keywords": [
+    "editor",
+    "code-editor",
+    "text-editor",
+    "web-component",
+    "custom-element",
+    "webassembly",
+    "rust",
+    "large-files",
+    "syntax-highlighting"
+  ],
+  "type": "module",
+  "main": "./editlicious-editor.js",
+  "module": "./editlicious-editor.js",
+  "types": "./editlicious-editor.d.ts",
+  "exports": {
+    ".": {
+      "types": "./editlicious-editor.d.ts",
+      "default": "./editlicious-editor.js"
+    },
+    "./ed_wasm_bg.wasm": "./ed_wasm_bg.wasm",
+    "./package.json": "./package.json"
+  },
+  "sideEffects": true,
+  "files": [
+    "*.js",
+    "*.wasm",
+    "*.d.ts",
+    "README.md",
+    "LICENSE",
+    "THIRD-PARTY-NOTICES.txt"
+  ]
+}

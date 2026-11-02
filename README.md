@@ -51,8 +51,9 @@ Attributes / properties: `value`, `language` (grammar, `TypeScript`, or a file n
 `insert-spaces`, `font-size`, `font-family`, `indent-guides`, `color-swatches`, `overview`, `math-hints`,
 `word-suggest`, `ui-language`. Events `ed-change` (revision, dirty, line and character count – never the text),
 `ed-caret`, `ed-ready`; methods `getValue()`, `getSlice()`, `setValue()`, `loadText()`, `focus()`, `runCommand()`,
-`runAction()`, `find()`, `goTo()`. In Angular: `<ed-editor [value]="…" language="TypeScript" [readOnly]="true" />`
-(`src/app/embed/editlicious-editor.ts`). Build with `pnpm build:element` (→ `dist/element/editlicious-editor/`);
+`runAction()`, `find()`, `goTo()`, `playScript()`. In Angular: `<ed-editor [value]="…" language="TypeScript" [readOnly]="true" />`
+(`src/app/embed/editlicious-editor.ts`). Build with `pnpm build:element` (→ `dist/element/editlicious-editor/`, the npm package `editlicious-editor` – see
+[its README](packages/editlicious-editor/README.md));
 `site/embed/` shows two editors side by side.
 
 ## Development

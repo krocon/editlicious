@@ -249,6 +249,20 @@ pub fn script_duration(text: &str) -> Result<f64, String> {
     Ok(script_steps(text)?.last().map_or(0, |s| s.at) as f64)
 }
 
+/// The steps of a typing script for a live editor (`playScript`, design 025 E9) as JSON
+/// `[{ "at": ms, "cmd": Command, "clip": text? }]` – the page runs them on its own session in
+/// time; captions (`keys`, video only) are left out.
+#[wasm_bindgen(js_name = scriptSteps)]
+pub fn script_steps_json(text: &str) -> Result<String, String> {
+    let steps: Vec<serde_json::Value> = script_steps(text)
+        .map_err(invalid)?
+        .into_iter()
+        .filter(|s| s.overlay.is_none())
+        .map(|s| serde_json::json!({ "at": s.at, "cmd": s.cmd, "clip": s.clip }))
+        .collect();
+    Ok(serde_json::Value::Array(steps).to_string())
+}
+
 /// A typing script on a virtual clock (screen videos, e.g. a HyperFrames composition): the page
 /// asks for the frame at any time and gets the same picture every time – the engine replays the
 /// steps up to that moment (backwards: from the start text). Several scripts can follow each
@@ -512,6 +526,31 @@ mod tests {
         e.command(r#"{"type":"copy"}"#).unwrap();
         assert_eq!(e.clipboard().as_deref(), Some("abc"));
         assert_eq!(e.text(), "abc");
+    }
+
+    #[test]
+    fn script_steps_for_a_live_editor() {
+        let steps: serde_json::Value = serde_json::from_str(
+            &script_steps_json("goto 2:1\nkeys \"Ctrl+D\"\ntype \"ab\"").unwrap(),
+        )
+        .unwrap();
+        let steps = steps.as_array().unwrap();
+        assert_eq!(steps[0]["cmd"]["type"], "goTo");
+        assert!(steps.iter().all(|s| s["cmd"]["type"] != "frame"));
+        assert!(
+            steps
+                .windows(2)
+                .all(|w| w[0]["at"].as_u64() <= w[1]["at"].as_u64())
+        );
+        // the steps run on an editor give the script's text
+        let mut e = Editor::new("x\n", None);
+        for s in steps {
+            let _ = e.command(&s["cmd"].to_string());
+        }
+        assert_eq!(e.text(), "x\nab");
+        let err: serde_json::Value =
+            serde_json::from_str(&script_steps_json("nonsense").unwrap_err()).unwrap();
+        assert_eq!(err["code"], "invalid_request");
     }
 
     #[test]

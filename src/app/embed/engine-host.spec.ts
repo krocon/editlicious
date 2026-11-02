@@ -60,6 +60,8 @@ const mod: WasmModule = {
   Editor: FakeEditor,
   languages: () => '["Rust"]',
   encodings: () => '["UTF-8"]',
+  scriptSteps: (text) =>
+    `[{"at":0,"cmd":{"type":"type","text":${JSON.stringify(text)}},"clip":null}]`,
 };
 
 describe('engine host (design 025 E4)', () => {
@@ -76,6 +78,7 @@ describe('engine host (design 025 E4)', () => {
     expect(h('countMarker', [a])).toBeNull();
     expect(h('clipboard', [a])).toEqual({ text: 'c', html: null });
     expect(h('languages', [])).toBe('["Rust"]');
+    expect(h('scriptSteps', ['x'])).toContain('"text":"x"');
     h('close', [a]);
     expect(FakeEditor.freed).toBe(1);
   });

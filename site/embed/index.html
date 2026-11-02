@@ -96,6 +96,7 @@
           <label><input type="checkbox" data-ro="b" /> read-only</label>
           <button type="button" data-million="b">1 million lines</button>
           <button type="button" data-get="b">getValue()</button>
+          <button type="button" data-play="b">playScript()</button>
         </figcaption>
         <editlicious-editor
           id="b"
@@ -151,6 +152,21 @@
         btn.addEventListener('click', async () => {
           const text = await document.getElementById(btn.dataset.get).getValue();
           write(`${btn.dataset.get} getValue(): ${text.length} characters`);
+        });
+      }
+      const script = [
+        'tempo human cpm=480 seed=7',
+        'move docEnd',
+        'type "\\nexport const greet = (name: string) => `Hello ${name}!`;\\n"',
+        'pause 400',
+        'find "Demo"',
+        'type "Showcase"',
+      ].join('\n');
+      for (const btn of document.querySelectorAll('[data-play]')) {
+        btn.addEventListener('click', async () => {
+          const t0 = performance.now();
+          await document.getElementById(btn.dataset.play).playScript(script);
+          write(`${btn.dataset.play} playScript() done in ${Math.round(performance.now() - t0)} ms`);
         });
       }
     </script>

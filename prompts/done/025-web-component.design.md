@@ -1,7 +1,7 @@
 # Design 025: Einbettbare Editor-Komponente – `<ed-editor>` und `<editlicious-editor>`
 
 > Prompt: [025-web-component.md](025-web-component.md) (von Marc als „024“ angelegt; umbenannt, weil 024 schon
-> „Pfad öffnen“ ist). Stand 31.10.2026. Fortschritt über mehrere Sitzungen: [025-web-component.progress.md](025-web-component.progress.md).
+> „Pfad öffnen“ ist). Stand 31.10.2026, abgeschlossen 02.11.2026.
 
 ## Entscheidungen
 
@@ -118,7 +118,7 @@ interface EdCaret { line: number; ch: number; selChars: number; selLines: number
 ```
 Worker-Protokoll: `{ id, op, args }` → `{ id, ok, value | error: FsError }`; `op` ∈ `open`, `close`, `command`,
 `info`, `setText`, `text`, `slice`, `countMatches`, `countMarker`, `overview`, `languages`, `encodings`,
-`clipboard`, `setClipboard`, `setLanguage`, `playScript`.
+`clipboard`, `setClipboard`, `setLanguage`, `scriptSteps`.
 
 ## Tests
 
@@ -130,3 +130,30 @@ Worker-Protokoll: `{ id, op, args }` → `{ id, ok, value | error: FsError }`; `
   in A lässt B und `<html>` unberührt, ARIA-IDs eindeutig), Teardown schließt die Sitzung, `host-theme`-Prüfung.
 - Ende-zu-Ende: `pnpm build:element`, Playwright gegen `site/embed/` (Tippen, Suchen, Kopieren, Schreibschutz,
   1 Mio. Zeilen, keine Konsolenfehler).
+
+### Nachtrag 02.11.2026
+
+- **E13 `playScript(script, tempo?)`**: nicht über den `Player` (virtuelle Uhr, eigene Sitzung – für Videos), sondern
+  auf der **eigenen Sitzung** des Editors: `ed-wasm` liefert `scriptSteps(text)` (`[{ at, cmd, clip }]`, dieselbe
+  Zeitachse wie 015, `keys`-Einblendungen fallen weg), die Fassade führt die Schritte mit `setTimeout` zur Zeit
+  `at / tempo` über die Befehlsreihe der Ansicht aus (`enqueue`). `clip` geht auf die Zwischenablage der Engine
+  (neue Api `setClipboard`), nie auf die der Seite. Was nicht passt (Schreibschutz, nichts rückgängig zu machen),
+  wird übersprungen wie im Video. Ein neuer Lauf, `stopScript()` oder `setValue()` beendet den laufenden.
+  `type @file` gibt es im Browser nicht (Fehler `invalid_request`).
+- **E14 npm-Paket `editlicious-editor`** (Name = Tag; auf npm frei, Stand 02.11.2026): `pnpm build:element` legt in
+  `dist/element/editlicious-editor/` ein vollständiges Paket ab – `package.json` aus
+  `packages/editlicious-editor/` mit der App-Version, handgeschriebene Typen `editlicious-editor.d.ts`
+  (Element-Interface, Events, `HTMLElementTagNameMap`), README mit Größentabelle (beim Bauen eingesetzt), `LICENSE`,
+  `THIRD-PARTY-NOTICES.txt`. Veröffentlichen (`npm publish dist/element/editlicious-editor`) nur auf Marcs
+  Anweisung. Keine Angular-Bibliothek (`ng-packagr`): wer `<ed-editor>` in Angular will, nimmt das Custom Element
+  mit `CUSTOM_ELEMENTS_SCHEMA` (README) – kein zweites Build-System.
+
+## Ergebnis
+
+- E2E (`node scripts/embed-e2e.mjs`, Chromium headless): 15/15 grün, auch `playScript`. Auf macOS drückt das
+  Skript jetzt `ControlOrMeta` und wartet nach dem Schreibschutz-Umschalter auf `data-read-only` (vorher tippte es
+  auf schnellen Rechnern vor der nächsten Änderungserkennung).
+- Größen 02.11.2026: `editlicious-editor.js` 325 KB (98 KB gzip), Worker 2 KB, `ed_wasm.js` 22 KB,
+  `ed_wasm_bg.wasm` 3,6 MB (1,2 MB gzip); `npm pack`: 1,4 MB.
+- Nicht automatisch geprüft: Zwischenablage und IME in Safari/Firefox (nur Chromium headless). `uiLanguage` gilt
+  seitenweit (globales Sprach-Signal) – bewusst so, `<html lang>` bleibt unberührt.

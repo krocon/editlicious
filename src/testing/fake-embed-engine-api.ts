@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { DocInfo } from '../app/core/editor/editor.models';
-import { EmbedEngineApi } from '../app/embed/wasm-editor-api';
+import { EmbedEngineApi, ScriptStep } from '../app/embed/wasm-editor-api';
 import { docInfo, FakeEditorApi } from './fake-editor-api';
 
 /** Test double of the embedded editor's engine (design 025): texts in memory, no WebAssembly. */
@@ -44,6 +44,20 @@ export class FakeEmbedEngineApi extends FakeEditorApi implements EmbedEngineApi 
 
   clipboard(): Promise<{ text: string | null; html: string | null }> {
     return Promise.resolve({ text: 'copied', html: null });
+  }
+
+  /** What a script put on the engine's clipboard. */
+  clips: string[] = [];
+  /** The steps `scriptSteps` answers. */
+  steps: ScriptStep[] = [];
+
+  setClipboard(_id: number, text: string): Promise<void> {
+    this.clips.push(text);
+    return Promise.resolve();
+  }
+
+  scriptSteps(): Promise<ScriptStep[]> {
+    return Promise.resolve(this.steps);
   }
 
   override close(id?: number): Promise<void> {

@@ -67,11 +67,11 @@ try {
   check(va.startsWith('// hi\n') && !vb.includes('// hi'), `typing goes to A only (${JSON.stringify(va.slice(0, 12))})`);
   check((await page.locator('#log').textContent()).includes('a change'), 'ed-change fired');
 
-  // Ctrl+F opens the find bar in A only; keys outside the editors stay with the page
-  await page.keyboard.press('Control+f');
+  // Mod+F opens the find bar in A only; keys outside the editors stay with the page
+  await page.keyboard.press('ControlOrMeta+f');
   await page.waitForTimeout(200);
   const findOpen = (id) => page.evaluate((id) => !!document.getElementById(id).shadowRoot.querySelector('app-find-bar'), id);
-  check((await findOpen('a')) && !(await findOpen('b')), 'Ctrl+F opens the find bar of A only');
+  check((await findOpen('a')) && !(await findOpen('b')), 'Mod+F opens the find bar of A only');
   await page.keyboard.type('println');
   await page.keyboard.press('Escape');
   const n = await page.evaluate(() => document.getElementById('a').find('fn'));
@@ -80,13 +80,20 @@ try {
   // copy goes to the system clipboard
   await page.evaluate(() => document.getElementById('a').runCommand({ type: 'selectAll' }));
   await textarea('a').focus();
-  await page.keyboard.press('Control+c');
+  await page.keyboard.press('ControlOrMeta+c');
   await page.waitForTimeout(300);
   const clip = await page.evaluate(() => navigator.clipboard.readText());
-  check(clip.startsWith('// hi'), 'Ctrl+C puts the selection on the clipboard');
+  check(clip.startsWith('// hi'), 'Mod+C puts the selection on the clipboard');
+
+  // a typing script plays on B in real time
+  await page.evaluate(() => document.getElementById('b').playScript('type "// played\\n"', 4));
+  const vb1 = await page.evaluate(() => document.getElementById('b').getValue());
+  check(vb1.startsWith('// played\n'), `playScript() types into B (${JSON.stringify(vb1.slice(0, 12))})`);
 
   // read-only
   await page.check('[data-ro="b"]');
+  // the property applies with the next change detection (host attribute and engine together)
+  await page.waitForFunction(() => document.getElementById('b').hasAttribute('data-read-only'));
   await textarea('b').focus();
   await page.keyboard.type('zzz');
   const vb2 = await page.evaluate(() => document.getElementById('b').getValue());
@@ -100,7 +107,7 @@ try {
   const count = await page.evaluate(() => document.getElementById('a').shadowRoot.querySelector('app-status-bar')?.textContent ?? '');
   check(/1[.,  ]?000[.,  ]?001|1[.,  ]?000[.,  ]?000/.test(count), 'status bar shows a million lines');
   await textarea('a').focus();
-  await page.keyboard.press('Control+End');
+  await page.keyboard.press('ControlOrMeta+End');
   const t0 = Date.now();
   await page.keyboard.type('end');
   await page.waitForTimeout(100);

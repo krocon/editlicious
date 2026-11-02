@@ -116,6 +116,7 @@ src-tauri/                    Rust (Tauri 2), Crate `editlicious`, Lib `ed_lib`
 docs/                         architecture.md (Entscheidungen, Commands, Abhängigkeiten), legacy-analysis.md,
                               scripts.md (Aufnahmen und Tipp-Skripte), mcp.md (KI-Steuerung),
                               completion.md (Vervollständigung, eigene Wortlisten) – für Nutzer
+packages/editlicious-editor/  npm-Paket des Elements: package.json-Vorlage, Typen (.d.ts), README (025 E14)
 prompts/                      Feature-Prompts (Index README.md), done/
 site/                         Werbe-Webseite (index.html ohne JS) + demo/ (Engine als WebAssembly, pkg/ vom Workflow)
                               + embed/ (Beispielseite mit zwei `<editlicious-editor>`, lib/ von `pnpm build:element`)

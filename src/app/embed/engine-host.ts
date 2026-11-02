@@ -28,6 +28,8 @@ export interface WasmModule {
   Editor: new (text: string, language?: string | null) => WasmEditor;
   languages(): string;
   encodings(): string;
+  /** The steps of a typing script as JSON (`[{ at, cmd, clip }]`, design 025 E9). */
+  scriptSteps(text: string): string;
 }
 
 /** One request to the engine. */
@@ -110,6 +112,8 @@ export function createEngineHost(mod: WasmModule): EngineHandler {
         return mod.languages();
       case 'encodings':
         return mod.encodings();
+      case 'scriptSteps':
+        return mod.scriptSteps(String(a[0] ?? ''));
       default:
         throw JSON.stringify({ code: 'invalid_request', message: `unknown op ${op}`, path: null });
     }
