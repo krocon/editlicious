@@ -225,6 +225,24 @@ pub enum Command {
         #[serde(default)]
         vars: std::collections::HashMap<String, String>,
     },
+    /// Replaces the markers of one owner (design 029): underlines, gutter symbols, tinted lines
+    /// the page puts on the text. They follow the text; not recorded.
+    SetDecorations {
+        owner: String,
+        items: Vec<super::deco::DecoSpec>,
+    },
+    /// Removes the markers of an owner (`None`: all of them).
+    ClearDecorations {
+        #[serde(default)]
+        owner: Option<String>,
+    },
+    /// The caret to the next (previous) marker, around the ends of the text.
+    DecorationStep {
+        #[serde(default)]
+        backwards: bool,
+        #[serde(default)]
+        owner: Option<String>,
+    },
     /// Replaces the text between two positions as one undo step (design 027 E3); the same text
     /// changes nothing. The cursors stay where they are in the text (moved along with it);
     /// `caret`: one caret behind the new text instead.
@@ -329,6 +347,8 @@ impl Command {
                 | Command::Copy
                 | Command::CopyResult
                 | Command::SetReadOnly { .. }
+                | Command::SetDecorations { .. }
+                | Command::ClearDecorations { .. }
         )
     }
 
@@ -444,6 +464,8 @@ pub struct FrameLine {
     pub wraps: Vec<usize>,
     /// Colour values `[from, to, rgba]`: characters, colour as 0xRRGGBBAA (design 018).
     pub colors: Vec<[u32; 3]>,
+    /// Markers of the page `[from, to, index into Frame::decos]` in cells (design 029).
+    pub decos: Vec<[usize; 3]>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -524,4 +546,8 @@ pub struct Frame {
     pub read_only: bool,
     /// A snippet is being filled in: Tab goes to the next placeholder, Escape ends it (030).
     pub snippet: bool,
+    /// The markers of the page in view (design 029); the lines point into this list.
+    pub decos: Vec<super::deco::DecoInfo>,
+    /// The gutter has a column for marker symbols.
+    pub deco_column: bool,
 }

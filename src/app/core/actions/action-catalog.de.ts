@@ -29,6 +29,8 @@ const FIXED: Record<string, string> = {
   'completion.close': 'Vorschläge schließen',
   'edit.markerNext': 'Nächstes Vorkommen des markierten Worts',
   'edit.markerPrev': 'Voriges Vorkommen des markierten Worts',
+  'edit.noteNext': 'Nächste Markierung (Fehler, Hinweis)',
+  'edit.notePrev': 'Vorige Markierung (Fehler, Hinweis)',
   'file.encoding': 'Zeichenkodierung …',
   'file.lineEnding': 'Zeilenenden …',
   'edit.copyHtml': 'Als HTML kopieren',

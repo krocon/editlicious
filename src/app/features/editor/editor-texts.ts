@@ -49,6 +49,7 @@ const EN = {
   keywordKind: 'keyword',
   snippetKind: 'snippet',
   noSuggestions: 'No suggestions.',
+  noNote: 'No markers.',
   noExpression: 'No arithmetic expression at the cursor.',
   resultCopied: 'Result copied.',
 };
@@ -101,6 +102,7 @@ export const EDITOR_TEXTS = translatable('editor', EN, {
     keywordKind: 'Schlüsselwort',
     snippetKind: 'Baustein',
     noSuggestions: 'Keine Vorschläge.',
+    noNote: 'Keine Markierungen.',
     noExpression: 'Am Cursor steht kein Rechenausdruck.',
     resultCopied: 'Ergebnis kopiert.',
   },
@@ -127,6 +129,8 @@ export function noticeText(code: string): string {
       return EDITOR_TEXTS.noExpression;
     case 'no_suggestions':
       return EDITOR_TEXTS.noSuggestions;
+    case 'no_note':
+      return EDITOR_TEXTS.noNote;
     case 'result_copied':
       return EDITOR_TEXTS.resultCopied;
     default:

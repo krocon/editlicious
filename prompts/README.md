@@ -52,7 +52,7 @@ Kritischer Pfad zum ersten nutzbaren Editor: **001 → 002 → 003 → 004**. Da
 | 026 | [026-farben-von-aussen.md](done/026-farben-von-aussen.md) | Web Component: alle Farben als dokumentierte CSS-Variablen von außen setzbar, `scheme="none"` + `color-scheme`, Vertragstest README ↔ Code (schema-commander E1) | 025 | S–M | ✅ 10.11.2026 |
 | 027 | [027-auswahl-abfragen.md](done/027-auswahl-abfragen.md) | Web Component: Auswahl und beliebige Bereiche als Text abfragen, Bereich ersetzen (ein Undo-Schritt), `ed-caret` mit Auswahlgrenzen (schema-commander E2) | 025 | S | ✅ 10.11.2026 |
 | 028 | [028-vervollstaendigung-von-aussen.md](done/028-vervollstaendigung-von-aussen.md) | Web Component: Anbieter für Vorschläge, den die Seite liefert (schema-commander E3) | 027, 030 | M–L | ✅ 10.11.2026 |
-| 029 | [029-markierungen-von-aussen.md](029-markierungen-von-aussen.md) | Web Component: Unterstreichungen, Randmarken und Hinweise von außen, wandern mit dem Text (schema-commander E4) | 026, 027 | M | offen |
+| 029 | [029-markierungen-von-aussen.md](done/029-markierungen-von-aussen.md) | Web Component: Unterstreichungen, Randmarken und Hinweise von außen, wandern mit dem Text (schema-commander E4) | 026, 027 | M | ✅ 10.11.2026 |
 | 030 | [030-snippets.md](done/030-snippets.md) | Textbausteine mit Platzhaltern und Tab-Stopps (schema-commander E5) | 027 | M | ✅ 10.11.2026 |
 
 ## Folge-Ideen (noch ohne Prompt)

@@ -90,6 +90,8 @@
     "Mod+Shift+F8": "edit.clearMarkers",
     "F7": "edit.markerNext",
     "Shift+F7": "edit.markerPrev",
+    "F8": "edit.noteNext",
+    "Shift+F8": "edit.notePrev",
     "Mod+Shift+c": "edit.copyHtml",
     "Ctrl+Space": "edit.complete"
   },

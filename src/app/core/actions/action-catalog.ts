@@ -245,6 +245,19 @@ export const ACTIONS: readonly ActionDef[] = [
     { type: 'markerStep', backwards: true },
     { repeat: true },
   ),
+  // markers the page of an embedded editor sets (design 029) – nothing to step through in the app
+  E(
+    'edit.noteNext',
+    'Next marker (error, hint)',
+    { type: 'decorationStep' },
+    { repeat: true, palette: false },
+  ),
+  E(
+    'edit.notePrev',
+    'Previous marker (error, hint)',
+    { type: 'decorationStep', backwards: true },
+    { repeat: true, palette: false },
+  ),
   ...Array.from({ length: MARKER_COLOURS }, (_, i) =>
     E(`edit.marker.${i + 1}`, `Mark word in colour ${i + 1}`, { type: 'setMarker', colour: i }),
   ),

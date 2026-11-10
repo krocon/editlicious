@@ -50,6 +50,7 @@ export function textFrame(lines: string[], over: Partial<Frame> = {}): Frame {
     row: line,
     wraps: [],
     colors: [],
+    decos: [],
   }));
   return {
     seq: 1,
@@ -87,6 +88,8 @@ export function textFrame(lines: string[], over: Partial<Frame> = {}): Frame {
     completion: null,
     readOnly: false,
     snippet: false,
+    decos: [],
+    decoColumn: false,
     ...over,
   };
 }

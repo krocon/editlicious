@@ -17,6 +17,8 @@ export interface WasmEditor {
   setClipboard(text: string): void;
   text(): string;
   slice(from: number, to: number): string;
+  /** JSON `[DecoInfo]` (design 029). */
+  decorations(owner?: string | null): string;
   /** JSON `CompletionContext` (design 028). */
   completionContext(words: boolean): string;
   /** JSON `{ primary, ranges: Sel[] }` (0-based, design 027). */
@@ -106,6 +108,8 @@ export function createEngineHost(mod: WasmModule): EngineHandler {
         return get(a[0]).text();
       case 'slice':
         return get(a[0]).slice(a[1] as number, a[2] as number);
+      case 'decorations':
+        return get(a[0]).decorations((a[1] as string | null) ?? null);
       case 'completionContext':
         return get(a[0]).completionContext(a[1] === true);
       case 'selections': {

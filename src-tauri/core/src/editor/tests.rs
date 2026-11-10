@@ -2724,3 +2724,296 @@ fn the_completion_context_of_a_huge_line_is_small() {
     assert_eq!(c.before.chars().count(), model::CONTEXT_CHARS);
     assert_eq!(c.word_from, 700_000);
 }
+
+// ---------------------------------------------------------------- markers from outside (design 029)
+
+fn mark(from: (usize, usize), to: (usize, usize), severity: &str) -> deco::DecoSpec {
+    deco::DecoSpec {
+        from: Pos::new(from.0, from.1),
+        to: Pos::new(to.0, to.1),
+        severity: Some(severity.into()),
+        message: Some(format!("{severity} here")),
+        gutter: None,
+        line: false,
+        on_edit: deco::OnEdit::Track,
+    }
+}
+
+fn set_marks(s: &mut Session, owner: &str, items: Vec<deco::DecoSpec>) -> Frame {
+    run(
+        s,
+        Command::SetDecorations {
+            owner: owner.into(),
+            items,
+        },
+    )
+}
+
+fn marks(s: &mut Session, owner: Option<&str>) -> Vec<((usize, usize), (usize, usize))> {
+    s.decorations(owner)
+        .iter()
+        .map(|d| ((d.from.line, d.from.ch), (d.to.line, d.to.ch)))
+        .collect()
+}
+
+#[test]
+fn a_marker_stays_on_its_word_when_lines_are_inserted_before_it() {
+    let mut s = session("one\ntwo\nSELECT nmae FROM t\nfour\n");
+    let f = set_marks(&mut s, "sql-error", vec![mark((2, 7), (2, 11), "error")]);
+    assert_eq!(f.decos.len(), 1);
+    assert_eq!(f.decos[0].message.as_deref(), Some("error here"));
+    assert_eq!(f.lines[2].decos, vec![[7, 11, 0]]);
+    assert!(!s.doc.info(1).can_undo, "setting markers is no edit");
+    // lines before it
+    put(&mut s, 0, 0);
+    typ(&mut s, "zero\nmore\n");
+    let f = run(&mut s, Command::Frame);
+    assert_eq!(marks(&mut s, None), [((4, 7), (4, 11))]);
+    assert_eq!(f.lines[4].decos, vec![[7, 11, 0]]);
+    assert_eq!(s.doc.text(Pos::new(4, 7), Pos::new(4, 11)).unwrap(), "nmae");
+    // text before it in its line, and undo
+    put(&mut s, 4, 0);
+    typ(&mut s, "  ");
+    assert_eq!(marks(&mut s, None), [((4, 9), (4, 13))]);
+    run(&mut s, Command::Undo);
+    run(&mut s, Command::Undo);
+    assert_eq!(marks(&mut s, None), [((2, 7), (2, 11))]);
+}
+
+#[test]
+fn text_inside_a_marker_adjusts_it_or_removes_it() {
+    let mut s = session("abc WORD xyz");
+    let mut gone = mark((0, 4), (0, 8), "warning");
+    gone.on_edit = deco::OnEdit::Remove;
+    set_marks(&mut s, "track", vec![mark((0, 4), (0, 8), "error")]);
+    set_marks(&mut s, "remove", vec![gone]);
+    // typing at the edges belongs to neither
+    put(&mut s, 0, 4);
+    typ(&mut s, ">");
+    put(&mut s, 0, 9);
+    typ(&mut s, "<");
+    assert_eq!(text(&s), "abc >WORD< xyz");
+    assert_eq!(marks(&mut s, Some("track")), [((0, 5), (0, 9))]);
+    assert_eq!(marks(&mut s, Some("remove")), [((0, 5), (0, 9))]);
+    // typing inside: one grows, the other goes
+    put(&mut s, 0, 7);
+    typ(&mut s, "__");
+    assert_eq!(marks(&mut s, Some("track")), [((0, 5), (0, 11))]);
+    assert_eq!(marks(&mut s, Some("remove")), []);
+    // deleting part of it shrinks it, deleting all of it removes it
+    run(
+        &mut s,
+        Command::Select {
+            sels: vec![Sel {
+                anchor: Pos::new(0, 3),
+                head: Pos::new(0, 7),
+            }],
+        },
+    );
+    run(&mut s, Command::Backspace);
+    assert_eq!(text(&s), "abc__RD< xyz");
+    assert_eq!(marks(&mut s, Some("track")), [((0, 3), (0, 7))]);
+    run(&mut s, Command::SelectAll);
+    run(&mut s, Command::Backspace);
+    assert_eq!(marks(&mut s, None), []);
+}
+
+#[test]
+fn owners_keep_apart_and_a_new_text_drops_all() {
+    let mut s = session("aaa bbb\nccc ddd\n");
+    set_marks(&mut s, "a", vec![mark((0, 0), (0, 3), "error")]);
+    set_marks(
+        &mut s,
+        "b",
+        vec![
+            mark((1, 0), (1, 3), "running"),
+            mark((0, 4), (0, 7), "hint"),
+        ],
+    );
+    assert_eq!(marks(&mut s, None).len(), 3);
+    // setting an owner again replaces only its own
+    set_marks(&mut s, "a", vec![mark((1, 4), (1, 7), "warning")]);
+    assert_eq!(marks(&mut s, Some("a")), [((1, 4), (1, 7))]);
+    assert_eq!(marks(&mut s, Some("b")).len(), 2);
+    let f = run(
+        &mut s,
+        Command::ClearDecorations {
+            owner: Some("a".into()),
+        },
+    );
+    assert_eq!(marks(&mut s, Some("a")), []);
+    assert_eq!(f.decos.len(), 2);
+    assert_eq!(f.decos[0].owner, "b");
+    assert_eq!(f.decos[0].index, 1, "the index is the one in the list set");
+    assert_eq!(marks(&mut s, Some("nobody")), []);
+    run(&mut s, Command::ClearDecorations { owner: None });
+    assert!(marks(&mut s, None).is_empty());
+    set_marks(&mut s, "a", vec![mark((0, 0), (0, 3), "error")]);
+    s.replace_document(Document::from_text("new"));
+    assert!(marks(&mut s, None).is_empty());
+}
+
+#[test]
+fn markers_in_the_frame_cover_lines_cells_and_the_gutter() {
+    let mut s = session("\tab\n\nlast 日本");
+    let mut multi = mark((0, 2), (2, 4), "running");
+    multi.line = true;
+    multi.gutter = Some(String::new());
+    let f = set_marks(
+        &mut s,
+        "x",
+        vec![
+            multi,
+            mark((2, 5), (2, 7), "error"),
+            mark((2, 7), (2, 7), "hint"),
+        ],
+    );
+    assert!(f.deco_column);
+    assert_eq!(f.decos.len(), 3);
+    assert!(f.decos[0].line);
+    assert_eq!(f.decos[0].gutter.as_deref(), Some(""));
+    // cells: the tab is four wide; an empty line and an empty range still show one cell
+    assert_eq!(f.lines[0].decos, vec![[5, 6, 0]]);
+    assert_eq!(f.lines[1].decos, vec![[0, 1, 0]]);
+    assert_eq!(
+        f.lines[2].decos,
+        vec![[0, 4, 0], [5, 9, 1], [9, 10, 2]],
+        "wide characters are two cells"
+    );
+    // a range that ends at the start of a line leaves that line alone
+    let f = set_marks(&mut s, "x", vec![mark((0, 0), (2, 0), "running")]);
+    assert_eq!(f.lines[1].decos.len(), 1);
+    assert!(f.lines[2].decos.is_empty());
+    let f = run(&mut s, Command::ClearDecorations { owner: None });
+    assert!(!f.deco_column);
+    assert!(f.lines.iter().all(|l| l.decos.is_empty()));
+}
+
+#[test]
+fn stepping_goes_from_marker_to_marker_around_the_text() {
+    let mut s = session("a b c d\ne f g h\n");
+    set_marks(
+        &mut s,
+        "p",
+        vec![
+            mark((0, 2), (0, 3), "error"),
+            mark((1, 4), (1, 5), "warning"),
+        ],
+    );
+    set_marks(&mut s, "q", vec![mark((1, 0), (1, 1), "info")]);
+    let step = |s: &mut Session, backwards: bool, owner: Option<&str>| {
+        run(
+            s,
+            Command::DecorationStep {
+                backwards,
+                owner: owner.map(str::to_owned),
+            },
+        );
+        caret(s)
+    };
+    assert_eq!(step(&mut s, false, None), (0, 2));
+    assert_eq!(step(&mut s, false, None), (1, 0));
+    assert_eq!(step(&mut s, false, None), (1, 4));
+    assert_eq!(step(&mut s, false, None), (0, 2), "around the end");
+    assert_eq!(step(&mut s, true, None), (1, 4), "around the start");
+    assert_eq!(step(&mut s, true, Some("p")), (0, 2));
+    assert_eq!(step(&mut s, false, Some("q")), (1, 0));
+    let f = run(
+        &mut s,
+        Command::DecorationStep {
+            backwards: false,
+            owner: Some("nobody".into()),
+        },
+    );
+    assert_eq!(f.notice.as_deref(), Some("no_note"));
+}
+
+#[test]
+fn the_overview_and_line_ending_changes_keep_the_markers() {
+    let mut s = session("a\nb\nc\nd\n");
+    assert!(s.overview_decos(4).is_none());
+    let before = run(&mut s, Command::Frame).deco;
+    let f = set_marks(
+        &mut s,
+        "o",
+        vec![mark((0, 0), (0, 1), "error"), mark((3, 0), (3, 1), "other")],
+    );
+    assert_ne!(f.deco, before, "the overview asks again");
+    let o = s.overview_decos(5).unwrap();
+    assert_eq!(o[0], deco::OVERVIEW_ERROR);
+    assert_eq!(o[3], deco::OVERVIEW_OTHER);
+    // CRLF adds a character per line: line and column stay
+    run(
+        &mut s,
+        Command::SetLineEnding {
+            line_ending: crate::document::model::LineEnding::Crlf,
+        },
+    );
+    assert_eq!(marks(&mut s, None), [((0, 0), (0, 1)), ((3, 0), (3, 1))]);
+    run(&mut s, Command::Undo);
+    assert_eq!(marks(&mut s, None), [((0, 0), (0, 1)), ((3, 0), (3, 1))]);
+    // read-only: markers are not edits
+    run(&mut s, Command::SetReadOnly { read_only: true });
+    set_marks(&mut s, "o", vec![mark((1, 0), (1, 1), "info")]);
+    assert_eq!(marks(&mut s, None), [((1, 0), (1, 1))]);
+}
+
+/// `cargo test -p ed-core --release -- --ignored --nocapture measure_029`
+#[test]
+#[ignore]
+fn measure_029_a_hundred_thousand_markers() {
+    let lines = 1_000_000;
+    let mut text = String::with_capacity(lines * 28);
+    for i in 0..lines {
+        text.push_str("select name from table_");
+        text.push_str(&(i % 1000).to_string());
+        text.push('\n');
+    }
+    let time = |s: &mut Session, what: &str| {
+        // typing in the middle and drawing, scrolling through the text
+        put(s, lines / 2, 3);
+        let t0 = std::time::Instant::now();
+        for _ in 0..200 {
+            typ(s, "x");
+        }
+        let typing = t0.elapsed().as_secs_f64() * 1e6 / 200.0;
+        let t0 = std::time::Instant::now();
+        for i in 0..200 {
+            run(
+                s,
+                Command::ScrollTo {
+                    top: Some((i * 4000) as f64),
+                    left: None,
+                },
+            );
+        }
+        let scrolling = t0.elapsed().as_secs_f64() * 1e6 / 200.0;
+        println!("029 {what}: typing {typing:.0} µs/key, scrolling {scrolling:.0} µs/frame");
+        (typing, scrolling)
+    };
+    let mut s = session(&text);
+    let (t0, s0) = time(&mut s, "without markers");
+    let items: Vec<deco::DecoSpec> = (0..100_000)
+        .map(|i| {
+            mark(
+                (i * 10, 7),
+                (i * 10, 11),
+                if i % 3 == 0 { "error" } else { "warning" },
+            )
+        })
+        .collect();
+    let t = std::time::Instant::now();
+    set_marks(&mut s, "many", items);
+    println!(
+        "029 setting 100 000 markers: {:.1} ms",
+        t.elapsed().as_secs_f64() * 1e3
+    );
+    let (t1, s1) = time(&mut s, "with 100 000 markers");
+    assert_eq!(s.decorations(None).len(), 100_000);
+    run(&mut s, Command::ClearDecorations { owner: None });
+    let (t2, _) = time(&mut s, "after clearing them");
+    // a keystroke and a frame stay far below a display frame; without markers nothing is slower
+    assert!(t1 < 4_000.0 && s1 < 4_000.0, "{t1} {s1}");
+    assert!(t2 < t0 * 1.5 + 50.0, "{t0} {t2}");
+    let _ = s0;
+}

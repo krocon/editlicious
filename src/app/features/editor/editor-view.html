@@ -28,9 +28,24 @@
           {{ lineLabel(line.line, f.caretLine) }}
         }
       </div>
+      @if (gutterDecos().get(line.line); as d) {
+        <div
+          class="deco-symbol"
+          [attr.data-sev]="d.severity"
+          [style.--deco]="decoColor(d.severity)"
+          [style.width.px]="decoWidth()"
+          [style.transform]="'translateY(' + lineY(line) + 'px)'"
+          (mousedown)="onDecoDown($event, d)"
+          (mouseenter)="onDecoEnter($event, d)"
+          (mouseleave)="onDecoLeave()"
+        >
+          {{ d.gutter || '●' }}
+        </div>
+      }
       @if (line.colors.length) {
         <div
           class="swatch"
+          [style.left.px]="4 + decoWidth()"
           [title]="swatchTitle(line.colors)"
           [style.width.px]="metrics().lh - 8"
           [style.height.px]="metrics().lh - 8"
@@ -55,6 +70,16 @@
         [style.transform]="'translateY(' + lineY(line) + 'px)'"
         [style.height.px]="line.wraps.length ? lineHeight(line) : null"
       >
+        @for (m of line.decos; track $index) {
+          @let d = f.decos[m[2]];
+          @if (d.line) {
+            <div
+              class="deco-line"
+              [attr.data-sev]="d.severity"
+              [style.--deco]="decoColor(d.severity)"
+            ></div>
+          }
+        }
         @for (g of guides(line, f.tabWidth); track g) {
           <div class="guide" [style.left.px]="px(line, g).x" [style.height.px]="metrics().lh"></div>
         }
@@ -88,6 +113,25 @@
               [style.top.px]="b.y"
               [style.width.px]="b.w"
             ></div>
+          }
+        }
+        @for (m of line.decos; track $index) {
+          @let d = f.decos[m[2]];
+          @for (b of segs(line, m[0], m[1]); track $index) {
+            <div
+              class="deco"
+              [class.tint]="!isSeverity(d.severity)"
+              [attr.data-sev]="d.severity"
+              [style.--deco]="decoColor(d.severity)"
+              [style.left.px]="b.x"
+              [style.top.px]="b.y"
+              [style.width.px]="b.w"
+              (mousedown)="onDecoDown($event, d)"
+              (mouseenter)="onDecoEnter($event, d)"
+              (mouseleave)="onDecoLeave()"
+            >
+              {{ blanks(b.w) }}
+            </div>
           }
         }
         @if (line.selEol) {
@@ -161,6 +205,9 @@
           [class.marker]="t.marker"
           [style.top.px]="t.top"
         ></div>
+        @if (t.deco) {
+          <div class="tick deco-tick" [attr.data-sev]="t.deco" [style.top.px]="t.top"></div>
+        }
       }
     </div>
   }
@@ -210,6 +257,19 @@
     @if (h.hex) {
       <span class="hex">{{ h.hex }}</span>
     }
+  </div>
+}
+@if (decoTip(); as t) {
+  <div
+    class="hint deco-tip"
+    role="tooltip"
+    [id]="uid + 'deco-tip'"
+    [attr.data-sev]="t.severity"
+    [style.--deco]="decoColor(t.severity)"
+    [style.left.px]="t.x"
+    [style.top.px]="t.y"
+  >
+    {{ t.text }}
   </div>
 }
 @if (completionBox(); as c) {
@@ -270,7 +330,13 @@
     completionBox() ? uid + 'completion-' + completionBox()!.active : null
   "
   [attr.aria-describedby]="
-    hintBox() ? uid + 'math-hint' : completionBox()?.doc ? uid + 'completion-doc' : null
+    hintBox()
+      ? uid + 'math-hint'
+      : completionBox()?.doc
+        ? uid + 'completion-doc'
+        : decoTip()?.caret
+          ? uid + 'deco-tip'
+          : null
   "
   autocapitalize="off"
   autocomplete="off"

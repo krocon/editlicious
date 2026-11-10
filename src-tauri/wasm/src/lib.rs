@@ -246,14 +246,32 @@ impl Editor {
         ed_core::search::count(&rope, &re, 0, &AtomicBool::new(false)).map(|(n, _)| n as u32)
     }
 
-    /// Matches (bit 1) and markers (bit 2) per slice of the lines (design 010 E3).
-    pub fn overview(&self, buckets: u32) -> Vec<u8> {
+    /// Matches (bit 1) and word markers (bit 2) per slice of the lines (design 010 E3), and the
+    /// markers of the page: errors (4), warnings (8), the rest (16) – design 029.
+    pub fn overview(&mut self, buckets: u32) -> Vec<u8> {
         let (rope, layers) = self.session.overview_snapshot();
-        if layers.is_empty() {
-            return Vec::new();
+        let decos = self.session.overview_decos(buckets as usize);
+        let mut out = if layers.is_empty() {
+            Vec::new()
+        } else {
+            ed_core::search::overview(&rope, &layers, buckets as usize, &AtomicBool::new(false))
+                .unwrap_or_default()
+        };
+        if let Some(d) = decos {
+            if out.len() != d.len() {
+                out = vec![0; d.len()];
+            }
+            for (o, bits) in out.iter_mut().zip(d) {
+                *o |= bits;
+            }
         }
-        ed_core::search::overview(&rope, &layers, buckets as usize, &AtomicBool::new(false))
-            .unwrap_or_default()
+        out
+    }
+
+    /// The markers of the page where they are now (JSON `[DecoInfo]`, 0-based; design 029), of
+    /// one owner or all.
+    pub fn decorations(&mut self, owner: Option<String>) -> String {
+        serde_json::to_string(&self.session.decorations(owner.as_deref())).unwrap_or_default()
     }
 }
 
@@ -606,6 +624,34 @@ mod tests {
         let f = e.command(r#"{"type":"indent"}"#).unwrap();
         assert!(f.contains("\"snippet\":false"));
         assert_eq!(e.text(), "SELECT name\nFROM t o");
+    }
+
+    #[test]
+    fn markers_of_the_page_follow_the_text() {
+        let mut e = Editor::new("one\ntwo words\n", None);
+        e.command(r#"{"type":"resize","lines":10,"cols":40}"#)
+            .unwrap();
+        let f = e
+            .command(
+                r#"{"type":"setDecorations","owner":"lint","items":[
+                {"from":{"line":1,"ch":4},"to":{"line":1,"ch":9},"severity":"error","message":"no","gutter":"!","line":true,"onEdit":"remove"}]}"#,
+            )
+            .unwrap();
+        let f: serde_json::Value = serde_json::from_str(&f).unwrap();
+        assert_eq!(f["decos"][0]["message"], "no");
+        assert_eq!(f["decoColumn"], true);
+        assert_eq!(f["lines"][1]["decos"][0][0], 4);
+        e.command(r#"{"type":"type","text":"zero\n"}"#).unwrap();
+        let d: serde_json::Value =
+            serde_json::from_str(&e.decorations(Some("lint".into()))).unwrap();
+        assert_eq!(d[0]["from"]["line"], 2);
+        assert_eq!(d[0]["severity"], "error");
+        assert_eq!(e.overview(4)[2], 4);
+        e.command(r#"{"type":"decorationStep"}"#).unwrap();
+        e.command(r#"{"type":"clearDecorations","owner":"lint"}"#)
+            .unwrap();
+        assert_eq!(e.decorations(None), "[]");
+        assert!(e.overview(3).is_empty());
     }
 
     #[test]

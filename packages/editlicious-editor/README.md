@@ -21,6 +21,9 @@ That is all: no framework, no build step, no global CSS. Try it live:
 - **Isolated.** Every editor lives in its own shadow root with its own colours, keyboard, find state and settings.
   It never touches `<html>`, `<body>`, global styles or global key handlers – two editors with different schemes sit
   side by side and share one WebAssembly module.
+- **Made to be extended by your page.** Suggestions from your own provider, snippets with placeholders, markers
+  for errors and hints that follow the text, selections and ranges as text – without the editor knowing your
+  language.
 - **Complete editing.** Syntax highlighting for many languages, multiple carets and block selection, find & replace
   (regex, case, whole word), go to line, sort lines, change case, duplicate/move/join lines, word markers, colour
   swatches for `#rrggbb`/`rgb()`/`hsl()`, inline calculator hints (`255/8=` → `31.875`), word completion
@@ -127,6 +130,44 @@ document has. To turn `ch` into a UTF-16 index of a line's text: `[...lineText].
 `getSelection()` and `getRange()` cost as much as the range is long, not as the document is: a small selection in
 a text of five million lines is instant; selecting everything hands you everything (at most 64 MB).
 
+## Markers
+
+Underline an error, put a symbol in the gutter, show a hint, tint the statement that is running – by **owner**, so
+each source of markers replaces only its own:
+
+```js
+await ed.setMarkers('sql-error', [
+  {
+    start: { line: 3, ch: 8 }, end: { line: 3, ch: 13 },
+    severity: 'error',                // 'error' | 'warning' | 'info' | 'hint' – or a class of your own
+    message: 'column "nmae" does not exist',
+    gutter: true,                     // a dot in the gutter; or '!' / '▶'
+  },
+]);
+await ed.setMarkers('running', [
+  { start: { line: 5, ch: 1 }, end: { line: 9, ch: 2 }, severity: 'running', lineBackground: true },
+]);
+await ed.clearMarkers('running');     // 'sql-error' stays
+const now = await ed.getMarkers('sql-error'); // where they are after editing
+
+ed.addEventListener('ed-marker-click', (e) => showProblem(e.detail.owner, e.detail.index));
+```
+
+- **They follow the text.** Lines inserted before a marker move it; it stays on its word. Text typed *inside* a
+  marker grows it (`onEdit: 'track'`, default) or removes it (`onEdit: 'remove'` – a diagnosis that is no longer
+  true). A marker whose text is deleted is gone. `setValue()` drops all markers.
+- **What you see:** the four severities are underlined (wavy; `hint` dotted), any other class tints its text;
+  `lineBackground` tints the lines; `gutter` shows a symbol; a mark beside the scroll bar shows where markers are;
+  the `message` is a tooltip under the mouse and – for the keyboard – whenever the caret is in the marker (also
+  announced to screen readers).
+- **Keys:** <kbd>F8</kbd> / <kbd>Shift</kbd>+<kbd>F8</kbd> go to the next / previous marker
+  (`runAction('edit.noteNext')`, `'edit.notePrev'`).
+- **Colours:** `--ed-mark-error`, `--ed-mark-warning`, `--ed-mark-info`, `--ed-mark-hint`; a class of your own
+  takes `--ed-mark-<class>` (e.g. `--ed-mark-running: seagreen`) and falls back to `--ed-mark-info`. Give the plain
+  colour – the editor mixes the tints.
+- **Many markers:** only those in view are drawn; 100 000 markers in a million lines cost well under a millisecond
+  per keystroke.
+
 ## Suggestions from your page
 
 The editor knows nothing about your language's names – your page does. Give it a provider and its entries appear in
@@ -200,6 +241,7 @@ Events bubble and cross the shadow boundary (`composed`).
 |---|---|
 | `ed-ready` | – (the engine session is up) |
 | `ed-change` | `{ revision, dirty, lineCount, charCount }` – never the text itself |
+| `ed-marker-click` | `{ owner, index, start, end, severity, message }` – a click on a [marker](#markers) or its gutter symbol; `index` is its place in the list you set |
 | `ed-caret` | `{ line, ch, selChars, selLines, carets, selStart, selEnd }` (1-based; `selStart`/`selEnd`: the primary selection in document order, both the caret when nothing is selected) |
 
 ```js
@@ -278,6 +320,10 @@ its own host, so equally named variables on `<html>` alone do not reach it.
 | `--ed-checker-light` | light squares behind transparent colour swatches | `#ffffff` |
 | `--ed-checker-dark` | dark squares behind transparent colour swatches | `#c8c8c8` |
 | `--ed-marker-0` … `--ed-marker-9` | the ten word markers (translucent) | `rgb(255 99 132 / 30%)` |
+| `--ed-mark-error` | [markers](#markers) of severity `error`: underline, symbol, tints (default: `--color-error`) | `#b42318` |
+| `--ed-mark-warning` | markers of severity `warning` (default: `--color-warning`) | `#8a5a00` |
+| `--ed-mark-info` | markers of severity `info` and of classes without a colour (default: `--color-accent`) | `#2f6fdf` |
+| `--ed-mark-hint` | markers of severity `hint` (default: `--color-text-muted`) | `#6b6f78` |
 | `--syn-comment` | comments (italic) | `#8a8f98` |
 | `--syn-string` | strings | `#2f7d32` |
 | `--syn-keyword` | keywords | `#8e44ad` |

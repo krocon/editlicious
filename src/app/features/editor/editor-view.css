@@ -371,6 +371,75 @@
   }
 }
 
+/* markers of the page (design 029): the severities colour `--deco`, a class of the page sets it
+   inline (`--ed-mark-<class>`); underline for severities, a tint for classes, a tinted line */
+[data-sev='error'] {
+  --deco: var(--ed-mark-error);
+}
+[data-sev='warning'] {
+  --deco: var(--ed-mark-warning);
+}
+[data-sev='info'] {
+  --deco: var(--ed-mark-info);
+}
+[data-sev='hint'] {
+  --deco: var(--ed-mark-hint);
+}
+
+.deco {
+  position: absolute;
+  top: 0;
+  height: var(--lh);
+  overflow: hidden;
+  white-space: pre;
+  color: transparent;
+  text-decoration: underline wavy var(--deco);
+  text-decoration-thickness: 1px;
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
+
+  &[data-sev='hint'] {
+    text-decoration-style: dotted;
+    text-decoration-thickness: 2px;
+  }
+
+  &.tint {
+    text-decoration: none;
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--deco) 24%, transparent);
+  }
+}
+
+.deco-line {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--deco) 12%, transparent);
+}
+
+.deco-symbol {
+  position: absolute;
+  top: 0;
+  left: 2px;
+  height: var(--lh);
+  overflow: hidden;
+  text-align: center;
+  color: var(--deco);
+  cursor: pointer;
+  will-change: transform;
+}
+
+.vbar .tick.deco-tick {
+  left: 3px;
+  width: 4px;
+  background: var(--deco);
+}
+
+.hint.deco-tip {
+  max-width: min(70ch, 90%);
+  border-left: 3px solid var(--deco);
+  white-space: pre-wrap;
+}
+
 /* colour values (design 018): a swatch per line left of the numbers; transparency over a
    checkerboard, a thin outline so white on light and black on dark stay visible */
 .swatch {

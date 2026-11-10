@@ -162,6 +162,42 @@ try {
   });
   check(filled === 'SELECT id FROM t WHERE x>1;', `a snippet is filled in with Tab and typing (${JSON.stringify(filled)})`);
 
+  // markers of the page (prompt 029): they stay on their word, owners keep apart, 100 000 are fluid
+  const mk = await page.evaluate(async () => {
+    const c = document.getElementById('c');
+    c.wordSuggest = false;
+    await c.setValue('one\ntwo\nSELECT nmae FROM t\nfour\n');
+    await c.setMarkers('a', [{ start: { line: 3, ch: 8 }, end: { line: 3, ch: 12 }, severity: 'error', message: 'unknown column', gutter: true }]);
+    await c.setMarkers('b', [{ start: { line: 1, ch: 1 }, end: { line: 1, ch: 4 }, severity: 'running', lineBackground: true }]);
+    await c.replaceRange({ line: 1, ch: 1 }, { line: 1, ch: 1 }, 'zero\nmore\n');
+    const moved = await c.getMarkers('a');
+    const word = await c.getRange(moved[0].start, moved[0].end);
+    const drawn = c.shadowRoot.querySelectorAll('.row .deco').length;
+    const symbol = !!c.shadowRoot.querySelector('.deco-symbol');
+    await c.clearMarkers('a');
+    const left = (await c.getMarkers()).map((m) => m.owner);
+    return { moved: moved[0], word, drawn, symbol, left };
+  });
+  check(mk.word === 'nmae' && mk.moved.start.line === 5, `a marker stays on its word after lines were inserted before it (${JSON.stringify(mk.moved.start)})`);
+  check(mk.drawn >= 2 && mk.symbol, 'markers are drawn with their gutter symbol');
+  check(mk.left.join() === 'b', "clearMarkers('a') leaves the markers of b");
+  await page.click('#many');
+  await page.waitForFunction(() => document.getElementById('log').textContent.includes('100 000 markers in'), null, { timeout: 60000 });
+  await textarea('c').focus();
+  await page.keyboard.press('ControlOrMeta+Home');
+  const m0 = Date.now();
+  await page.keyboard.type('typing with markers');
+  await page.keyboard.press('F8');
+  await page.waitForTimeout(100);
+  check(Date.now() - m0 < 3000, `typing 19 keys with 100 000 markers: ${Date.now() - m0} ms`);
+  const tip = await page.evaluate(() => document.getElementById('c').shadowRoot.querySelector('.deco-tip')?.textContent.trim() ?? '');
+  check(tip.startsWith('marker '), `F8 goes to a marker and shows its message (${tip})`);
+  await page.evaluate(() => {
+    const c = document.getElementById('c');
+    c.wordSuggest = true;
+    return c.setValue('');
+  });
+
   // copy goes to the system clipboard
   await page.evaluate(() => document.getElementById('a').runCommand({ type: 'selectAll' }));
   await textarea('a').focus();

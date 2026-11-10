@@ -20,7 +20,7 @@ import {
 import { ActionService } from '../core/actions/action.service';
 import { KeyboardDispatcher } from '../core/actions/keyboard-dispatcher';
 import { EditorApi } from '../core/editor/editor-api';
-import { Command, Frame, MatchCount, Pos, Query } from '../core/editor/editor.models';
+import { Command, DecoInfo, Frame, MatchCount, Pos, Query } from '../core/editor/editor.models';
 import { systemLanguage, useLanguage } from '../core/i18n/i18n';
 import { Scheme, SCHEMES } from '../core/settings/settings.models';
 import {
@@ -50,6 +50,47 @@ export type {
   EdCompletionResult,
   EdSnippet,
 } from './provider-completion';
+
+/** A marker the page puts on the text (design 029). */
+export interface EdMarker {
+  start: EdPos;
+  end: EdPos;
+  /**
+   * `error`, `warning`, `info`, `hint` (underlined) – or a class of your own (its text is
+   * tinted; colour `--ed-mark-<class>` on the element). Default `info`.
+   */
+  severity?: string;
+  /** Shown as a tooltip: under the mouse, and when the caret is in the marker. */
+  message?: string;
+  /** A symbol in the gutter of its first line: `true` = a dot, or one or two characters. */
+  gutter?: boolean | string;
+  /** Tint the whole lines it covers. */
+  lineBackground?: boolean;
+  /** Text changed inside it: `track` (default) adjusts the marker, `remove` drops it. */
+  onEdit?: 'track' | 'remove';
+}
+
+/** A marker where it is now – `ed-marker-click` and `getMarkers()`. */
+export interface EdMarkerInfo {
+  owner: string;
+  /** Its index in the list given to `setMarkers(owner, …)`. */
+  index: number;
+  start: EdPos;
+  end: EdPos;
+  severity: string;
+  message: string | null;
+}
+
+function markerInfo(d: DecoInfo): EdMarkerInfo {
+  return {
+    owner: d.owner,
+    index: d.index,
+    start: pagePos(d.from),
+    end: pagePos(d.to),
+    severity: d.severity,
+    message: d.message,
+  };
+}
 
 /** Options of {@link EditliciousEditor.insertSnippet}. */
 export interface EdSnippetOptions {
@@ -181,6 +222,7 @@ function lineNumbersAttribute(v: unknown): 'absolute' | 'relative' | 'off' {
         [docId]="id"
         [refresh]="refresh()"
         (frameChange)="onFrame($event)"
+        (decoClick)="onMarkerClick($event)"
       />
       @if (statusBar()) {
         <app-status-bar [frame]="frame()" />
@@ -237,6 +279,8 @@ export class EditliciousEditor {
   // ------------------------------------------------------------------ outputs
   readonly textChange = output<EdChange>();
   readonly caretChange = output<EdCaret>();
+  /** A click on a marker of the page or its gutter symbol (`ed-marker-click`). */
+  readonly markerClick = output<EdMarkerInfo>();
   readonly ready = output<void>();
 
   protected readonly settings = inject(EmbeddedSettings);
@@ -392,6 +436,12 @@ export class EditliciousEditor {
     this.host.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
   }
 
+  protected onMarkerClick(d: DecoInfo): void {
+    const info = markerInfo(d);
+    this.markerClick.emit(info);
+    this.dispatch('ed-marker-click', info);
+  }
+
   protected onFrame(f: Frame): void {
     this.frame.set(f);
     const i = f.info;
@@ -508,6 +558,40 @@ export class EditliciousEditor {
   /** Replaces every selection by `text` (inserts it at a caret) as one undo step. */
   replaceSelection(text: string): Promise<void> {
     return this.runCommand({ type: 'insert', text: String(text) });
+  }
+
+  /**
+   * Replaces all markers of `owner` (`'sql-error'`, `'running'` …; design 029): underlines,
+   * gutter symbols, tinted lines with a message. They follow the text when it is edited; other
+   * owners' markers stay. Not an edit: no undo step, works read-only. `setValue()` drops them.
+   */
+  setMarkers(owner: string, markers: EdMarker[]): Promise<void> {
+    return this.runCommand({
+      type: 'setDecorations',
+      owner: String(owner),
+      items: (Array.isArray(markers) ? markers : []).map((m) => ({
+        from: enginePos(m.start),
+        to: enginePos(m.end ?? m.start),
+        severity: m.severity ? String(m.severity) : null,
+        message: m.message ? String(m.message) : null,
+        gutter: m.gutter === true ? '' : typeof m.gutter === 'string' ? m.gutter : null,
+        line: !!m.lineBackground,
+        onEdit: m.onEdit === 'remove' ? 'remove' : 'track',
+      })),
+    });
+  }
+
+  /** Removes the markers of `owner`; without an owner all of them. */
+  clearMarkers(owner?: string): Promise<void> {
+    return this.runCommand({ type: 'clearDecorations', owner: owner ?? null });
+  }
+
+  /** The markers where they are now (after edits), of one owner or all, in document order. */
+  async getMarkers(owner?: string): Promise<EdMarkerInfo[]> {
+    const id = await this.started;
+    if (id === null) return [];
+    await this.view()?.idle();
+    return (await this.api.decorations(id, owner ?? null)).map(markerInfo);
   }
 
   /**

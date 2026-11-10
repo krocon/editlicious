@@ -137,8 +137,9 @@ eigene `ActionService`, `KeyboardDispatcher` (am Shadow Root, ohne Kontextmenü-
 `WasmEditorApi` spricht den Engine-Worker (`engine.worker.ts` → `engine-host.ts`) an; alle Instanzen teilen ein
 WASM-Modul (`initEditlicious`). `src/element.ts` registriert `<editlicious-editor>` (`@angular/elements`, zoneless).
 Bauen: `pnpm build:element` → `dist/element/editlicious-editor/` und `site/embed/lib/` (Beispielseite
-`site/embed/`). Prüfen: `node scripts/embed-e2e.mjs` (Playwright, falls vorhanden). Größen 02.11.2026:
-`editlicious-editor.js` 325 KB (98 KB gzip), Worker 2 KB, `ed_wasm.js` 22 KB, `ed_wasm_bg.wasm` 3,6 MB (1,2 MB gzip).
+`site/embed/`). Prüfen: `node scripts/embed-e2e.mjs` (Playwright, falls vorhanden). Größen 10.11.2026 (nach
+026–030, ohne `wasm-opt`): `editlicious-editor.js` 347 KB (105 KB gzip), Worker 2 KB, `ed_wasm.js` 25 KB,
+`ed_wasm_bg.wasm` 3,7 MB (1,2 MB gzip).
 `dist/element/editlicious-editor/` ist zugleich das npm-Paket `editlicious-editor` (Vorlagen für `package.json`,
 Typen und README in `packages/editlicious-editor/`; veröffentlicht wird nur auf Anweisung). `playScript()` spielt
 Tipp-Skripte auf der eigenen Sitzung ab (`scriptSteps` aus `ed-wasm`, 025 E13).
@@ -165,4 +166,10 @@ filtert und fügt ein; die Ansicht zeichnet das in ihrer Vorschlagsliste über d
 `ExternalCompletion` (`EDITOR_COMPLETION`, in der App `null`). Die Engine liefert nur den Kontext am Cursor
 (`completion_context`) – die Einträge der Seite überqueren die Engine-Grenze nie. Jede Text-/Caret-Änderung macht
 laufende Antworten wertlos (`seq` + `AbortSignal`).
+
+**Markierungen von außen (029):** `ed-core` `editor/deco.rs` – Bereiche je Besitzer als sortierte Zeichen-Offsets,
+die über das Änderungsprotokoll mitwandern; der Frame trägt nur die sichtbaren (`Frame.decos`, `FrameLine.decos`).
+Befehle `setDecorations`/`clearDecorations`/`decorationStep` (die Web Component nennt sie `setMarkers` …; die
+Wort-Marker aus 007/019 behalten ihre Befehle). Gezeichnet mit CSS (Wellenlinie über `text-decoration`, Tönung über
+`color-mix`), Farben `--ed-mark-*`. 100 000 Markierungen: +0,5 ms je Tastendruck, Scrollen unverändert.
 

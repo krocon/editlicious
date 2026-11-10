@@ -12,6 +12,8 @@ import { provideZonelessChangeDetection } from '@angular/core';
 import { createApplication } from '@angular/platform-browser';
 import { Command, MatchCount, Query } from './app/core/editor/editor.models';
 import {
+  EdMarker,
+  EdMarkerInfo,
   EdPos,
   EdSelection,
   EdSnippetOptions,
@@ -30,6 +32,8 @@ export type {
   EdCompletionItem,
   EdCompletionProvider,
   EdCompletionResult,
+  EdMarker,
+  EdMarkerInfo,
   EdPos,
   EdSelection,
   EdSnippet,
@@ -73,6 +77,15 @@ function withMethods(base: NgElementConstructor<unknown>): CustomElementConstruc
     }
     replaceSelection(text: string): Promise<void> {
       return facade(this).then((f) => f.replaceSelection(text));
+    }
+    setMarkers(owner: string, markers: EdMarker[]): Promise<void> {
+      return facade(this).then((f) => f.setMarkers(owner, markers));
+    }
+    clearMarkers(owner?: string): Promise<void> {
+      return facade(this).then((f) => f.clearMarkers(owner));
+    }
+    getMarkers(owner?: string): Promise<EdMarkerInfo[]> {
+      return facade(this).then((f) => f.getMarkers(owner));
     }
     insertSnippet(
       template: string,

@@ -82,6 +82,11 @@
   --ed-swatch-border: var(--ed-gutter-text);
   --ed-checker-light: #ffffff;
   --ed-checker-dark: #c8c8c8;
+  /* markers of the page (design 029): underline, gutter symbol, overview; tints are mixed */
+  --ed-mark-error: var(--color-error);
+  --ed-mark-warning: var(--color-warning);
+  --ed-mark-info: var(--color-accent);
+  --ed-mark-hint: var(--color-text-muted);
 
   --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, sans-serif;
   --font-editor-default:

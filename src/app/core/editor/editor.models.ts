@@ -155,10 +155,41 @@ export type Command =
   | { type: 'copyResult' }
   /** Read-only (design 025 E1): edits fail with `read_only`. */
   | { type: 'setReadOnly'; readOnly: boolean }
+  /** Markers of the page (design 029): replace an owner's, remove them, step through them. */
+  | { type: 'setDecorations'; owner: string; items: DecoSpec[] }
+  | { type: 'clearDecorations'; owner?: string | null }
+  | { type: 'decorationStep'; backwards?: boolean; owner?: string | null }
   /** A snippet with placeholders in place of `from..to` (default: the selection; design 030). */
   | { type: 'insertSnippet'; template: string; from?: Pos; to?: Pos; vars?: Record<string, string> }
   /** One undo step; cursors keep their place in the text, `caret`: one caret behind (027 E3). */
   | { type: 'replaceRange'; from: Pos; to: Pos; text: string; caret?: boolean };
+
+/** One marker of the page (`deco::DecoSpec`, design 029); positions 0-based. */
+export interface DecoSpec {
+  from: Pos;
+  to: Pos;
+  /** `error`, `warning`, `info`, `hint` – or a class of the page's own. */
+  severity?: string | null;
+  message?: string | null;
+  /** A symbol in the gutter: empty = a dot, else this text; `null` = none. */
+  gutter?: string | null;
+  /** Tint the lines it covers. */
+  line?: boolean;
+  onEdit?: 'track' | 'remove';
+}
+
+/** A marker where it is now (`deco::DecoInfo`). */
+export interface DecoInfo {
+  owner: string;
+  /** Index in the list its owner set. */
+  index: number;
+  severity: string;
+  message: string | null;
+  gutter: string | null;
+  line: boolean;
+  from: Pos;
+  to: Pos;
+}
 
 /** Settings of the word completion (`model::WordConfig`, prompt 023). */
 export interface WordConfig {
@@ -286,6 +317,8 @@ export interface FrameLine {
   wraps: number[];
   /** Colour values `[from, to, rgba]`: characters, colour 0xRRGGBBAA (design 018). */
   colors: [number, number, number][];
+  /** Markers of the page `[from, to, index into Frame.decos]` in cells (design 029). */
+  decos: [number, number, number][];
 }
 
 /** Where a caret is drawn: rows from the view top, cell within its row. */
@@ -350,4 +383,8 @@ export interface Frame {
   readOnly: boolean;
   /** A snippet is being filled in: Tab → next placeholder, Escape ends it (design 030). */
   snippet: boolean;
+  /** The markers of the page in view (design 029). */
+  decos: DecoInfo[];
+  /** The gutter has a column for marker symbols. */
+  decoColumn: boolean;
 }

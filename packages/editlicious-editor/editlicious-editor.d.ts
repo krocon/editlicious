@@ -132,6 +132,41 @@ export interface SnippetOptions {
   vars?: Record<string, string>;
 }
 
+/** A marker the page puts on the text (`setMarkers`). */
+export interface Marker {
+  start: EdPos;
+  end: EdPos;
+  /**
+   * `error`, `warning`, `info`, `hint`: a wavy (hint: dotted) underline in `--ed-mark-error` …
+   * Any other name is a class of your own: its text is tinted with `--ed-mark-<class>`.
+   * Default `info`.
+   */
+  severity?: 'error' | 'warning' | 'info' | 'hint' | (string & {});
+  /** Shown as a tooltip: under the mouse, and when the caret is in the marker. */
+  message?: string;
+  /** A symbol in the gutter of its first line: `true` = a dot, or one or two characters. */
+  gutter?: boolean | string;
+  /** Tint the whole lines it covers. */
+  lineBackground?: boolean;
+  /**
+   * When text inside the marker changes: `track` (default) – it grows and shrinks with its text
+   * and goes when nothing of it is left; `remove` – any change inside removes it. Text inserted
+   * or deleted before a marker always just moves it.
+   */
+  onEdit?: 'track' | 'remove';
+}
+
+/** A marker where it is now (detail of `ed-marker-click`, `getMarkers()`). */
+export interface MarkerInfo {
+  owner: string;
+  /** Its index in the list given to `setMarkers(owner, …)`. */
+  index: number;
+  start: EdPos;
+  end: EdPos;
+  severity: string;
+  message: string | null;
+}
+
 /** Options of {@link EditliciousEditorElement.find}. */
 export interface FindOptions {
   regex?: boolean;
@@ -227,6 +262,17 @@ export interface EditliciousEditorElement extends HTMLElement {
   /** Replaces every selection by `text` (inserts it at a caret) as one undo step. */
   replaceSelection(text: string): Promise<void>;
   /**
+   * Replaces all markers of `owner` (`'sql-error'`, `'running'` …); other owners' stay. Markers
+   * follow the text when it is edited. Not an edit: no undo step, works read-only.
+   * `setValue()` and `loadText()` drop all markers. Only the markers in view are drawn –
+   * 100 000 of them do not slow down typing or scrolling.
+   */
+  setMarkers(owner: string, markers: Marker[]): Promise<void>;
+  /** Removes the markers of `owner`; without an owner all of them. */
+  clearMarkers(owner?: string): Promise<void>;
+  /** The markers where they are now (after edits), of one owner or all, in document order. */
+  getMarkers(owner?: string): Promise<MarkerInfo[]>;
+  /**
    * Inserts a snippet in place of the selection (or `range`) as one undo step and selects its
    * first placeholder; Tab / Shift+Tab go on, Escape or leaving the placeholder ends it.
    * Syntax: `$1`, `${1:default}`, `${1|one,two|}`, `$0` (where the caret ends); the same number
@@ -268,6 +314,7 @@ export interface EditliciousEditorEventMap extends HTMLElementEventMap {
   'ed-ready': CustomEvent<null>;
   'ed-change': CustomEvent<EdChange>;
   'ed-caret': CustomEvent<EdCaret>;
+  'ed-marker-click': CustomEvent<MarkerInfo>;
 }
 
 /** Loads the engine once for the whole page (optional – the first editor does it too). */

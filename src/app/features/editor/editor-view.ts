@@ -15,7 +15,14 @@ import {
   viewChild,
 } from '@angular/core';
 import { EditorApi } from '../../core/editor/editor-api';
-import { Command, Frame, FrameLine, LineEnding, Run } from '../../core/editor/editor.models';
+import {
+  Command,
+  DecoInfo,
+  Frame,
+  FrameLine,
+  LineEnding,
+  Run,
+} from '../../core/editor/editor.models';
 import { DocumentsStore } from '../documents/documents.store';
 import { describeFsError, toFsError } from '../../core/errors/fs-error';
 import { ActionService } from '../../core/actions/action.service';
@@ -89,6 +96,8 @@ export class EditorView {
   readonly refresh = input(0);
   /** Every frame (dirty state, caret, scroll for tabs and the session). */
   readonly frameChange = output<Frame>();
+  /** A click on a marker of the page or its gutter symbol (design 029). */
+  readonly decoClick = output<DecoInfo>();
 
   protected readonly texts = EDITOR_TEXTS;
   protected readonly frame = signal<Frame | null>(null);
@@ -138,9 +147,14 @@ export class EditorView {
     this.frame()?.colorColumn ? this.metrics().lh : 0,
   );
 
+  /** Width of the column for marker symbols (design 029), 0 without symbols. */
+  protected readonly decoWidth = computed(() =>
+    this.frame()?.decoColumn ? Math.round(this.metrics().lh * 0.8) : 0,
+  );
+
   protected readonly gutterWidth = computed(() => {
     const mode = this.lineNumbers();
-    const swatches = this.swatchWidth();
+    const swatches = this.swatchWidth() + this.decoWidth();
     if (mode === 'off') return this.metrics().cw + swatches;
     const lines = this.frame()?.info.lineCount ?? 1;
     const digits = Math.max(3, String(lines).length);
@@ -177,6 +191,86 @@ export class EditorView {
     });
     this.focus();
   }
+
+  // ---------------------------------------------------------------- markers of the page (029)
+
+  /** The four severities are underlined; any other class of the page tints its text. */
+  protected isSeverity(s: string): boolean {
+    return s === 'error' || s === 'warning' || s === 'info' || s === 'hint';
+  }
+
+  /** The colour of a class of the page: `--ed-mark-<class>` (severities: by the stylesheet). */
+  protected decoColor(severity: string): string | null {
+    if (this.isSeverity(severity)) return null;
+    const name = severity.toLowerCase().replace(/[^a-z0-9-]+/g, '-');
+    return `var(--ed-mark-${name}, var(--ed-mark-info))`;
+  }
+
+  /** Blanks as wide as `px` – the wavy underline needs text to hang on. */
+  protected blanks(px: number): string {
+    return ' '.repeat(Math.max(1, Math.round(px / this.metrics().cw)));
+  }
+
+  /** The marker whose gutter symbol a line shows (the first that starts there). */
+  protected readonly gutterDecos = computed(() => {
+    const out = new Map<number, DecoInfo>();
+    for (const d of this.frame()?.decos ?? []) {
+      if (d.gutter !== null && !out.has(d.from.line)) out.set(d.from.line, d);
+    }
+    return out;
+  });
+
+  /** The marker under the mouse: where its message shows. */
+  private readonly hoverDeco = signal<{ x: number; y: number; deco: DecoInfo } | null>(null);
+
+  protected onDecoEnter(e: MouseEvent, deco: DecoInfo): void {
+    if (!deco.message) return;
+    const host = this.host.nativeElement.getBoundingClientRect();
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    this.hoverDeco.set({ x: r.left - host.left, y: r.bottom - host.top, deco });
+  }
+
+  protected onDecoLeave(): void {
+    this.hoverDeco.set(null);
+  }
+
+  /** The click still places the caret (the event goes on to the text). */
+  protected onDecoDown(e: MouseEvent, deco: DecoInfo): void {
+    if (e.button === 0) this.decoClick.emit(deco);
+  }
+
+  /**
+   * The message of a marker: under the mouse, or – for the keyboard – of the marker the caret
+   * is in (nothing selected, no arithmetic hint or suggestion list in the way).
+   */
+  protected readonly decoTip = computed(() => {
+    const h = this.hoverDeco();
+    const f = this.frame();
+    if (h && f?.decos.some((d) => d.owner === h.deco.owner && d.index === h.deco.index)) {
+      return {
+        x: h.x,
+        y: h.y,
+        text: h.deco.message ?? '',
+        severity: h.deco.severity,
+        caret: false,
+      };
+    }
+    if (!f || !this.focused() || f.selChars > 0 || this.hintBox() || this.completionBox()) {
+      return null;
+    }
+    const at = (p: { line: number; ch: number }) => p.line * 1e9 + p.ch;
+    const c = at({ line: f.caretLine, ch: f.caretCh });
+    const d = f.decos.find((x) => x.message && at(x.from) <= c && c <= at(x.to));
+    if (!d) return null;
+    const xy = this.caretXY();
+    return {
+      x: this.textLeft() + Math.max(0, xy.x),
+      y: xy.y + this.metrics().lh,
+      text: d.message ?? '',
+      severity: d.severity,
+      caret: true,
+    };
+  });
 
   /** Gutter number of a line: absolute, or the distance to the caret line (design 009). */
   protected lineLabel(line: number, caretLine: number): string {
@@ -389,10 +483,16 @@ export class EditorView {
     const o = this.overview();
     const b = this.vbar();
     if (!b || o.length === 0) return [];
-    const out: { top: number; match: boolean; marker: boolean }[] = [];
+    const out: { top: number; match: boolean; marker: boolean; deco: string | null }[] = [];
     o.forEach((bits, i) => {
       if (bits) {
-        out.push({ top: (i * b.track) / o.length, match: !!(bits & 1), marker: !!(bits & 2) });
+        out.push({
+          top: (i * b.track) / o.length,
+          match: !!(bits & 1),
+          marker: !!(bits & 2),
+          // markers of the page (design 029): the worst one of the slice
+          deco: bits & 4 ? 'error' : bits & 8 ? 'warning' : bits & 16 ? 'info' : null,
+        });
       }
     });
     return out;
@@ -487,7 +587,8 @@ export class EditorView {
     this.registerCompletion(actions);
     // the hint for screen readers (prompt 020)
     effect(() => {
-      const text = this.hintBox()?.text ?? '';
+      const tip = this.decoTip();
+      const text = this.hintBox()?.text ?? (tip?.caret ? tip.text : '');
       untracked(() => this.speakHint(text));
     });
     this.destroyRef.onDestroy(() => {

@@ -342,6 +342,105 @@ describe('EditliciousEditor (design 025)', () => {
     expect(api.commands.map((c) => c.cmd.type)).toContain('indent');
   });
 
+  it('sets, reads and reports markers of the page (design 029)', async () => {
+    const { a, api, ea, fixture } = await setup();
+    const id = [...api.texts.keys()][0];
+    await ea.setMarkers('sql-error', [
+      {
+        start: { line: 3, ch: 8 },
+        end: { line: 3, ch: 13 },
+        severity: 'error',
+        message: 'no such column',
+        gutter: true,
+        onEdit: 'remove',
+      },
+      {
+        start: { line: 5, ch: 1 },
+        end: { line: 9, ch: 2 },
+        severity: 'running',
+        gutter: '▶',
+        lineBackground: true,
+      },
+    ]);
+    expect(api.commands.at(-1)).toEqual({
+      id,
+      cmd: {
+        type: 'setDecorations',
+        owner: 'sql-error',
+        items: [
+          {
+            from: { line: 2, ch: 7 },
+            to: { line: 2, ch: 12 },
+            severity: 'error',
+            message: 'no such column',
+            gutter: '',
+            line: false,
+            onEdit: 'remove',
+          },
+          {
+            from: { line: 4, ch: 0 },
+            to: { line: 8, ch: 1 },
+            severity: 'running',
+            message: null,
+            gutter: '▶',
+            line: true,
+            onEdit: 'track',
+          },
+        ],
+      },
+    });
+    await ea.clearMarkers('sql-error');
+    expect(api.commands.at(-1)!.cmd).toEqual({ type: 'clearDecorations', owner: 'sql-error' });
+    await ea.clearMarkers();
+    expect(api.commands.at(-1)!.cmd).toEqual({ type: 'clearDecorations', owner: null });
+    const info = {
+      owner: 'sql-error',
+      index: 4,
+      severity: 'error',
+      message: 'm',
+      gutter: null,
+      line: false,
+      from: { line: 6, ch: 7 },
+      to: { line: 6, ch: 12 },
+    };
+    api.decos = [info, { ...info, owner: 'other' }];
+    expect(await ea.getMarkers('sql-error')).toEqual([
+      {
+        owner: 'sql-error',
+        index: 4,
+        severity: 'error',
+        message: 'm',
+        start: { line: 7, ch: 8 },
+        end: { line: 7, ch: 13 },
+      },
+    ]);
+    expect((await ea.getMarkers()).length).toBe(2);
+    // a click on a marker goes out as an event with 1-based positions
+    const clicked: unknown[] = [];
+    ea.markerClick.subscribe((m) => clicked.push(m));
+    const f = textFrame(['a', 'b'], {
+      seq: 5,
+      decos: [{ ...info, from: { line: 0, ch: 0 }, to: { line: 0, ch: 1 } }],
+    });
+    f.lines[0].decos = [[0, 1, 0]];
+    api.nextFrame = f;
+    await ea.runCommand({ type: 'frame' });
+    await fixture.whenStable();
+    a.shadowRoot!.querySelector('.deco')!.dispatchEvent(
+      new MouseEvent('mousedown', { bubbles: true }),
+    );
+    expect(clicked).toEqual([
+      {
+        owner: 'sql-error',
+        index: 4,
+        severity: 'error',
+        message: 'm',
+        start: { line: 1, ch: 1 },
+        end: { line: 1, ch: 2 },
+      },
+    ]);
+  });
+
   it('follows value, readOnly and settles methods', async () => {
     const { api, ea, host, fixture } = await setup();
     const id = [...api.texts.keys()][0];

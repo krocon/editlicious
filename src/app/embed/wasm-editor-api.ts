@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { EditorApi, Loading } from '../core/editor/editor-api';
 import {
   Command,
+  DecoInfo,
   DiskState,
   DocInfo,
   Frame,
@@ -29,6 +30,8 @@ export abstract class EmbedEngineApi extends EditorApi {
   abstract text(id: number): Promise<string>;
   /** Lines `from..to` (0-based, end exclusive). */
   abstract slice(id: number, from: number, to: number): Promise<string>;
+  /** The markers of the page where they are now (0-based), of one owner or all (029). */
+  abstract decorations(id: number, owner: string | null): Promise<DecoInfo[]>;
   /** The caret for a completion provider (0-based; `words`: with the word candidates; 028). */
   abstract completionContext(id: number, words: boolean): Promise<EngineCompletionContext>;
   /** The selections in document order with their texts (0-based positions, design 027 E1). */
@@ -115,6 +118,10 @@ export class WasmEditorApi extends EmbedEngineApi {
   /** Lines `from..to` (end exclusive). */
   slice(id: number, from: number, to: number): Promise<string> {
     return this.call('slice', id, from, to) as Promise<string>;
+  }
+
+  async decorations(id: number, owner: string | null): Promise<DecoInfo[]> {
+    return JSON.parse((await this.call('decorations', id, owner)) as string) as DecoInfo[];
   }
 
   async completionContext(id: number, words: boolean): Promise<EngineCompletionContext> {

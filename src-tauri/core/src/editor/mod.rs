@@ -4,6 +4,7 @@
 
 pub mod colors;
 pub mod complete;
+pub mod deco;
 pub mod expand;
 pub mod hints;
 pub mod layout;
@@ -155,6 +156,8 @@ pub struct Session {
     read_only: bool,
     /// The snippet being filled in (design 030).
     snippet: Option<snippet::SnippetState>,
+    /// Markers the page put on the text (design 029).
+    decos: deco::Decos,
 }
 
 /// Suggestions shown for a line (prompt 020): arithmetic or words (prompt 023).
@@ -215,6 +218,7 @@ impl Session {
             last_recording: None,
             read_only: false,
             snippet: None,
+            decos: deco::Decos::default(),
         }
     }
 
@@ -273,6 +277,7 @@ impl Session {
         self.drag = None;
         // a new text: nothing of the old one is left to follow
         self.snippet = None;
+        self.decos.clear(None);
         self.track();
         self.normalize();
         self.clamp_scroll();
@@ -280,32 +285,55 @@ impl Session {
 
     /// Keeps the document's change log exactly while something follows positions.
     fn track(&mut self) {
-        self.doc.track_edits(self.snippet.is_some());
+        self.doc
+            .track_edits(self.snippet.is_some() || !self.decos.is_empty());
     }
 
-    /// Lets everything that follows positions (snippet placeholders) see the changes made since
-    /// the last call.
+    /// Lets everything that follows positions (snippet placeholders, markers) see the changes
+    /// made since the last call.
     fn sync_tracked(&mut self) {
         let batches = self.doc.take_edits();
-        if batches.is_empty() {
-            return;
+        for (i, batch) in batches.iter().enumerate() {
+            match batch {
+                crate::document::EditBatch::Changes(c) => {
+                    let map = track::EditMap::new(c);
+                    if let Some(sn) = self.snippet.as_mut() {
+                        sn.follow(&map);
+                    }
+                    self.decos.follow(&map);
+                }
+                crate::document::EditBatch::Rewrite(old) => {
+                    // the text right after a rewrite is the next rewrite's "before", else the
+                    // text now (exact when nothing else changed in between – the usual case)
+                    let after = batches[i + 1..]
+                        .iter()
+                        .find_map(|n| match n {
+                            crate::document::EditBatch::Rewrite(r) => Some(r.clone()),
+                            crate::document::EditBatch::Changes(_) => None,
+                        })
+                        .unwrap_or_else(|| self.doc.rope().clone());
+                    if let Some(sn) = self.snippet.as_mut() {
+                        sn.rewrite(old, &after);
+                    }
+                    self.decos.rewrite(old, &after);
+                }
+            }
         }
-        let rope = self.doc.rope().clone();
-        let snippet = std::cell::RefCell::new(self.snippet.as_mut());
-        track::for_each_batch(
-            &batches,
-            &rope,
-            |map| {
-                if let Some(sn) = snippet.borrow_mut().as_mut() {
-                    sn.follow(map);
-                }
-            },
-            |old, new| {
-                if let Some(sn) = snippet.borrow_mut().as_mut() {
-                    sn.rewrite(old, new);
-                }
-            },
-        );
+        if !batches.is_empty() && self.decos.is_empty() {
+            self.track();
+        }
+    }
+
+    /// The markers of the page where they are now (design 029), of one owner or all.
+    pub fn decorations(&mut self, owner: Option<&str>) -> Vec<deco::DecoInfo> {
+        self.sync_tracked();
+        self.decos.all(owner, &self.doc)
+    }
+
+    /// The markers per slice of the lines for the overview bar (`None`: there are none).
+    pub fn overview_decos(&mut self, buckets: usize) -> Option<Vec<u8>> {
+        self.sync_tracked();
+        (!self.decos.is_empty()).then(|| self.decos.overview(self.doc.rope(), buckets))
     }
 
     /// Runs one command and returns the frame to draw; a running recording keeps it
@@ -804,6 +832,25 @@ impl Session {
                     (None, None) => None,
                 };
                 self.insert_snippet(&template, range, &vars)?;
+            }
+            Command::SetDecorations { owner, items } => {
+                self.sync_tracked();
+                self.decos.set(&owner, items, &self.doc);
+                self.track();
+                reveal = Reveal::No;
+            }
+            Command::ClearDecorations { owner } => {
+                self.decos.clear(owner.as_deref());
+                self.track();
+                reveal = Reveal::No;
+            }
+            Command::DecorationStep { backwards, owner } => {
+                let at = self.doc.pos_to_char(self.primary().head);
+                match self.decos.step(at, backwards, owner.as_deref()) {
+                    Some(c) => self.cursors = vec![Cursor::caret(self.doc.char_to_pos(c))],
+                    None => self.notice = Some("no_note".into()),
+                }
+                reveal = Reveal::Center;
             }
             Command::Select { sels } => {
                 if !sels.is_empty() {
@@ -1916,6 +1963,7 @@ impl Session {
             self.max_width = self.max_width.max(fl.width);
             lines.push(fl);
         }
+        let decos = self.frame_decos(&mut lines, first, end, wa, wb);
         let primary = self.primary();
         let carets: Vec<CaretPos> = self
             .cursors
@@ -2015,7 +2063,68 @@ impl Session {
             }),
             read_only: self.read_only,
             snippet: self.snippet.is_some(),
+            decos,
+            deco_column: self.decos.has_symbols(),
         }
+    }
+
+    /// The markers of the page in the lines `first..end` (design 029 E4): each line gets its
+    /// cell ranges, the frame the list they point into. Only what is in view costs anything.
+    fn frame_decos(
+        &self,
+        lines: &mut [FrameLine],
+        first: usize,
+        end: usize,
+        wa: usize,
+        wb: usize,
+    ) -> Vec<deco::DecoInfo> {
+        if self.decos.is_empty() || end <= first {
+            return Vec::new();
+        }
+        let rope = self.doc.rope();
+        let a = rope.line_to_char(first);
+        let b = if end < rope.len_lines() {
+            rope.line_to_char(end)
+        } else {
+            rope.len_chars()
+        };
+        let mut out = Vec::new();
+        for (_, _, info) in self.decos.in_range(a, b, &self.doc) {
+            let (from, to) = (info.from, info.to);
+            for l in from.line.max(first)..=to.line.min(end - 1) {
+                // a range that ends at the start of a line does not cover that line
+                if l == to.line && to.ch == 0 && to.line > from.line {
+                    continue;
+                }
+                let fl = &mut lines[l - first];
+                let ch_a = if l == from.line { from.ch } else { 0 };
+                let ch_b = if l == to.line {
+                    to.ch
+                } else {
+                    self.doc.line_len(l)
+                };
+                let (mut ca, mut cb) = if fl.long {
+                    // a window of a long line: nothing wider than the window goes out
+                    (ch_a.max(wa), ch_b.min(wb))
+                } else {
+                    (
+                        self.cell_of(Pos::new(l, ch_a)),
+                        self.cell_of(Pos::new(l, ch_b)),
+                    )
+                };
+                if fl.long && ca > cb {
+                    continue;
+                }
+                if cb <= ca {
+                    // an empty range (or an empty line of a longer one) still shows: one cell
+                    cb = ca + 1;
+                }
+                ca = ca.min(cb);
+                fl.decos.push([ca, cb, out.len()]);
+            }
+            out.push(info);
+        }
+        out
     }
 
     /// The expression at the primary caret (one caret, no long line).
@@ -2504,6 +2613,7 @@ impl Session {
             indent,
             row: 0.0,
             wraps: Vec::new(),
+            decos: Vec::new(),
             colors: if self.colors {
                 let text = if long {
                     self.doc.line_slice(line, 0, colors::SCAN_CHARS)
@@ -2607,10 +2717,14 @@ impl Session {
     /// Identity of search and markers (the overview asks again when it changes).
     fn deco(&self) -> u64 {
         use std::hash::{Hash, Hasher};
-        if self.search.is_none() && self.markers.iter().all(Option::is_none) {
+        if self.search.is_none()
+            && self.markers.iter().all(Option::is_none)
+            && self.decos.is_empty()
+        {
             return 0;
         }
         let mut h = std::collections::hash_map::DefaultHasher::new();
+        (self.decos.generation(), self.decos.len()).hash(&mut h);
         if let Some((_, re)) = &self.search {
             re.as_str().hash(&mut h);
         }

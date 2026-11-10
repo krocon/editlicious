@@ -14,6 +14,7 @@
 ## 1. Stand
 
 - Prompt-Liste und Status: `prompts/README.md`; Auftrag: `prompts/000-start.md`; Regeln: `prompts/000-arbeitsweise.md`.
+- 026–030 sind die Erweiterungen der Web Component für Schema Commander (dort `prompts/editlicious/` E1–E5).
 - Erledigte Prompts samt Design-Dokument liegen in `prompts/done/`; Kürzel wie „002 E4“ in Code und Doku verweisen auf
   Entscheidungen dort.
 - **Arbeitsweise (Marc, 26.10.2026):** Prompts selbständig nacheinander, nach jedem Prompt Commit + Push auf `main`.
@@ -73,6 +74,7 @@ src/                          Angular 22 (zoneless, Signals, OnPush, Standalone)
   app/features/about/         About-Dialog
   app/embed/                  einbettbare Komponente (025): EditliciousEditor (`<ed-editor>`, Shadow DOM),
                               WasmEditorApi + Engine-Worker, EmbeddedSettings, BrowserClipboard,
+                              ProviderCompletion (Vorschläge der Seite, 028), positions (1-basierte Positionen),
                               host-theme.css (generiert aus styles.css – nie von Hand ändern)
   element.ts                  Custom Element `<editlicious-editor>` (@angular/elements), Ziel `element`
   app/core/i18n/              translatable(), Sprache (Signal), System-Sprache, catalogs.spec (Vollständigkeit)
@@ -103,7 +105,9 @@ src-tauri/                    Rust (Tauri 2), Crate `editlicious`, Lib `ed_lib`
                               recording (*.edrec.jsonl), script (*.edscript), playback (Zeitachse, Tempo),
                               colors (Farbwerte erkennen/umrechnen), expand (Doppelklick-Auswahl wächst),
                               hints (Rechenausdruck am Caret, Hinweis und Vorschläge),
-                              complete (Wort-Vervollständigung: Präfix, Kandidaten, Lexikon)
+                              complete (Wort-Vervollständigung: Präfix, Kandidaten, Lexikon),
+                              snippet (Textbausteine: Parser, Platzhalter-Modus – 030), deco (Markierungen
+                              von außen – 029), track (Positionen wandern über das Änderungsprotokoll)
     lexicon/*.txt             Wortlisten je Sprache für die Vervollständigung (023)
     src/math.rs               Rechen-Parser (Vorlage MathParser): Rangfolge, Funktionen, Zahlenformate
     testdata/document.cases.json  datengetriebene Bearbeitungsfälle; math.cases.json Rechenfälle

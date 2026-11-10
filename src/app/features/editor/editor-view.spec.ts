@@ -10,7 +10,7 @@ import { FakeEditorApi, textFrame } from '../../../testing/fake-editor-api';
 import { EditorView } from './editor-view';
 import { PickService } from '../../shared/pick/pick.service';
 import { ActionService } from '../../core/actions/action.service';
-import { Command } from '../../core/editor/editor.models';
+import { Command, DecoInfo } from '../../core/editor/editor.models';
 import { SettingsStore } from '../settings/settings.store';
 import { KeyboardDispatcher } from '../../core/actions/keyboard-dispatcher';
 import { OS } from '../../core/actions/platform';
@@ -608,5 +608,141 @@ describe('EditorView with a browser clipboard (design 025 E6)', () => {
     await view.run({ type: 'paste' });
     expect(api.sent('paste').length).toBe(0);
     expect(api.sent('insert').at(-1)).toEqual({ type: 'insert', text: 'from page' });
+  });
+});
+
+describe('EditorView – markers of the page (design 029)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    cleanups.splice(0).forEach((f) => f());
+  });
+
+  const deco = (over: Partial<DecoInfo> = {}): DecoInfo => ({
+    owner: 'lint',
+    index: 0,
+    severity: 'error',
+    message: 'unknown column',
+    gutter: null,
+    line: false,
+    from: { line: 0, ch: 2 },
+    to: { line: 0, ch: 5 },
+    ...over,
+  });
+
+  function marked() {
+    const f = textFrame(['hello', 'world'], {
+      caretLine: 1,
+      caretCh: 0,
+      anchorLine: 1,
+      decoColumn: true,
+      decos: [
+        deco({ gutter: '' }),
+        deco({
+          index: 1,
+          severity: 'Run ning',
+          message: null,
+          line: true,
+          from: { line: 1, ch: 0 },
+          to: { line: 1, ch: 5 },
+        }),
+      ],
+    });
+    f.lines[0].decos = [[2, 5, 0]];
+    f.lines[1].decos = [[0, 5, 1]];
+    return f;
+  }
+
+  it('underlines severities, tints classes and lines, shows a gutter symbol', async () => {
+    const api = new FakeEditorApi();
+    api.nextFrame = marked();
+    const { el, fixture } = await setup(api);
+    const decos = [...el.querySelectorAll<HTMLElement>('.row .deco')];
+    expect(decos.length).toBe(2);
+    expect(decos[0].getAttribute('data-sev')).toBe('error');
+    expect(decos[0].classList.contains('tint')).toBe(false);
+    // three cells wide; blanks carry the underline (the box cuts off what is too much)
+    expect(decos[0].textContent).toMatch(/^ {3,}$/);
+    expect(parseFloat(decos[0].style.width)).toBeCloseTo(parseFloat(decos[1].style.width) * 0.6);
+    // a class of the page: its own colour variable, a safe name, the info colour as fallback
+    expect(decos[1].classList.contains('tint')).toBe(true);
+    expect(decos[1].style.getPropertyValue('--deco')).toBe(
+      'var(--ed-mark-run-ning, var(--ed-mark-info))',
+    );
+    expect(el.querySelectorAll('.row')[1].querySelector('.deco-line')).toBeTruthy();
+    expect(el.querySelectorAll('.row')[0].querySelector('.deco-line')).toBeNull();
+    const symbols = el.querySelectorAll('.gutter .deco-symbol');
+    expect(symbols.length).toBe(1);
+    expect(symbols[0].textContent?.trim()).toBe('●');
+    // the gutter makes room for the symbols
+    const wide = parseFloat(el.querySelector<HTMLElement>('.gutter')!.style.width);
+    api.nextFrame = { ...marked(), seq: 2, decoColumn: false, decos: [] };
+    api.nextFrame.lines.forEach((l) => (l.decos = []));
+    await fixture.componentInstance.run({ type: 'frame' });
+    await fixture.whenStable();
+    expect(parseFloat(el.querySelector<HTMLElement>('.gutter')!.style.width)).toBeLessThan(wide);
+    expect(el.querySelector('.deco')).toBeNull();
+  });
+
+  it('shows the message under the mouse and at the caret, and reports clicks', async () => {
+    const api = new FakeEditorApi();
+    api.nextFrame = marked();
+    const { el, fixture } = await setup(api);
+    const clicks: DecoInfo[] = [];
+    fixture.componentInstance.decoClick.subscribe((d) => clicks.push(d));
+    const input = el.querySelector('textarea')!;
+    expect(el.querySelector('.deco-tip')).toBeNull();
+    const first = el.querySelector<HTMLElement>('.row .deco')!;
+    first.dispatchEvent(new MouseEvent('mouseenter'));
+    await fixture.whenStable();
+    const tip = el.querySelector('.deco-tip')!;
+    expect(tip.textContent?.trim()).toBe('unknown column');
+    expect(tip.getAttribute('role')).toBe('tooltip');
+    expect(tip.getAttribute('data-sev')).toBe('error');
+    first.dispatchEvent(new MouseEvent('mouseleave'));
+    await fixture.whenStable();
+    expect(el.querySelector('.deco-tip')).toBeNull();
+    // the keyboard: the caret in the marker shows (and describes) it
+    api.nextFrame = { ...marked(), seq: 2, caretLine: 0, caretCh: 3, anchorLine: 0, anchorCh: 3 };
+    input.focus();
+    await fixture.componentInstance.run({ type: 'frame' });
+    await fixture.whenStable();
+    expect(el.querySelector('.deco-tip')?.textContent?.trim()).toBe('unknown column');
+    expect(input.getAttribute('aria-describedby')).toBe(el.querySelector('.deco-tip')!.id);
+    // a click on the text or the symbol
+    el.querySelector<HTMLElement>('.row .deco')!.dispatchEvent(
+      new MouseEvent('mousedown', { bubbles: true }),
+    );
+    el.querySelector<HTMLElement>('.deco-symbol')!.dispatchEvent(
+      new MouseEvent('mousedown', { bubbles: true }),
+    );
+    expect(clicks.map((c) => c.index)).toEqual([0, 0]);
+    // the click still went to the text (caret) and the gutter (line)
+    await flush();
+    expect(api.sent('click').length).toBe(2);
+  });
+
+  it('marks them beside the scroll bar and steps with F8', async () => {
+    const api = new FakeEditorApi();
+    const lines = Array.from({ length: 200 }, (_, i) => `line ${i}`);
+    api.nextFrame = textFrame(lines.slice(0, 30), { deco: 5 });
+    api.nextFrame.info = { ...api.nextFrame.info, lineCount: 200 };
+    api.overviewAnswer = [4, 8, 16 | 1, 0];
+    const { el, fixture } = await setup(api);
+    await new Promise((r) => setTimeout(r, 350));
+    await fixture.whenStable();
+    const ticks = [...el.querySelectorAll('.vbar .deco-tick')];
+    expect(ticks.map((t) => t.getAttribute('data-sev'))).toEqual(['error', 'warning', 'info']);
+    expect(el.querySelectorAll('.vbar .tick.match').length).toBe(1);
+    const key = (init: KeyboardEventInit) =>
+      el
+        .querySelector('textarea')!
+        .dispatchEvent(new KeyboardEvent('keydown', { key: 'F8', bubbles: true, ...init }));
+    key({});
+    key({ shiftKey: true });
+    await flush();
+    expect(api.sent('decorationStep')).toEqual([
+      { type: 'decorationStep' },
+      { type: 'decorationStep', backwards: true },
+    ]);
   });
 });

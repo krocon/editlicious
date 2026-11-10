@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { DocInfo, Pos } from '../app/core/editor/editor.models';
+import { DecoInfo, DocInfo, Pos } from '../app/core/editor/editor.models';
 import {
   EmbedEngineApi,
   EngineCompletionContext,
@@ -45,6 +45,13 @@ export class FakeEmbedEngineApi extends FakeEditorApi implements EmbedEngineApi 
   slice(id: number, from: number, to: number): Promise<string> {
     const lines = (this.texts.get(id) ?? '').split('\n');
     return Promise.resolve(lines.slice(from, to).join('\n'));
+  }
+
+  /** What `decorations` answers. */
+  decos: DecoInfo[] = [];
+
+  decorations(_id: number, owner: string | null): Promise<DecoInfo[]> {
+    return Promise.resolve(this.decos.filter((d) => owner === null || d.owner === owner));
   }
 
   /** What `completionContext` answers; tests move the caret by changing it. */

@@ -2,7 +2,6 @@
 //! changes a document reports ([`crate::document::EditBatch`]). Snippet placeholders (030) and
 //! markers from outside (029) use it.
 
-use crate::document::EditBatch;
 use ropey::Rope;
 
 /// Where a position goes when text is inserted exactly at it, or when it sat inside text that
@@ -86,33 +85,6 @@ pub fn remap_lines(old: &Rope, new: &Rope, p: usize) -> usize {
         new.len_chars()
     };
     (start + col).min(next)
-}
-
-/// Applies `f(batch)` to every batch in order; a rewrite gets the rope after it (the next
-/// rewrite's "before", or the current text).
-pub fn for_each_batch(
-    batches: &[EditBatch],
-    current: &Rope,
-    mut changes: impl FnMut(&EditMap),
-    mut rewrite: impl FnMut(&Rope, &Rope),
-) {
-    for (i, b) in batches.iter().enumerate() {
-        match b {
-            EditBatch::Changes(c) => changes(&EditMap::new(c)),
-            EditBatch::Rewrite(old) => {
-                // the text right after a rewrite is not kept: positions are exact when nothing
-                // else changed before the next look (the usual case), else clamped
-                let after = batches[i + 1..]
-                    .iter()
-                    .find_map(|n| match n {
-                        EditBatch::Rewrite(r) => Some(r),
-                        EditBatch::Changes(_) => None,
-                    })
-                    .unwrap_or(current);
-                rewrite(old, after);
-            }
-        }
-    }
 }
 
 #[cfg(test)]

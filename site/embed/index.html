@@ -66,6 +66,10 @@
       label {
         font: inherit;
       }
+      /* markers of the page (prompt 029): a class of its own gets its colour here */
+      #c {
+        --ed-mark-running: var(--app-keyword);
+      }
       /* the page styles the kinds of its suggestions (prompt 028) */
       #c::part(icon-table) {
         color: var(--app-bg);
@@ -164,6 +168,9 @@
           <button type="button" data-app-theme="dusk">page theme: dusk</button>
           <label><input type="checkbox" id="slow" /> provider takes 2 s</label>
           <button type="button" id="snippet">insertSnippet()</button>
+          <button type="button" id="lint">setMarkers()</button>
+          <button type="button" id="unlint">clearMarkers('lint')</button>
+          <button type="button" id="many">100 000 markers</button>
         </figcaption>
         <editlicious-editor id="c" language="SQL" scheme="none" color-scheme="light" status-bar></editlicious-editor>
       </figure>
@@ -217,6 +224,45 @@
         await c.insertSnippet('-- ${1:note} ($DATE, $WHO)\n$0', { vars: { WHO: 'the page' } });
         c.focus();
       });
+      // Markers (prompt 029): two owners – a "linter" that underlines every `*` and number, and
+      // the statement that "runs" (a class of the page with a tinted background and a symbol).
+      const lint = async () => {
+        const text = await c.getValue();
+        const markers = [];
+        text.split('\n').forEach((line, i) => {
+          for (const m of line.matchAll(/\*|\b\d+\b|\bNOW\b/g)) {
+            const ch = [...line.slice(0, m.index)].length + 1;
+            markers.push({
+              start: { line: i + 1, ch },
+              end: { line: i + 1, ch: ch + [...m[0]].length },
+              severity: m[0] === '*' ? 'warning' : m[0] === 'NOW' ? 'hint' : 'error',
+              message: m[0] === '*' ? 'Name the columns instead of *.' : `"${m[0]}" – says the page's linter.`,
+              gutter: m[0] === '*',
+              onEdit: 'remove',
+            });
+          }
+        });
+        await c.setMarkers('lint', markers);
+        await c.setMarkers('running', [
+          { start: { line: 2, ch: 1 }, end: { line: 4, ch: 1 }, severity: 'running', message: 'This statement is running.', gutter: '▶', lineBackground: true },
+        ]);
+        write(`c ${markers.length} lint markers, 1 running`);
+      };
+      document.getElementById('lint').addEventListener('click', lint);
+      document.getElementById('unlint').addEventListener('click', () => c.clearMarkers('lint'));
+      document.getElementById('many').addEventListener('click', async () => {
+        const lines = new Array(1_000_000);
+        for (let i = 0; i < lines.length; i++) lines[i] = `SELECT col_${i % 50} FROM table_${i}`;
+        await c.setValue(lines.join('\n'));
+        const markers = [];
+        for (let i = 0; i < 100_000; i++) {
+          markers.push({ start: { line: i * 10 + 1, ch: 8 }, end: { line: i * 10 + 1, ch: 13 }, severity: i % 3 ? 'warning' : 'error', message: `marker ${i}` });
+        }
+        const t0 = performance.now();
+        await c.setMarkers('many', markers);
+        write(`c 100 000 markers in 1 000 000 lines set in ${Math.round(performance.now() - t0)} ms`);
+      });
+      c.addEventListener('ed-marker-click', (e) => write(`c marker click ${JSON.stringify(e.detail)}`));
       const log = document.getElementById('log');
       const write = (line) => {
         log.textContent += line + '\n';
