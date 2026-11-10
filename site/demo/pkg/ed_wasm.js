@@ -152,6 +152,50 @@ export class Editor {
         return v1;
     }
     /**
+     * The text between two positions (0-based line and character, clamped, either order) with
+     * its line breaks as they are; errors are `FsError` JSON (`selection_too_large` over 64 MB).
+     * @param {number} from_line
+     * @param {number} from_ch
+     * @param {number} to_line
+     * @param {number} to_ch
+     * @returns {string}
+     */
+    rangeText(from_line, from_ch, to_line, to_ch) {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const ret = wasm.editor_rangeText(this.__wbg_ptr, from_line, from_ch, to_line, to_ch);
+            var ptr1 = ret[0];
+            var len1 = ret[1];
+            if (ret[3]) {
+                ptr1 = 0; len1 = 0;
+                throw takeFromExternrefTable0(ret[2]);
+            }
+            deferred2_0 = ptr1;
+            deferred2_1 = len1;
+            return getStringFromWasm0(ptr1, len1);
+        } finally {
+            wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+        }
+    }
+    /**
+     * The selections in document order (JSON `{ "primary": index, "ranges": [Sel] }`, 0-based
+     * lines and characters – design 027 E1).
+     * @returns {string}
+     */
+    selections() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.editor_selections(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
      * Text the page pasted from the system clipboard.
      * @param {string} text
      */
