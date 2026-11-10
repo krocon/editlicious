@@ -114,6 +114,26 @@ export class Editor {
         }
     }
     /**
+     * The markers of the page where they are now (JSON `[DecoInfo]`, 0-based; design 029), of
+     * one owner or all.
+     * @param {string | null} [owner]
+     * @returns {string}
+     */
+    decorations(owner) {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            var ptr0 = isLikeNone(owner) ? 0 : passStringToWasm0(owner, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            var len0 = WASM_VECTOR_LEN;
+            const ret = wasm.editor_decorations(this.__wbg_ptr, ptr0, len0);
+            deferred2_0 = ret[0];
+            deferred2_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+        }
+    }
+    /**
      * The document info (JSON `DocInfo`).
      * @returns {string}
      */
@@ -159,7 +179,8 @@ export class Editor {
         return this;
     }
     /**
-     * Matches (bit 1) and markers (bit 2) per slice of the lines (design 010 E3).
+     * Matches (bit 1) and word markers (bit 2) per slice of the lines (design 010 E3), and the
+     * markers of the page: errors (4), warnings (8), the rest (16) – design 029.
      * @param {number} buckets
      * @returns {Uint8Array}
      */
