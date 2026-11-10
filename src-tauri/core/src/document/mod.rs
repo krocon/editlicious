@@ -354,6 +354,28 @@ impl Document {
         Ok(self.record(raw, sel_before, sel_after, kind))
     }
 
+    /// Characters `text` has once inserted (its line breaks become the document's).
+    pub fn inserted_len(&self, text: &str) -> usize {
+        self.normalize(text).chars().count()
+    }
+
+    /// Is the text between two character offsets exactly `text` (as it would be inserted)?
+    pub fn chars_equal(&self, from: usize, to: usize, text: &str) -> bool {
+        let len = self.rope.len_chars();
+        let (a, b) = ordered(from.min(len), to.min(len));
+        let text = self.normalize(text);
+        self.rope.slice(a..b).len_bytes() == text.len()
+            && self.rope.slice(a..b).chars().eq(text.chars())
+    }
+
+    /// The selections the newest undo step leaves behind (redo puts them back) – for commands
+    /// that know them only after the edit (design 027 E3).
+    pub fn set_sel_after(&mut self, sels: Vec<Sel>) {
+        if let Some(step) = self.history.last_mut() {
+            step.sel_after = sels;
+        }
+    }
+
     /// Every line break becomes `le` (design 010 E2) as one undo step; new lines get `le`.
     /// The step keeps one byte per break (design 013 E3) – 10 M lines cost 10 MB of history,
     /// not millions of changes; the text is rebuilt in one pass.

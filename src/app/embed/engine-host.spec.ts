@@ -41,6 +41,18 @@ class FakeEditor implements WasmEditor {
   slice(from: number, to: number): string {
     return this.body.split('\n').slice(from, to).join('\n');
   }
+  selections(): string {
+    return JSON.stringify({
+      primary: 1,
+      ranges: [
+        { anchor: { line: 0, ch: 1 }, head: { line: 0, ch: 1 } },
+        { anchor: { line: 2, ch: 0 }, head: { line: 1, ch: 3 } },
+      ],
+    });
+  }
+  rangeText(l1: number, c1: number, l2: number, c2: number): string {
+    return `${l1}:${c1}-${l2}:${c2}`;
+  }
   countMatches(): string {
     return '{"total":1,"current":1}';
   }
@@ -79,6 +91,15 @@ describe('engine host (design 025 E4)', () => {
     expect(h('clipboard', [a])).toEqual({ text: 'c', html: null });
     expect(h('languages', [])).toBe('["Rust"]');
     expect(h('scriptSteps', ['x'])).toContain('"text":"x"');
+    // selections come with their texts in one step; a caret has none (design 027 E1)
+    expect(h('selections', [a])).toEqual({
+      primary: 1,
+      ranges: [
+        { anchor: { line: 0, ch: 1 }, head: { line: 0, ch: 1 }, text: '' },
+        { anchor: { line: 2, ch: 0 }, head: { line: 1, ch: 3 }, text: '2:0-1:3' },
+      ],
+    });
+    expect(h('rangeText', [a, { line: 1, ch: 2 }, { line: 3, ch: 4 }])).toBe('1:2-3:4');
     h('close', [a]);
     expect(FakeEditor.freed).toBe(1);
   });

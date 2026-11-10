@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { DocInfo } from '../app/core/editor/editor.models';
-import { EmbedEngineApi, ScriptStep } from '../app/embed/wasm-editor-api';
+import { DocInfo, Pos } from '../app/core/editor/editor.models';
+import { EmbedEngineApi, EngineSelections, ScriptStep } from '../app/embed/wasm-editor-api';
 import { docInfo, FakeEditorApi } from './fake-editor-api';
 
 /** Test double of the embedded editor's engine (design 025): texts in memory, no WebAssembly. */
@@ -40,6 +40,22 @@ export class FakeEmbedEngineApi extends FakeEditorApi implements EmbedEngineApi 
   slice(id: number, from: number, to: number): Promise<string> {
     const lines = (this.texts.get(id) ?? '').split('\n');
     return Promise.resolve(lines.slice(from, to).join('\n'));
+  }
+
+  /** What `selections` answers (0-based). */
+  sels: EngineSelections = {
+    primary: 0,
+    ranges: [{ anchor: { line: 0, ch: 0 }, head: { line: 0, ch: 0 }, text: '' }],
+  };
+  ranges: { from: Pos; to: Pos }[] = [];
+
+  selections(): Promise<EngineSelections> {
+    return Promise.resolve(this.sels);
+  }
+
+  rangeText(_id: number, from: Pos, to: Pos): Promise<string> {
+    this.ranges.push({ from, to });
+    return Promise.resolve(`${from.line}:${from.ch}-${to.line}:${to.ch}`);
   }
 
   clipboard(): Promise<{ text: string | null; html: string | null }> {

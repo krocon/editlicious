@@ -20,7 +20,7 @@ import {
 import { ActionService } from '../core/actions/action.service';
 import { KeyboardDispatcher } from '../core/actions/keyboard-dispatcher';
 import { EditorApi } from '../core/editor/editor-api';
-import { Command, Frame, MatchCount, Query } from '../core/editor/editor.models';
+import { Command, Frame, MatchCount, Pos, Query } from '../core/editor/editor.models';
 import { systemLanguage, useLanguage } from '../core/i18n/i18n';
 import { Scheme, SCHEMES } from '../core/settings/settings.models';
 import {
@@ -49,6 +49,23 @@ export interface EdChange {
   charCount: number;
 }
 
+/**
+ * A position in the text: line and column, both 1-based. The column counts characters as Unicode
+ * code points within the line (an emoji is one, a combining mark is one of its own, the line
+ * break none) – not UTF-16 units (design 027 E5).
+ */
+export interface EdPos {
+  line: number;
+  ch: number;
+}
+
+/** A selected range in document order with its text. */
+export interface EdSelection {
+  text: string;
+  start: EdPos;
+  end: EdPos;
+}
+
 /** `caretChange` / `ed-caret`: 1-based line and column of the primary caret. */
 export interface EdCaret {
   line: number;
@@ -56,6 +73,25 @@ export interface EdCaret {
   selChars: number;
   selLines: number;
   carets: number;
+  /** The primary selection in document order; both equal the caret when nothing is selected. */
+  selStart: EdPos;
+  selEnd: EdPos;
+}
+
+/** 1-based position of the page → the engine's 0-based one. */
+function enginePos(p: EdPos | null | undefined): Pos {
+  return {
+    line: Math.max(0, Math.round(Number(p?.line) || 1) - 1),
+    ch: Math.max(0, Math.round(Number(p?.ch) || 1) - 1),
+  };
+}
+
+function pagePos(p: Pos): EdPos {
+  return { line: p.line + 1, ch: p.ch + 1 };
+}
+
+function before(a: Pos, b: Pos): boolean {
+  return a.line < b.line || (a.line === b.line && a.ch <= b.ch);
 }
 
 /** Set by `element.ts`: the outputs also go out as DOM events `ed-change`, `ed-caret`, `ed-ready`. */
@@ -355,12 +391,17 @@ export class EditliciousEditor {
         this.dispatch('ed-change', c);
       }
     }
+    const head: Pos = { line: f.caretLine, ch: f.caretCh };
+    const anchor: Pos = { line: f.anchorLine ?? f.caretLine, ch: f.anchorCh ?? f.caretCh };
+    const forward = before(anchor, head);
     const caret: EdCaret = {
       line: f.caretLine + 1,
       ch: f.caretCh + 1,
       selChars: f.selChars,
       selLines: f.selLines,
       carets: f.carets.length,
+      selStart: pagePos(forward ? anchor : head),
+      selEnd: pagePos(forward ? head : anchor),
     };
     const key = JSON.stringify(caret);
     if (key !== this.lastCaret) {
@@ -385,6 +426,69 @@ export class EditliciousEditor {
     if (id === null) return '';
     await this.view()?.idle();
     return this.api.slice(id, Math.max(0, from - 1), Math.max(0, to));
+  }
+
+  /**
+   * The primary selection: its text and where it starts and ends; nothing selected → empty text,
+   * `start` = `end` = the caret (design 027 E1).
+   */
+  async getSelection(): Promise<EdSelection> {
+    const all = await this.engineSelections();
+    return (
+      all.ranges[all.primary] ?? { text: '', start: { line: 1, ch: 1 }, end: { line: 1, ch: 1 } }
+    );
+  }
+
+  /** Every selection (several cursors, block selection) in document order. */
+  async getSelections(): Promise<EdSelection[]> {
+    return (await this.engineSelections()).ranges;
+  }
+
+  private async engineSelections(): Promise<{ primary: number; ranges: EdSelection[] }> {
+    const id = await this.started;
+    if (id === null) return { primary: 0, ranges: [] };
+    await this.view()?.idle();
+    const s = await this.api.selections(id);
+    return {
+      primary: s.primary,
+      ranges: s.ranges.map((r) => {
+        const forward = before(r.anchor, r.head);
+        return {
+          text: r.text,
+          start: pagePos(forward ? r.anchor : r.head),
+          end: pagePos(forward ? r.head : r.anchor),
+        };
+      }),
+    };
+  }
+
+  /**
+   * The text between two positions (clamped into the text, either order) with its line breaks as
+   * they are. Costs as much as the range is long – a huge range is a huge string (64 MB at most).
+   */
+  async getRange(start: EdPos, end: EdPos): Promise<string> {
+    const id = await this.started;
+    if (id === null) return '';
+    await this.view()?.idle();
+    return this.api.rangeText(id, enginePos(start), enginePos(end));
+  }
+
+  /**
+   * Replaces the text between two positions as one undo step; the same text changes nothing.
+   * Cursors and selections stay where they are in the text.
+   */
+  replaceRange(start: EdPos, end: EdPos, text: string): Promise<void> {
+    return this.runCommand({
+      type: 'replaceRange',
+      from: enginePos(start),
+      to: enginePos(end),
+      text: String(text),
+    });
+  }
+
+  /** Replaces every selection by `text` (inserts it at a caret) as one undo step. */
+  replaceSelection(text: string): Promise<void> {
+    return this.runCommand({ type: 'insert', text: String(text) });
   }
 
   /** Replaces the whole text (clean, no undo back into the old one). */

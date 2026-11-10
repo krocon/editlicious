@@ -17,6 +17,9 @@ export interface WasmEditor {
   setClipboard(text: string): void;
   text(): string;
   slice(from: number, to: number): string;
+  /** JSON `{ primary, ranges: Sel[] }` (0-based, design 027). */
+  selections(): string;
+  rangeText(fromLine: number, fromCh: number, toLine: number, toCh: number): string;
   countMatches(query: string): string;
   countMarker(): number | undefined;
   overview(buckets: number): Uint8Array;
@@ -30,6 +33,12 @@ export interface WasmModule {
   encodings(): string;
   /** The steps of a typing script as JSON (`[{ at, cmd, clip }]`, design 025 E9). */
   scriptSteps(text: string): string;
+}
+
+/** A position as the engine counts: 0-based line and character (code point) in the line. */
+export interface EnginePos {
+  line: number;
+  ch: number;
 }
 
 /** One request to the engine. */
@@ -95,6 +104,23 @@ export function createEngineHost(mod: WasmModule): EngineHandler {
         return get(a[0]).text();
       case 'slice':
         return get(a[0]).slice(a[1] as number, a[2] as number);
+      case 'selections': {
+        // positions and texts in one step – nothing can change in between (design 027 E1)
+        const s = get(a[0]);
+        const sel = JSON.parse(s.selections()) as {
+          primary: number;
+          ranges: { anchor: EnginePos; head: EnginePos; text?: string }[];
+        };
+        for (const r of sel.ranges) {
+          const empty = r.anchor.line === r.head.line && r.anchor.ch === r.head.ch;
+          r.text = empty ? '' : s.rangeText(r.anchor.line, r.anchor.ch, r.head.line, r.head.ch);
+        }
+        return sel;
+      }
+      case 'rangeText': {
+        const [from, to] = [a[1] as EnginePos, a[2] as EnginePos];
+        return get(a[0]).rangeText(from.line, from.ch, to.line, to.ch);
+      }
       case 'countMatches':
         return get(a[0]).countMatches(a[1] as string);
       case 'countMarker':

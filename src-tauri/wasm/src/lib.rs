@@ -2,6 +2,7 @@
 //! commands and frames as JSON – the demo page only renders, like the app's editor view.
 
 use ed_core::document::Document;
+use ed_core::document::model::Pos;
 use ed_core::editor::model::Command;
 use ed_core::editor::playback::{Step, Tempo, timeline};
 use ed_core::editor::script;
@@ -188,6 +189,31 @@ impl Editor {
         let b = (to as usize).clamp(a, n);
         rope.slice(rope.line_to_char(a)..rope.line_to_char(b))
             .to_string()
+    }
+
+    /// The selections in document order (JSON `{ "primary": index, "ranges": [Sel] }`, 0-based
+    /// lines and characters – design 027 E1).
+    pub fn selections(&self) -> String {
+        let (ranges, primary) = self.session.selections();
+        serde_json::json!({ "primary": primary, "ranges": ranges }).to_string()
+    }
+
+    /// The text between two positions (0-based line and character, clamped, either order) with
+    /// its line breaks as they are; errors are `FsError` JSON (`selection_too_large` over 64 MB).
+    #[wasm_bindgen(js_name = rangeText)]
+    pub fn range_text(
+        &self,
+        from_line: u32,
+        from_ch: u32,
+        to_line: u32,
+        to_ch: u32,
+    ) -> Result<String, String> {
+        self.session
+            .range_text(
+                Pos::new(from_line as usize, from_ch as usize),
+                Pos::new(to_line as usize, to_ch as usize),
+            )
+            .map_err(js_err)
     }
 
     /// All matches of a query (JSON `Query`) and the number of the selected one (JSON
@@ -526,6 +552,26 @@ mod tests {
         e.command(r#"{"type":"copy"}"#).unwrap();
         assert_eq!(e.clipboard().as_deref(), Some("abc"));
         assert_eq!(e.text(), "abc");
+    }
+
+    #[test]
+    fn selections_ranges_and_replacing_a_range() {
+        let mut e = Editor::new("a👍b\r\ne\u{301}x\r\n", None);
+        e.command(
+            r#"{"type":"select","sels":[{"anchor":{"line":0,"ch":1},"head":{"line":1,"ch":2}}]}"#,
+        )
+        .unwrap();
+        let s: serde_json::Value = serde_json::from_str(&e.selections()).unwrap();
+        assert_eq!(s["primary"], 0);
+        assert_eq!(s["ranges"][0]["head"]["ch"], 2);
+        assert_eq!(e.range_text(0, 1, 1, 2).unwrap(), "👍b\r\ne\u{301}");
+        let f = e
+            .command(r#"{"type":"replaceRange","from":{"line":0,"ch":1},"to":{"line":0,"ch":2},"text":"-"}"#)
+            .unwrap();
+        assert!(f.contains("\"anchorLine\":0"));
+        assert_eq!(e.text(), "a-b\r\ne\u{301}x\r\n");
+        e.command(r#"{"type":"undo"}"#).unwrap();
+        assert_eq!(e.text(), "a👍b\r\ne\u{301}x\r\n");
     }
 
     #[test]

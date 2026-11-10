@@ -180,6 +180,11 @@ impl History {
         Some(s)
     }
 
+    /// The newest undo step (to set the selections a command wants after it).
+    pub fn last_mut(&mut self) -> Option<&mut Step> {
+        self.undo.back_mut()
+    }
+
     /// After a redo: back on the undo stack without clearing the rest of redo.
     pub fn push_undo_keep_redo(&mut self, s: Step) {
         self.bytes += s.bytes();

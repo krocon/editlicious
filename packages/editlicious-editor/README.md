@@ -99,6 +99,11 @@ await ed.setValue(text);                  // replace the text (clean, no undo ba
 await ed.loadText(text, { language: 'app.ts' });
 const all = await ed.getValue();          // the whole text – only when you ask
 const part = await ed.getSlice(10, 20);   // lines 10..20 (1-based, inclusive)
+const sel = await ed.getSelection();      // { text, start: { line, ch }, end: { line, ch } }
+const all = await ed.getSelections();     // every cursor / block selection, in document order
+const where = await ed.getRange({ line: 3, ch: 1 }, { line: 5, ch: 12 });
+await ed.replaceRange(sel.start, sel.end, format(sel.text)); // one undo step
+await ed.replaceSelection('NOW()');
 await ed.goTo(120, 5);                    // line 120, column 5
 const { total, current } = await ed.find('TODO', { wholeWord: true });
 await ed.runAction('edit.sortAsc');       // any action of the editor
@@ -108,6 +113,16 @@ await ed.playScript('type "hello\\n"\npause 500\ntype "world"', 1.5);
 ed.stopScript();
 ```
 
+### Positions
+
+A position is `{ line, ch }`, both **1-based**, as in `goTo()` and `ed-caret`. `ch` counts characters as **Unicode
+code points** within the line: an emoji is one character (in JavaScript `'👍'.length` is 2), a combining mark counts
+on its own, and a line break – also `\r\n` – is not part of any line. Texts come back with the line breaks the
+document has. To turn `ch` into a UTF-16 index of a line's text: `[...lineText].slice(0, ch - 1).join('').length`.
+
+`getSelection()` and `getRange()` cost as much as the range is long, not as the document is: a small selection in
+a text of five million lines is instant; selecting everything hands you everything (at most 64 MB).
+
 ## Events
 
 Events bubble and cross the shadow boundary (`composed`).
@@ -116,7 +131,7 @@ Events bubble and cross the shadow boundary (`composed`).
 |---|---|
 | `ed-ready` | – (the engine session is up) |
 | `ed-change` | `{ revision, dirty, lineCount, charCount }` – never the text itself |
-| `ed-caret` | `{ line, ch, selChars, selLines, carets }` (1-based) |
+| `ed-caret` | `{ line, ch, selChars, selLines, carets, selStart, selEnd }` (1-based; `selStart`/`selEnd`: the primary selection in document order, both the caret when nothing is selected) |
 
 ```js
 ed.addEventListener('ed-change', async (e) => {

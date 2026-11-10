@@ -736,6 +736,12 @@ impl Session {
                 }
                 reveal = Reveal::No;
             }
+            Command::ReplaceRange {
+                from,
+                to,
+                text,
+                caret,
+            } => self.replace_range(from, to, &text, caret)?,
             Command::Select { sels } => {
                 if !sels.is_empty() {
                     let n = sels.len();
@@ -1902,6 +1908,8 @@ impl Session {
             primary: self.primary.min(self.cursors.len() - 1),
             caret_line: primary.head.line,
             caret_ch: primary.head.ch,
+            anchor_line: primary.anchor.line,
+            anchor_ch: primary.anchor.ch,
             sel_chars,
             sel_lines,
             overwrite: self.overwrite,
@@ -2143,6 +2151,80 @@ impl Session {
         })?;
         self.cursors_from(sels);
         Ok(())
+    }
+
+    /// Replaces the text between two positions as one undo step (design 027 E3). The same text
+    /// changes nothing (no undo step). The cursors keep their place in the text: before the range
+    /// they stay, behind it they move along, inside it they go to its new end; `caret` puts one
+    /// caret behind the new text instead.
+    fn replace_range(
+        &mut self,
+        from: Pos,
+        to: Pos,
+        text: &str,
+        caret: bool,
+    ) -> Result<(), FsError> {
+        let (a, b) = {
+            let (a, b) = (self.doc.pos_to_char(from), self.doc.pos_to_char(to));
+            (a.min(b), a.max(b))
+        };
+        if self.doc.chars_equal(a, b, text) {
+            return Ok(());
+        }
+        let inserted = self.doc.inserted_len(text);
+        let map = |p: usize| {
+            if p <= a {
+                p
+            } else if p >= b {
+                p - (b - a) + inserted
+            } else {
+                a + inserted
+            }
+        };
+        let kept: Vec<(usize, usize)> = self
+            .cursors
+            .iter()
+            .map(|c| {
+                (
+                    map(self.doc.pos_to_char(c.anchor)),
+                    map(self.doc.pos_to_char(c.head)),
+                )
+            })
+            .collect();
+        let primary = self.primary;
+        let sels = self.doc.apply_chars(
+            vec![(a, b, text.to_owned())],
+            self.sels(),
+            None,
+            EditKind::Other,
+        )?;
+        if caret {
+            self.cursors_from(sels);
+            return Ok(());
+        }
+        let after: Vec<Sel> = kept
+            .into_iter()
+            .map(|(anchor, head)| Sel {
+                anchor: self.doc.char_to_pos(anchor),
+                head: self.doc.char_to_pos(head),
+            })
+            .collect();
+        self.doc.set_sel_after(after.clone());
+        self.cursors_from(after);
+        self.primary = primary.min(self.cursors.len() - 1);
+        Ok(())
+    }
+
+    /// The selections in document order and the index of the primary one (design 027 E1).
+    pub fn selections(&self) -> (Vec<Sel>, usize) {
+        (self.sels(), self.primary.min(self.cursors.len() - 1))
+    }
+
+    /// The text between two positions (clamped into the document, in either order) with its
+    /// line breaks as they are; more than [`crate::document::MAX_TEXT_BYTES`] is refused
+    /// (`selection_too_large`).
+    pub fn range_text(&self, from: Pos, to: Pos) -> Result<String, FsError> {
+        self.doc.text(from, to)
     }
 
     /// The regex of the marked word at the primary caret and a snapshot of the text – counted

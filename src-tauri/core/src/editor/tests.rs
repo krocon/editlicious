@@ -2327,3 +2327,163 @@ fn read_only_refuses_edits_and_keeps_viewing() {
     typ(&mut s, "x");
     assert!(text(&s).starts_with('x'));
 }
+
+// ---------------------------------------------------------------- ranges from outside (design 027)
+
+fn replace_range(s: &mut Session, from: (usize, usize), to: (usize, usize), t: &str, caret: bool) {
+    run(
+        s,
+        Command::ReplaceRange {
+            from: Pos::new(from.0, from.1),
+            to: Pos::new(to.0, to.1),
+            text: t.into(),
+            caret,
+        },
+    );
+}
+
+#[test]
+fn range_text_is_exact_with_emoji_combining_marks_and_crlf() {
+    // 👍 is one character (two UTF-16 units), e + U+0301 are two, a CRLF is no column
+    let s = session("a👍b\r\ne\u{301}x\r\nlast");
+    assert_eq!(s.doc.line_len(0), 3);
+    let all = s.range_text(Pos::new(0, 1), Pos::new(1, 2)).unwrap();
+    assert_eq!(all, "👍b\r\ne\u{301}");
+    // either order, clamped
+    assert_eq!(
+        s.range_text(Pos::new(9, 9), Pos::new(1, 2)).unwrap(),
+        "x\r\nlast"
+    );
+    assert_eq!(s.range_text(Pos::new(0, 2), Pos::new(0, 2)).unwrap(), "");
+}
+
+#[test]
+fn selections_come_in_document_order_with_the_primary_one() {
+    let mut s = session("one two\nthree four\n");
+    run(
+        &mut s,
+        Command::Select {
+            sels: vec![
+                Sel {
+                    anchor: Pos::new(1, 0),
+                    head: Pos::new(1, 5),
+                },
+                Sel {
+                    anchor: Pos::new(0, 7),
+                    head: Pos::new(0, 4),
+                },
+            ],
+        },
+    );
+    let (sels, primary) = s.selections();
+    assert_eq!(sels.len(), 2);
+    assert_eq!(sels[0].head, Pos::new(0, 4));
+    assert_eq!(sels[1].head, Pos::new(1, 5));
+    assert_eq!(primary, 0, "the last one given is primary");
+    let f = run(&mut s, Command::Frame);
+    assert_eq!((f.caret_line, f.caret_ch), (0, 4));
+    assert_eq!((f.anchor_line, f.anchor_ch), (0, 7));
+}
+
+#[test]
+fn replace_range_is_one_undo_step_and_the_same_text_changes_nothing() {
+    let mut s = session("SELECT *\r\nFROM t👍;\r\n");
+    let rev = s.doc.revision();
+    // the same text (line breaks as they would be inserted): no change, no undo step
+    replace_range(&mut s, (0, 7), (1, 4), "*\nFROM", false);
+    assert_eq!(s.doc.revision(), rev);
+    assert!(!s.doc.info(1).can_undo);
+    replace_range(&mut s, (0, 7), (0, 8), "id,\n  name", false);
+    assert_eq!(text(&s), "SELECT id,\r\n  name\r\nFROM t👍;\r\n");
+    run(&mut s, Command::Undo);
+    assert_eq!(text(&s), "SELECT *\r\nFROM t👍;\r\n");
+    assert!(!s.doc.info(1).can_undo, "one step");
+    run(&mut s, Command::Redo);
+    assert_eq!(text(&s), "SELECT id,\r\n  name\r\nFROM t👍;\r\n");
+}
+
+#[test]
+fn replace_range_keeps_the_cursors_in_their_text() {
+    let mut s = session("ab cd ef\n");
+    // a selection behind the range moves along, a caret before it stays
+    run(
+        &mut s,
+        Command::Select {
+            sels: vec![
+                Sel::caret(Pos::new(0, 1)),
+                Sel {
+                    anchor: Pos::new(0, 6),
+                    head: Pos::new(0, 8),
+                },
+            ],
+        },
+    );
+    replace_range(&mut s, (0, 3), (0, 5), "LONGER\n", false);
+    assert_eq!(text(&s), "ab LONGER\n ef\n");
+    let (sels, _) = s.selections();
+    assert_eq!(sels[0], Sel::caret(Pos::new(0, 1)));
+    assert_eq!(
+        sels[1],
+        Sel {
+            anchor: Pos::new(1, 1),
+            head: Pos::new(1, 3)
+        }
+    );
+    // a caret inside the range lands behind the new text; `caret` asks for that
+    put(&mut s, 0, 5);
+    replace_range(&mut s, (0, 3), (0, 9), "x", false);
+    assert_eq!(caret(&s), (0, 4));
+    put(&mut s, 0, 0);
+    replace_range(&mut s, (0, 0), (0, 2), "abc", true);
+    assert_eq!(caret(&s), (0, 3));
+    assert_eq!(s.cursors().len(), 1);
+}
+
+#[test]
+fn replace_range_is_refused_read_only() {
+    let mut s = session("abc");
+    run(&mut s, Command::SetReadOnly { read_only: true });
+    let err = s
+        .run(
+            Command::ReplaceRange {
+                from: Pos::new(0, 0),
+                to: Pos::new(0, 1),
+                text: "x".into(),
+                caret: false,
+            },
+            &mut MemoryClipboard::default(),
+        )
+        .unwrap_err();
+    assert_eq!(err.code, crate::error::FsErrorCode::ReadOnly);
+}
+
+/// `cargo test -p ed-core --release -- --ignored --nocapture measure_027`
+#[test]
+#[ignore]
+fn measure_027_small_selection_in_five_million_lines() {
+    let mut text = String::with_capacity(5_000_000 * 24);
+    for i in 0..5_000_000 {
+        text.push_str("line of some text ");
+        text.push_str(&(i % 1000).to_string());
+        text.push('\n');
+    }
+    let mut s = session(&text);
+    run(
+        &mut s,
+        Command::Select {
+            sels: vec![Sel {
+                anchor: Pos::new(4_000_000, 3),
+                head: Pos::new(4_000_002, 7),
+            }],
+        },
+    );
+    let t0 = std::time::Instant::now();
+    let mut n = 0;
+    for _ in 0..1000 {
+        let (sels, p) = s.selections();
+        n += s.range_text(sels[p].anchor, sels[p].head).unwrap().len();
+    }
+    let per = t0.elapsed().as_secs_f64() * 1e6 / 1000.0;
+    println!("027: selection text in 5 M lines: {per:.2} µs per call ({n} bytes)");
+    assert!(per < 200.0);
+}

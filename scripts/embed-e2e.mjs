@@ -92,6 +92,28 @@ try {
   const n = await page.evaluate(() => document.getElementById('a').find('fn'));
   check(n.total >= 1, `find() counts ${n.total}`);
 
+  // selection and ranges (prompt 027): exact with emoji and CRLF, replaceRange is one undo step
+  const sel = await page.evaluate(async () => {
+    const c = document.getElementById('c');
+    const before = await c.getValue();
+    await c.setValue('a👍b\r\ne\u0301x\r\nlast');
+    await c.runCommand({ type: 'select', sels: [{ anchor: { line: 0, ch: 1 }, head: { line: 1, ch: 2 } }] });
+    const s = await c.getSelection();
+    const range = await c.getRange({ line: 1, ch: 2 }, { line: 2, ch: 3 });
+    await c.replaceRange(s.start, s.end, s.text);
+    const same = await c.getValue();
+    await c.replaceRange({ line: 3, ch: 1 }, { line: 3, ch: 5 }, 'first');
+    const replaced = await c.getValue();
+    await c.runCommand({ type: 'undo' });
+    const undone = await c.getValue();
+    await c.setValue(before);
+    return { s, range, same, replaced, undone };
+  });
+  check(sel.s.text === '👍b\r\ne\u0301' && sel.s.start.ch === 2 && sel.s.end.line === 2 && sel.s.end.ch === 3, `getSelection() is exact (${JSON.stringify(sel.s)})`);
+  check(sel.range === sel.s.text, 'getRange() gives the same text');
+  check(sel.same === 'a👍b\r\ne\u0301x\r\nlast', 'replaceRange() with the same text changes nothing');
+  check(sel.replaced.endsWith('\r\nfirst') && sel.undone.endsWith('\r\nlast'), 'replaceRange() is one undo step');
+
   // copy goes to the system clipboard
   await page.evaluate(() => document.getElementById('a').runCommand({ type: 'selectAll' }));
   await textarea('a').focus();

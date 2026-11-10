@@ -150,3 +150,8 @@ Komponenten-CSS zusammen: keine feste Farbe außerhalb von `styles.css`). `schem
 `SCHEMES`) leitet alle Schema-Tokens aus `--ed-bg`/`--ed-text` ab (`editlicious-editor.css`), `color-scheme` wählt
 Hell/Dunkel der Systemfarben.
 
+**Auswahl und Bereiche (027):** `getSelection()/getSelections()/getRange()` lesen über `Session::selections()` und
+`range_text()` (Rope-Slice, nichts proportional zur Dateigröße; 64-MB-Grenze). `replaceRange()` ist der
+Engine-Befehl `replaceRange` (ein Undo-Schritt, gleicher Text = keine Änderung, Cursor bleiben im Text).
+Positionen der Seite: `{ line, ch }` 1-basiert, `ch` in Unicode-Codepunkten (README „Positions“).
+

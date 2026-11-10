@@ -154,7 +154,9 @@ export type Command =
   | { type: 'evaluate' }
   | { type: 'copyResult' }
   /** Read-only (design 025 E1): edits fail with `read_only`. */
-  | { type: 'setReadOnly'; readOnly: boolean };
+  | { type: 'setReadOnly'; readOnly: boolean }
+  /** One undo step; cursors keep their place in the text, `caret`: one caret behind (027 E3). */
+  | { type: 'replaceRange'; from: Pos; to: Pos; text: string; caret?: boolean };
 
 /** Settings of the word completion (`model::WordConfig`, prompt 023). */
 export interface WordConfig {
@@ -310,6 +312,9 @@ export interface Frame {
   primary: number;
   caretLine: number;
   caretCh: number;
+  /** Where the primary selection started (the caret when nothing is selected, design 027 E4). */
+  anchorLine: number;
+  anchorCh: number;
   selChars: number;
   selLines: number;
   overwrite: boolean;

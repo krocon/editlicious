@@ -6,7 +6,9 @@ import {
   DocInfo,
   Frame,
   MatchCount,
+  Pos,
   Query,
+  Sel,
 } from '../core/editor/editor.models';
 import { FsError } from '../core/errors/fs-error';
 import { engine, EngineCall } from './engine';
@@ -27,12 +29,22 @@ export abstract class EmbedEngineApi extends EditorApi {
   abstract text(id: number): Promise<string>;
   /** Lines `from..to` (0-based, end exclusive). */
   abstract slice(id: number, from: number, to: number): Promise<string>;
+  /** The selections in document order with their texts (0-based positions, design 027 E1). */
+  abstract selections(id: number): Promise<EngineSelections>;
+  /** The text between two positions (0-based, clamped, either order). */
+  abstract rangeText(id: number, from: Pos, to: Pos): Promise<string>;
   /** What the last copy put on the engine's clipboard. */
   abstract clipboard(id: number): Promise<{ text: string | null; html: string | null }>;
   /** Puts `text` on the engine's clipboard (a script's `paste`) – not on the page's. */
   abstract setClipboard(id: number, text: string): Promise<void>;
   /** The steps of a typing script (`*.edscript`, docs/scripts.md) on its own clock. */
   abstract scriptSteps(script: string): Promise<ScriptStep[]>;
+}
+
+/** Answer of {@link EmbedEngineApi.selections}. */
+export interface EngineSelections {
+  primary: number;
+  ranges: (Sel & { text: string })[];
 }
 
 /** One step of a typing script: run `cmd` at `at` ms (after putting `clip` on the clipboard). */
@@ -86,6 +98,14 @@ export class WasmEditorApi extends EmbedEngineApi {
   /** Lines `from..to` (end exclusive). */
   slice(id: number, from: number, to: number): Promise<string> {
     return this.call('slice', id, from, to) as Promise<string>;
+  }
+
+  selections(id: number): Promise<EngineSelections> {
+    return this.call('selections', id) as Promise<EngineSelections>;
+  }
+
+  rangeText(id: number, from: Pos, to: Pos): Promise<string> {
+    return this.call('rangeText', id, from, to) as Promise<string>;
   }
 
   /** What the last copy put on the engine's clipboard. */

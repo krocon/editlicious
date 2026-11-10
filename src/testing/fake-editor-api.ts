@@ -64,6 +64,8 @@ export function textFrame(lines: string[], over: Partial<Frame> = {}): Frame {
     primary: 0,
     caretLine: 0,
     caretCh: 0,
+    anchorLine: 0,
+    anchorCh: 0,
     selChars: 0,
     selLines: 0,
     overwrite: false,

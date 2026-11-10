@@ -2,7 +2,7 @@
 //! `src/app/core/editor/editor.models.ts`.
 
 pub use super::ops::{CaseChange, SortMode, SortOptions};
-use crate::document::model::{DocInfo, LineEnding, Sel};
+use crate::document::model::{DocInfo, LineEnding, Pos, Sel};
 use crate::search::Query;
 use serde::{Deserialize, Serialize};
 
@@ -212,6 +212,16 @@ pub enum Command {
     SetReadOnly {
         read_only: bool,
     },
+    /// Replaces the text between two positions as one undo step (design 027 E3); the same text
+    /// changes nothing. The cursors stay where they are in the text (moved along with it);
+    /// `caret`: one caret behind the new text instead.
+    ReplaceRange {
+        from: Pos,
+        to: Pos,
+        text: String,
+        #[serde(default)]
+        caret: bool,
+    },
 }
 
 /// Settings of the arithmetic (prompt 020).
@@ -320,6 +330,7 @@ impl Command {
                 | Command::Complete
                 | Command::ApplyCompletion { .. }
                 | Command::Evaluate
+                | Command::ReplaceRange { .. }
         )
     }
 }
@@ -436,6 +447,10 @@ pub struct Frame {
     /// Primary caret as line/character (0-based) for the status bar.
     pub caret_line: usize,
     pub caret_ch: usize,
+    /// Where the primary selection started (0-based; the caret when nothing is selected) – with
+    /// the caret it gives the selection's range (design 027 E4).
+    pub anchor_line: usize,
+    pub anchor_ch: usize,
     pub sel_chars: usize,
     pub sel_lines: usize,
     pub overwrite: bool,

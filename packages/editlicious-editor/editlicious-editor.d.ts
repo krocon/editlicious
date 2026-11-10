@@ -21,6 +21,24 @@ export interface EdChange {
   charCount: number;
 }
 
+/**
+ * A position in the text: line and column, both 1-based. The column counts characters as
+ * **Unicode code points** within the line – an emoji is one, a combining mark is one of its own,
+ * the line break (also `\r\n`) is none. It is not a UTF-16 index: the UTF-16 offset of `ch` in a
+ * line's text is `[...lineText].slice(0, ch - 1).join('').length`.
+ */
+export interface EdPos {
+  line: number;
+  ch: number;
+}
+
+/** A selected range in document order with its text (line breaks as they are in the text). */
+export interface EdSelection {
+  text: string;
+  start: EdPos;
+  end: EdPos;
+}
+
 /** Detail of `ed-caret`: 1-based line and column of the primary caret. */
 export interface EdCaret {
   line: number;
@@ -28,6 +46,9 @@ export interface EdCaret {
   selChars: number;
   selLines: number;
   carets: number;
+  /** The primary selection in document order; both equal the caret when nothing is selected. */
+  selStart: EdPos;
+  selEnd: EdPos;
 }
 
 /** Options of {@link EditliciousEditorElement.find}. */
@@ -94,6 +115,26 @@ export interface EditliciousEditorElement extends HTMLElement {
   getValue(): Promise<string>;
   /** Lines `from..to` (1-based, inclusive). */
   getSlice(from: number, to: number): Promise<string>;
+  /**
+   * The primary selection: its text and where it starts and ends. Nothing selected: empty text,
+   * `start` = `end` = the caret.
+   */
+  getSelection(): Promise<EdSelection>;
+  /** Every selection (several cursors, block selection) in document order. */
+  getSelections(): Promise<EdSelection[]>;
+  /**
+   * The text between two positions (clamped into the text, either order). The cost grows with
+   * the length of the range, not of the document: a small range of a huge text is instant, a
+   * huge range is a huge string (more than 64 MB is refused with `selection_too_large`).
+   */
+  getRange(start: EdPos, end: EdPos): Promise<string>;
+  /**
+   * Replaces the text between two positions as **one** undo step; the same text changes nothing.
+   * Cursors and selections stay where they are in the text.
+   */
+  replaceRange(start: EdPos, end: EdPos, text: string): Promise<void>;
+  /** Replaces every selection by `text` (inserts it at a caret) as one undo step. */
+  replaceSelection(text: string): Promise<void>;
   /** Replaces the whole text (clean, no undo back into the old one). */
   setValue(text: string): Promise<void>;
   /** A new text, optionally in another language. */

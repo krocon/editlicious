@@ -11,11 +11,17 @@ import { createCustomElement, NgElementConstructor } from '@angular/elements';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { createApplication } from '@angular/platform-browser';
 import { Command, MatchCount, Query } from './app/core/editor/editor.models';
-import { EditliciousEditor, EMIT_DOM_EVENTS, FACADE } from './app/embed/editlicious-editor';
+import {
+  EdPos,
+  EdSelection,
+  EditliciousEditor,
+  EMIT_DOM_EVENTS,
+  FACADE,
+} from './app/embed/editlicious-editor';
 import { initEditlicious } from './app/embed/engine';
 
 export { initEditlicious };
-export type { EdCaret, EdChange } from './app/embed/editlicious-editor';
+export type { EdCaret, EdChange, EdPos, EdSelection } from './app/embed/editlicious-editor';
 
 const TAG = 'editlicious-editor';
 
@@ -39,6 +45,21 @@ function withMethods(base: NgElementConstructor<unknown>): CustomElementConstruc
     }
     getSlice(from: number, to: number): Promise<string> {
       return facade(this).then((f) => f.getSlice(from, to));
+    }
+    getSelection(): Promise<EdSelection> {
+      return facade(this).then((f) => f.getSelection());
+    }
+    getSelections(): Promise<EdSelection[]> {
+      return facade(this).then((f) => f.getSelections());
+    }
+    getRange(start: EdPos, end: EdPos): Promise<string> {
+      return facade(this).then((f) => f.getRange(start, end));
+    }
+    replaceRange(start: EdPos, end: EdPos, text: string): Promise<void> {
+      return facade(this).then((f) => f.replaceRange(start, end, text));
+    }
+    replaceSelection(text: string): Promise<void> {
+      return facade(this).then((f) => f.replaceSelection(text));
     }
     setValue(text: string): Promise<void> {
       return facade(this).then((f) => f.setValue(text));

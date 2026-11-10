@@ -153,7 +153,12 @@ describe('EditliciousEditor (design 025)', () => {
   it('reports changes without the text and fetches it only on request', async () => {
     const { api, ea, host, fixture } = await setup();
     const id = [...api.texts.keys()][0];
-    api.nextFrame = textFrame(['fn main() {}', 'x'], { caretLine: 1, caretCh: 1 });
+    api.nextFrame = textFrame(['fn main() {}', 'x'], {
+      caretLine: 1,
+      caretCh: 1,
+      anchorLine: 1,
+      anchorCh: 1,
+    });
     api.infos.set(id, {
       ...api.nextFrame.info,
       id,
@@ -166,9 +171,68 @@ describe('EditliciousEditor (design 025)', () => {
     await fixture.whenStable();
     expect(host.changes.at(-1)).toEqual({ revision: 3, dirty: true, lineCount: 2, charCount: 14 });
     expect(host.carets.at(-1)).toMatchObject({ line: 2, ch: 2, carets: 1 });
+    // nothing selected: the selection's range is the caret (design 027 E4)
+    expect(host.carets.at(-1)).toMatchObject({
+      selStart: { line: 2, ch: 2 },
+      selEnd: { line: 2, ch: 2 },
+    });
+    api.nextFrame = textFrame(['fn main() {}', 'x'], {
+      seq: 2,
+      caretLine: 0,
+      caretCh: 3,
+      anchorLine: 1,
+      anchorCh: 1,
+    });
+    await ea.runCommand({ type: 'frame' });
+    expect(host.carets.at(-1)).toMatchObject({
+      line: 1,
+      ch: 4,
+      selStart: { line: 1, ch: 4 },
+      selEnd: { line: 2, ch: 2 },
+    });
     expect(api.textReads).toBe(0);
     expect(await ea.getValue()).toBe('fn main() {}\n');
     expect(api.textReads).toBe(1);
+  });
+
+  it('hands out selections and ranges and replaces a range (design 027)', async () => {
+    const { api, ea } = await setup();
+    const id = [...api.texts.keys()][0];
+    api.sels = {
+      primary: 1,
+      ranges: [
+        { anchor: { line: 0, ch: 2 }, head: { line: 0, ch: 2 }, text: '' },
+        // selected backwards: start and end come in document order, 1-based
+        { anchor: { line: 3, ch: 0 }, head: { line: 1, ch: 4 }, text: 'x👍\r\ny' },
+      ],
+    };
+    expect(await ea.getSelection()).toEqual({
+      text: 'x👍\r\ny',
+      start: { line: 2, ch: 5 },
+      end: { line: 4, ch: 1 },
+    });
+    expect((await ea.getSelections()).map((s) => s.start)).toEqual([
+      { line: 1, ch: 3 },
+      { line: 2, ch: 5 },
+    ]);
+    expect(await ea.getRange({ line: 2, ch: 5 }, { line: 4, ch: 1 })).toBe('1:4-3:0');
+    api.commands = [];
+    await ea.replaceRange({ line: 2, ch: 5 }, { line: 4, ch: 1 }, 'new');
+    await ea.replaceSelection('NOW()');
+    expect(api.commands.slice(-2)).toEqual([
+      {
+        id,
+        cmd: {
+          type: 'replaceRange',
+          from: { line: 1, ch: 4 },
+          to: { line: 3, ch: 0 },
+          text: 'new',
+        },
+      },
+      { id, cmd: { type: 'insert', text: 'NOW()' } },
+    ]);
+    // the whole text never crossed for any of this
+    expect(api.textReads).toBe(0);
   });
 
   it('follows value, readOnly and settles methods', async () => {
