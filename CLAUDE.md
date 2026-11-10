@@ -43,7 +43,9 @@
 
 ```
 src/                          Angular 22 (zoneless, Signals, OnPush, Standalone)
-  styles.css                  Design-Tokens light/dark (einzige Stelle für Farben/Größen), Editor-Tokens --ed-*
+  styles.css                  Design-Tokens light/dark (einzige Stelle für Farben/Größen), Editor-Tokens --ed-*;
+                              Farb-Tokens = öffentlicher Vertrag der Web Component (026): neue in die
+                              README-Tabelle des Pakets und ggf. in den `scheme="none"`-Block
   app/app.ts, app.config.ts   Root + Fassaden-Bindung
   app/core/backend/call.ts    einzige Stelle mit invoke() (+ isTauri-Prüfung, Fehler → FsError)
   app/core/errors/            FsError, toFsError, describeFsError (Codes = Rust error.rs)

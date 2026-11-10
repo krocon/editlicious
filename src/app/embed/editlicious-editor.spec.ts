@@ -18,6 +18,7 @@ const flush = async () => {
       [value]="valueA()"
       language="Rust"
       [scheme]="schemeA()"
+      [colorScheme]="colorSchemeA()"
       [readOnly]="readOnlyA()"
       [wordWrap]="true"
       lineNumbers="relative"
@@ -31,7 +32,8 @@ const flush = async () => {
 })
 class Host {
   readonly valueA = signal('fn main() {}\n');
-  readonly schemeA = signal<'paper' | 'night' | 'auto'>('paper');
+  readonly schemeA = signal<'paper' | 'night' | 'auto' | 'none'>('paper');
+  readonly colorSchemeA = signal<'light' | 'dark' | null>(null);
   readonly readOnlyA = signal(false);
   changes: EdChange[] = [];
   carets: EdCaret[] = [];
@@ -103,6 +105,24 @@ describe('EditliciousEditor (design 025)', () => {
     expect(a.getAttribute('data-scheme')).toBe('night');
     // the page's root element is as it was (no data-theme, data-scheme, lang, font variables)
     expect(attrs()).toBe(before);
+  });
+
+  it('scheme "none" leaves the colours to the page (design 026 E3)', async () => {
+    const { a, fixture, host } = await setup();
+    host.schemeA.set('none');
+    await fixture.whenStable();
+    expect(a.getAttribute('data-scheme')).toBe('none');
+    expect(a.hasAttribute('data-theme')).toBe(false);
+    host.colorSchemeA.set('dark');
+    await fixture.whenStable();
+    expect(a.getAttribute('data-theme')).toBe('dark');
+    // a built-in scheme ignores `color-scheme`
+    host.schemeA.set('paper');
+    await fixture.whenStable();
+    expect(a.getAttribute('data-theme')).toBe('light');
+    expect(a.hasAttribute('data-scheme')).toBe(false);
+    // the font variable is the page's unless `font-family` is set
+    expect(a.style.getPropertyValue('--font-editor')).toBe('');
   });
 
   it('keeps instances apart: find, typing and ARIA ids', async () => {

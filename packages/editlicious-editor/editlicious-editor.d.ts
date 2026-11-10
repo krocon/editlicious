@@ -63,7 +63,9 @@ export type ColorScheme =
   | 'night'
   | 'graphite'
   | 'ink'
-  | 'amber';
+  | 'amber'
+  /** No built-in scheme: only the CSS variables the page sets (README „Styling“). */
+  | 'none';
 
 export interface EditliciousEditorElement extends HTMLElement {
   /** Text to show; set again only when it differs from what was set last. */
@@ -71,6 +73,8 @@ export interface EditliciousEditorElement extends HTMLElement {
   /** Grammar (`Rust`), alias (`TypeScript`, `Kotlin`) or file name (`app.ts`, `.kt`); empty = plain text. */
   language: string;
   scheme: ColorScheme;
+  /** With `scheme: 'none'`: light or dark system colours and form controls; `null` = the system's. */
+  colorScheme: 'light' | 'dark' | null;
   readOnly: boolean;
   wordWrap: boolean;
   lineNumbers: 'absolute' | 'relative' | 'off';

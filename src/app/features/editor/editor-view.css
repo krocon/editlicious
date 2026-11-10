@@ -184,7 +184,7 @@
 }
 
 .ctrl {
-  color: var(--color-warning);
+  color: var(--ed-control);
 }
 
 .sel {
@@ -300,13 +300,13 @@
   pointer-events: none;
 
   &.match {
-    background: var(--ed-search-current);
+    background: var(--ed-overview-match);
   }
 
   &.marker {
     left: 0;
     width: 4px;
-    background: var(--ed-marker-0);
+    background: var(--ed-overview-marker);
   }
 
   &.match.marker {
@@ -378,11 +378,12 @@
   top: 0;
   left: 4px;
   border-radius: 3px;
-  outline: 1px solid var(--ed-gutter-text);
+  outline: 1px solid var(--ed-swatch-border);
   outline-offset: -1px;
   background:
     var(--swatch),
-    repeating-conic-gradient(#c8c8c8 0% 25%, #ffffff 0% 50%) 0 0 / 8px 8px;
+    repeating-conic-gradient(var(--ed-checker-dark) 0% 25%, var(--ed-checker-light) 0% 50%) 0 0 /
+      8px 8px;
   cursor: pointer;
 }
 

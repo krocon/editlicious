@@ -1,7 +1,7 @@
 <!doctype html>
 <!--
-  Test and example page of the embeddable editor (prompt 025): two <editlicious-editor>
-  elements side by side. Plain HTML, no framework. `pnpm build:element` puts the element into
+  Test and example page of the embeddable editor (prompt 025): <editlicious-editor> elements
+  side by side – A and B with built-in schemes, C coloured only by the page's variables (026). Plain HTML, no framework. `pnpm build:element` puts the element into
   lib/ (not committed); serve the site folder over http (ES modules and WebAssembly).
 -->
 <html lang="en">
@@ -66,6 +66,44 @@
       label {
         font: inherit;
       }
+      /* C has no built-in scheme: the page maps its own theme variables onto the editor's
+         (prompt 026); the buttons switch the page theme on <html>, the editor follows at once */
+      :root {
+        --app-bg: #fdf6e3;
+        --app-text: #586e75;
+        --app-accent: #268bd2;
+        --app-keyword: #859900;
+        --app-string: #2aa198;
+        --app-number: #d33682;
+        --app-comment: #93a1a1;
+        --app-function: #268bd2;
+        --app-type: #b58900;
+      }
+      :root[data-app-theme='dusk'] {
+        --app-bg: #002b36;
+        --app-text: #93a1a1;
+        --app-accent: #b58900;
+        --app-keyword: #cb4b16;
+        --app-string: #2aa198;
+        --app-number: #d33682;
+        --app-comment: #586e75;
+        --app-function: #6c71c4;
+        --app-type: #b58900;
+      }
+      #c {
+        --ed-bg: var(--app-bg);
+        --ed-text: var(--app-text);
+        --ed-caret: var(--app-accent);
+        --color-accent: var(--app-accent);
+        --color-accent-text: var(--app-bg);
+        --syn-keyword: var(--app-keyword);
+        --syn-string: var(--app-string);
+        --syn-number: var(--app-number);
+        --syn-constant: var(--app-number);
+        --syn-comment: var(--app-comment);
+        --syn-function: var(--app-function);
+        --syn-type: var(--app-type);
+      }
       #log {
         height: 140px;
         margin: 16px 0 0;
@@ -106,6 +144,14 @@
           tab-width="2"
         ></editlicious-editor>
       </figure>
+      <figure>
+        <figcaption>
+          <strong>C</strong> SQL · scheme="none", colours from the page
+          <button type="button" data-app-theme="">page theme: day</button>
+          <button type="button" data-app-theme="dusk">page theme: dusk</button>
+        </figcaption>
+        <editlicious-editor id="c" language="SQL" scheme="none" color-scheme="light" status-bar></editlicious-editor>
+      </figure>
     </div>
     <pre id="log" aria-live="polite"></pre>
     <script type="module">
@@ -114,12 +160,22 @@
       // properties work before and after the element is defined
       a.value = 'fn main() {\n    let x = 255 / 8;\n    println!("{x} #3f7fdf");\n}\n';
       b.value = "import { Component } from '@angular/core';\n\nexport class Demo {\n  ngOnInit() {}\n}\n";
+      const c = document.getElementById('c');
+      c.value = "-- orders of the last week\nSELECT o.id, c.name, SUM(o.total) AS total\nFROM orders o\nJOIN customers c ON c.id = o.customer_id\nWHERE o.created > NOW() - INTERVAL '7 days'\nGROUP BY o.id, c.name;\n";
+      for (const btn of document.querySelectorAll('[data-app-theme]')) {
+        btn.addEventListener('click', () => {
+          const t = btn.dataset.appTheme;
+          if (t) document.documentElement.dataset.appTheme = t;
+          else delete document.documentElement.dataset.appTheme;
+          c.colorScheme = t ? 'dark' : 'light';
+        });
+      }
       const log = document.getElementById('log');
       const write = (line) => {
         log.textContent += line + '\n';
         log.scrollTop = log.scrollHeight;
       };
-      for (const el of [a, b]) {
+      for (const el of [a, b, c]) {
         el.addEventListener('ed-ready', () => write(`${el.id} ready`));
         el.addEventListener('ed-change', (e) => write(`${el.id} change ${JSON.stringify(e.detail)}`));
         el.addEventListener('ed-caret', (e) => write(`${el.id} caret ${JSON.stringify(e.detail)}`));

@@ -548,7 +548,6 @@ export class EditorView {
     };
     const styles = box ? Array.from(box.children, (el) => css(el)) : [];
     const host = getComputedStyle(this.host.nativeElement);
-    const root = getComputedStyle(this.host.nativeElement.ownerDocument.documentElement);
     const base = [
       `color:${host.color}`,
       `background:${host.backgroundColor}`,
@@ -556,7 +555,8 @@ export class EditorView {
       `font-size:${host.fontSize}`,
       'padding:8px',
     ].join(';');
-    const gutter = `color:${root.getPropertyValue('--ed-gutter-text').trim() || 'gray'}`;
+    // the tokens of this view: the embedded editor has them on its host, not on <html>
+    const gutter = `color:${host.getPropertyValue('--ed-gutter-text').trim() || 'gray'}`;
     // marked words keep their colour; the engine makes them solid for e-mail (design 019)
     const mbox = this.markerProbes()?.nativeElement;
     const markers = mbox

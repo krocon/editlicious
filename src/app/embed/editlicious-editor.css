@@ -26,3 +26,76 @@ select,
 textarea {
   font: inherit;
 }
+
+/*
+ * `scheme="none"` (design 026 E3): no built-in scheme – every colour token the schemes set is
+ * derived here from the page's `--ed-bg` / `--ed-text` (system colours when unset), so a page
+ * that sets only a few variables still gets a coherent editor. What the page sets on the element
+ * wins (outer styles beat `:host`). `color-scheme="light|dark"` picks the system colours.
+ * The doubled attribute lifts this block above the generated scheme rules.
+ */
+:host([data-scheme='none'][data-scheme]) {
+  color-scheme: light dark;
+  --ed-bg: Canvas;
+  --ed-text: CanvasText;
+  --ed-gutter-bg: var(--ed-bg);
+  --ed-gutter-text: color-mix(in srgb, var(--ed-text) 45%, transparent);
+  --ed-gutter-text-active: var(--ed-text);
+  --ed-current-line: color-mix(in srgb, var(--ed-text) 5%, transparent);
+  --ed-selection: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  --ed-selection-inactive: color-mix(in srgb, var(--ed-text) 12%, transparent);
+  --ed-caret: var(--ed-text);
+  --ed-whitespace: color-mix(in srgb, var(--ed-text) 25%, transparent);
+  --ed-indent-guide: color-mix(in srgb, var(--ed-text) 10%, transparent);
+  --ed-search-match: rgb(255 196 0 / 35%);
+  --ed-search-current: rgb(255 140 0 / 55%);
+  --ed-scrollbar: color-mix(in srgb, var(--ed-text) 25%, transparent);
+  --ed-scrollbar-hover: color-mix(in srgb, var(--ed-text) 42%, transparent);
+
+  --color-bg: var(--ed-bg);
+  --color-surface: var(--ed-bg);
+  --color-surface-2: color-mix(in srgb, var(--ed-text) 8%, var(--ed-bg));
+  --color-text: var(--ed-text);
+  --color-text-muted: color-mix(in srgb, var(--ed-text) 62%, var(--ed-bg));
+  --color-border: color-mix(in srgb, var(--ed-text) 22%, var(--ed-bg));
+  --color-accent: Highlight;
+  --color-accent-text: HighlightText;
+  --color-focus: var(--color-accent);
+  --color-error: light-dark(#b42318, #f97066);
+  --color-warning: light-dark(#8a5a00, #f5b84a);
+  --color-backdrop: rgb(0 0 0 / 45%);
+  --color-hover: color-mix(in srgb, var(--ed-text) 10%, var(--ed-bg));
+  --shadow-popup: 0 12px 32px rgb(0 0 0 / 30%);
+
+  --syn-comment: color-mix(in srgb, var(--ed-text) 55%, var(--ed-bg));
+  --syn-string: var(--ed-text);
+  --syn-keyword: var(--ed-text);
+  --syn-number: var(--ed-text);
+  --syn-constant: var(--ed-text);
+  --syn-type: var(--ed-text);
+  --syn-function: var(--ed-text);
+  --syn-tag: var(--ed-text);
+  --syn-attribute: var(--ed-text);
+  --syn-variable: var(--ed-text);
+  --syn-operator: var(--ed-text);
+  --syn-punct: var(--ed-text);
+  --syn-heading: var(--ed-text);
+  --syn-code: var(--ed-text);
+  --syn-link: var(--ed-text);
+  --syn-invalid: var(--color-error);
+  --syn-inserted: var(--ed-text);
+  --syn-deleted: var(--ed-text);
+  --syn-changed: var(--ed-text);
+  --syn-log-error: var(--color-error);
+  --syn-log-warning: var(--color-warning);
+  --syn-log-info: var(--ed-text);
+  --syn-log-debug: var(--syn-comment);
+}
+
+:host([data-scheme='none'][data-theme='light']) {
+  color-scheme: light;
+}
+
+:host([data-scheme='none'][data-theme='dark']) {
+  color-scheme: dark;
+}

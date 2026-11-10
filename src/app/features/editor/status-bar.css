@@ -63,7 +63,8 @@
   outline: 1px solid var(--color-border);
   background:
     linear-gradient(var(--chip), var(--chip)),
-    repeating-conic-gradient(#c8c8c8 0% 25%, #ffffff 0% 50%) 0 0 / 4px 4px;
+    repeating-conic-gradient(var(--ed-checker-dark) 0% 25%, var(--ed-checker-light) 0% 50%) 0 0 /
+      4px 4px;
 }
 
 /* the marked word at the cursor and its count (design 019) */

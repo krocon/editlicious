@@ -49,6 +49,11 @@ Kritischer Pfad zum ersten nutzbaren Editor: **001 → 002 → 003 → 004**. Da
 | 023 | [023-wort-vervollstaendigung.md](done/023-wort-vervollstaendigung.md) | Wort-Vervollständigung (Strg+Leertaste) aus den Wörtern um den Caret und einem Lexikon typischer Wörter je Sprache (Java, SQL, Python, JS/TS, Rust, C/C++, C#, Go, PHP, Ruby, Shell, CSS, HTML, dazu Kotlin, Spring Boot, Angular); eigene Wortlisten `words/<sprache>.txt`; Filtern beim Tippen, optional automatisch ab 2 Zeichen | 008, 009, 020 | S–M | ✅ 28.10.2026 |
 | 024 | [024-pfad-oeffnen.md](done/024-pfad-oeffnen.md) | „Pfad öffnen …“ (Mod+Shift+O): Pfad tippen oder einfügen (`~/…`, in Anführungszeichen, `file://…`, relativ zur aktiven Datei), Tab ergänzt wie in der Shell, passende Einträge als Liste | 004, 005 | S | ✅ 31.10.2026 |
 | 025 | [025-web-component.md](done/025-web-component.md) | Einbettbare Editor-Komponente: Angular `<ed-editor>` und Web Component `<editlicious-editor>` (Shadow DOM, mehrere Instanzen, Engine als WebAssembly im Worker, Schreibschutz, 13 Farbschemata je Instanz) | 003, 005, 006, 008–011, 018–021, 023 | L | ✅ 02.11.2026 |
+| 026 | [026-farben-von-aussen.md](done/026-farben-von-aussen.md) | Web Component: alle Farben als dokumentierte CSS-Variablen von außen setzbar, `scheme="none"` + `color-scheme`, Vertragstest README ↔ Code (schema-commander E1) | 025 | S–M | ✅ 10.11.2026 |
+| 027 | [027-auswahl-abfragen.md](027-auswahl-abfragen.md) | Web Component: Auswahl und beliebige Bereiche als Text abfragen, Bereich ersetzen (ein Undo-Schritt), `ed-caret` mit Auswahlgrenzen (schema-commander E2) | 025 | S | offen |
+| 028 | [028-vervollstaendigung-von-aussen.md](028-vervollstaendigung-von-aussen.md) | Web Component: Anbieter für Vorschläge, den die Seite liefert (schema-commander E3) | 027, 030 | M–L | offen |
+| 029 | [029-markierungen-von-aussen.md](029-markierungen-von-aussen.md) | Web Component: Unterstreichungen, Randmarken und Hinweise von außen, wandern mit dem Text (schema-commander E4) | 026, 027 | M | offen |
+| 030 | [030-snippets.md](030-snippets.md) | Textbausteine mit Platzhaltern und Tab-Stopps (schema-commander E5) | 027 | M | offen |
 
 ## Folge-Ideen (noch ohne Prompt)
 

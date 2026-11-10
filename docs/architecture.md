@@ -143,3 +143,10 @@ Bauen: `pnpm build:element` → `dist/element/editlicious-editor/` und `site/emb
 Typen und README in `packages/editlicious-editor/`; veröffentlicht wird nur auf Anweisung). `playScript()` spielt
 Tipp-Skripte auf der eigenen Sitzung ab (`scriptSteps` aus `ed-wasm`, 025 E13).
 
+**Farben von außen (026):** Der öffentliche Farbvertrag sind die Tokens `--ed-*`, `--syn-*`, `--color-*`,
+`--shadow-popup` des ersten Blocks von `src/styles.css` – am Element gesetzt gewinnen sie über das `scheme`
+(README des Pakets, Tabelle „Colour variables“; `scripts/theme-vars.test.mjs` hält README, Tokens und
+Komponenten-CSS zusammen: keine feste Farbe außerhalb von `styles.css`). `scheme="none"` (nur Fassade, nicht in
+`SCHEMES`) leitet alle Schema-Tokens aus `--ed-bg`/`--ed-text` ab (`editlicious-editor.css`), `color-scheme` wählt
+Hell/Dunkel der Systemfarben.
+

@@ -75,8 +75,28 @@ export function insertSpacesAttribute(v: unknown): 'auto' | boolean {
   return 'auto';
 }
 
-function schemeAttribute(v: unknown): Scheme {
+/**
+ * `scheme` of the embedded editor (design 026 E3): one of the built-in schemes, or `none` – no
+ * built-in colours at all, only what the page sets (neutral system colours where it sets nothing).
+ */
+export type EmbedScheme = Scheme | 'none';
+
+function schemeAttribute(v: unknown): EmbedScheme {
+  if (v === 'none') return 'none';
   return SCHEMES.includes(v as Scheme) ? (v as Scheme) : 'auto';
+}
+
+/** `color-scheme`: light or dark form controls and system colours for `scheme="none"`. */
+function colorSchemeAttribute(v: unknown): 'light' | 'dark' | null {
+  return v === 'light' || v === 'dark' ? v : null;
+}
+
+/** The host attributes that pick the colours (`host-theme.css`, `editlicious-editor.css`). */
+export function embedSchemeAttributes(
+  scheme: EmbedScheme,
+  colorScheme: 'light' | 'dark' | null,
+): { theme: 'light' | 'dark' | null; scheme: string | null } {
+  return scheme === 'none' ? { theme: colorScheme, scheme: 'none' } : schemeAttributes(scheme);
 }
 
 function lineNumbersAttribute(v: unknown): 'absolute' | 'relative' | 'off' {
@@ -115,7 +135,8 @@ function lineNumbersAttribute(v: unknown): 'absolute' | 'relative' | 'off' {
     '[attr.data-scheme]': 'colors().scheme',
     '[attr.data-read-only]': 'isReadOnly() ? "" : null',
     '[style.--editor-font-size.px]': 'fontSize()',
-    '[style.--font-editor]': 'settings.fontFamily()',
+    // only when `font-family` is set – else the page's `--font-editor` applies (design 026 E1)
+    '[style.--font-editor]': 'fontFamily().trim() ? settings.fontFamily() : null',
   },
   template: `
     @if (docId(); as id) {
@@ -140,7 +161,11 @@ export class EditliciousEditor {
   readonly value = input<string | null>(null);
   /** Grammar name (`Rust`), alias (`TypeScript`) or file name (`app.ts`, `.kt`); empty = plain. */
   readonly language = input<string>('');
-  readonly scheme = input<Scheme, unknown>('auto', { transform: schemeAttribute });
+  readonly scheme = input<EmbedScheme, unknown>('auto', { transform: schemeAttribute });
+  /** With `scheme="none"`: `light` or `dark` (form controls, system colours); else the system's. */
+  readonly colorScheme = input<'light' | 'dark' | null, unknown>(null, {
+    transform: colorSchemeAttribute,
+  });
   readonly readOnly = input(false, { transform: booleanAttribute });
   /** HTML attribute `readonly` of the custom element (same as `readOnly`). */
   readonly readonly = input(false, { transform: booleanAttribute });
@@ -173,7 +198,9 @@ export class EditliciousEditor {
   protected readonly frame = signal<Frame | null>(null);
   protected readonly refresh = signal(0);
   protected readonly isReadOnly = computed(() => this.readOnly() || this.readonly());
-  protected readonly colors = computed(() => schemeAttributes(this.scheme()));
+  protected readonly colors = computed(() =>
+    embedSchemeAttributes(this.scheme(), this.colorScheme()),
+  );
 
   private readonly api = inject(EmbedEngineApi);
   private readonly actions = inject(ActionService);

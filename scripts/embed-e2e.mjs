@@ -58,6 +58,21 @@ try {
   const bg = (id) => page.evaluate((id) => getComputedStyle(document.getElementById(id)).backgroundColor, id);
   check((await bg('a')) !== (await bg('b')), `own colours per instance (${await bg('a')} / ${await bg('b')})`);
 
+  // C has no built-in scheme: its colours are the page's variables and follow them (prompt 026)
+  const cBg = () => page.evaluate(() => getComputedStyle(document.getElementById('c').shadowRoot.querySelector('app-editor-view')).backgroundColor);
+  const kw = () => page.evaluate(() => {
+    const run = [...document.getElementById('c').shadowRoot.querySelectorAll('.run[data-s="3"]')][0];
+    return run ? getComputedStyle(run).color : '';
+  });
+  check((await cBg()) === 'rgb(253, 246, 227)', `scheme="none": background from the page (${await cBg()})`);
+  check((await kw()) === 'rgb(133, 153, 0)', `scheme="none": keyword colour from the page (${await kw()})`);
+  await page.click('[data-app-theme="dusk"]');
+  check((await cBg()) === 'rgb(0, 43, 54)', `a theme change on <html> repaints the editor (${await cBg()})`);
+  await page.evaluate(() => document.getElementById('a').style.setProperty('--syn-keyword', 'rgb(1, 2, 3)'));
+  const kwA = await page.evaluate(() => getComputedStyle(document.getElementById('a').shadowRoot.querySelector('.run[data-s="3"]')).color);
+  check(kwA === 'rgb(1, 2, 3)', 'a variable on the element wins over the built-in scheme');
+  await page.evaluate(() => document.getElementById('a').style.removeProperty('--syn-keyword'));
+
   // typing in A leaves B alone
   const textarea = (id) => page.locator(`#${id} textarea`);
   await textarea('a').focus();
