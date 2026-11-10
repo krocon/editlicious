@@ -62,6 +62,24 @@ export class Editor {
         }
     }
     /**
+     * The caret for a completion provider of the page (JSON `CompletionContext`, design 028):
+     * position, the line up to the caret, the word begun; `words`: with the word candidates.
+     * @param {boolean} words
+     * @returns {string}
+     */
+    completionContext(words) {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.editor_completionContext(this.__wbg_ptr, words);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
      * How often the marked word at the caret occurs (`undefined` = no marked word there).
      * @returns {number | undefined}
      */
