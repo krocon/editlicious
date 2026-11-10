@@ -236,7 +236,7 @@ export class ProviderCompletion implements ExternalCompletion {
       case 'backspace':
         if (this.open || this.asked) void this.update(null);
         return;
-      // the view only: the list stays
+      // the view only: the list stays – also when the page's linter sets its markers meanwhile
       case 'frame':
       case 'resize':
       case 'configure':
@@ -245,6 +245,8 @@ export class ProviderCompletion implements ExternalCompletion {
       case 'copy':
       case 'copyHtml':
       case 'setReadOnly':
+      case 'setDecorations':
+      case 'clearDecorations':
         return;
       default:
         this.close();

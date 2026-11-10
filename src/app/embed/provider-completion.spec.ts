@@ -100,6 +100,9 @@ describe('ProviderCompletion (design 028)', () => {
     await flush();
     await typing('FROM ', 'ite');
     expect(labels()).toEqual(['order_items']);
+    // markers set meanwhile (a linter of the page) leave the list alone
+    c.after({ type: 'setDecorations', owner: 'lint', items: [] });
+    expect(labels()).toEqual(['order_items']);
     // nothing fits: no list; moving away closes for good
     await typing('FROM ite', 'x');
     expect(c.list()).toBeNull();
