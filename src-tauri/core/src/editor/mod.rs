@@ -12,6 +12,8 @@ mod ops;
 pub mod playback;
 pub mod recording;
 pub mod script;
+pub mod snippet;
+pub mod track;
 mod words;
 
 #[cfg(test)]
@@ -151,6 +153,8 @@ pub struct Session {
     last_recording: Option<recording::Recording>,
     /// Edits are refused (design 025 E1).
     read_only: bool,
+    /// The snippet being filled in (design 030).
+    snippet: Option<snippet::SnippetState>,
 }
 
 /// Suggestions shown for a line (prompt 020): arithmetic or words (prompt 023).
@@ -210,6 +214,7 @@ impl Session {
             recorder: None,
             last_recording: None,
             read_only: false,
+            snippet: None,
         }
     }
 
@@ -266,8 +271,41 @@ impl Session {
         self.highlighter = lang.and_then(|l| Highlighter::new(&l));
         self.max_width = 0;
         self.drag = None;
+        // a new text: nothing of the old one is left to follow
+        self.snippet = None;
+        self.track();
         self.normalize();
         self.clamp_scroll();
+    }
+
+    /// Keeps the document's change log exactly while something follows positions.
+    fn track(&mut self) {
+        self.doc.track_edits(self.snippet.is_some());
+    }
+
+    /// Lets everything that follows positions (snippet placeholders) see the changes made since
+    /// the last call.
+    fn sync_tracked(&mut self) {
+        let batches = self.doc.take_edits();
+        if batches.is_empty() {
+            return;
+        }
+        let rope = self.doc.rope().clone();
+        let snippet = std::cell::RefCell::new(self.snippet.as_mut());
+        track::for_each_batch(
+            &batches,
+            &rope,
+            |map| {
+                if let Some(sn) = snippet.borrow_mut().as_mut() {
+                    sn.follow(map);
+                }
+            },
+            |old, new| {
+                if let Some(sn) = snippet.borrow_mut().as_mut() {
+                    sn.rewrite(old, new);
+                }
+            },
+        );
     }
 
     /// Runs one command and returns the frame to draw; a running recording keeps it
@@ -594,8 +632,16 @@ impl Session {
             Command::Delete => self.delete_forward(false)?,
             Command::DeleteWordLeft => self.delete_back(true)?,
             Command::DeleteWordRight => self.delete_forward(true)?,
-            Command::Indent => self.indent()?,
-            Command::Outdent => self.outdent()?,
+            Command::Indent => {
+                if !self.snippet_step(false) {
+                    self.indent()?;
+                }
+            }
+            Command::Outdent => {
+                if !self.snippet_step(true) {
+                    self.outdent()?;
+                }
+            }
             Command::ToggleOverwrite => {
                 self.overwrite = !self.overwrite;
                 reveal = Reveal::No;
@@ -656,7 +702,11 @@ impl Session {
                 keep_block = true;
             }
             Command::AddNextOccurrence => self.add_next_occurrence(),
-            Command::SingleCursor => self.single_cursor(),
+            Command::SingleCursor => {
+                self.snippet = None;
+                self.track();
+                self.single_cursor();
+            }
             Command::ToggleMarker => {
                 self.toggle_marker();
                 reveal = Reveal::No;
@@ -742,6 +792,19 @@ impl Session {
                 text,
                 caret,
             } => self.replace_range(from, to, &text, caret)?,
+            Command::InsertSnippet {
+                template,
+                from,
+                to,
+                vars,
+            } => {
+                let range = match (from, to) {
+                    (Some(a), Some(b)) => Some((a, b)),
+                    (Some(a), None) | (None, Some(a)) => Some((a, a)),
+                    (None, None) => None,
+                };
+                self.insert_snippet(&template, range, &vars)?;
+            }
             Command::Select { sels } => {
                 if !sels.is_empty() {
                     let n = sels.len();
@@ -786,6 +849,8 @@ impl Session {
         if !keep_completion {
             self.completion = None;
         }
+        self.sync_tracked();
+        self.snippet_check();
         self.clamp_scroll();
         match reveal {
             Reveal::No => {}
@@ -1949,6 +2014,7 @@ impl Session {
                     .collect(),
             }),
             read_only: self.read_only,
+            snippet: self.snippet.is_some(),
         }
     }
 
@@ -2213,6 +2279,48 @@ impl Session {
         self.cursors_from(after);
         self.primary = primary.min(self.cursors.len() - 1);
         Ok(())
+    }
+
+    /// The caret as a completion provider of the page sees it (design 028 E2): position, the
+    /// line up to the caret, the word begun there; `words`: also the candidates of the word
+    /// completion (to list them behind the provider's).
+    pub fn completion_context(&self, words: bool) -> model::CompletionContext {
+        let c = self.primary();
+        let p = c.head;
+        let from = p.ch.saturating_sub(model::CONTEXT_CHARS);
+        let before = self.doc.line_slice(p.line, from, p.ch);
+        let extra = self.word_extra();
+        let tail: Vec<char> = before.chars().collect();
+        let mut start = tail.len();
+        while start > 0
+            && tail.len() - start < complete::MAX_WORD
+            && complete::is_word(tail[start - 1], &extra)
+        {
+            start -= 1;
+        }
+        let word_from = from + start;
+        let single = self.cursors.len() == 1 && c.is_empty();
+        model::CompletionContext {
+            line: p.line,
+            ch: p.ch,
+            single,
+            before,
+            word_from,
+            word_cell: self.cell_of(Pos::new(p.line, word_from)),
+            revision: self.doc.revision(),
+            words: if words && single {
+                self.word_completion(1)
+                    .map(|(_, items)| {
+                        items
+                            .into_iter()
+                            .map(|s| (s.text, s.kind == "keyword"))
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            } else {
+                Vec::new()
+            },
+        }
     }
 
     /// The selections in document order and the index of the primary one (design 027 E1).

@@ -155,6 +155,8 @@ export type Command =
   | { type: 'copyResult' }
   /** Read-only (design 025 E1): edits fail with `read_only`. */
   | { type: 'setReadOnly'; readOnly: boolean }
+  /** A snippet with placeholders in place of `from..to` (default: the selection; design 030). */
+  | { type: 'insertSnippet'; template: string; from?: Pos; to?: Pos; vars?: Record<string, string> }
   /** One undo step; cursors keep their place in the text, `caret`: one caret behind (027 E3). */
   | { type: 'replaceRange'; from: Pos; to: Pos; text: string; caret?: boolean };
 
@@ -346,4 +348,6 @@ export interface Frame {
   completion: Completion | null;
   /** The session refuses edits (design 025 E1). */
   readOnly: boolean;
+  /** A snippet is being filled in: Tab → next placeholder, Escape ends it (design 030). */
+  snippet: boolean;
 }

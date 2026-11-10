@@ -54,6 +54,19 @@ pub struct Document {
     history: History,
     /// First line changed since the highlighter last looked (design 008 E2).
     changed_from: Option<usize>,
+    /// What changed since [`Document::take_edits`] – kept only while someone follows positions
+    /// through edits (snippet placeholders, markers from outside; design 030 E2).
+    edits: Option<Vec<EditBatch>>,
+}
+
+/// One change of the text for those who keep positions (design 030 E2).
+#[derive(Debug, Clone)]
+pub enum EditBatch {
+    /// Sorted, non-overlapping changes `(from, to, inserted characters)` in character offsets of
+    /// the text before them.
+    Changes(Vec<(usize, usize, usize)>),
+    /// Every line break was rewritten (lines and columns stay, offsets do not): the text before.
+    Rewrite(Rope),
 }
 
 impl Document {
@@ -75,6 +88,7 @@ impl Document {
             saved_state: 0,
             history: History::default(),
             changed_from: None,
+            edits: None,
         }
     }
 
@@ -113,6 +127,26 @@ impl Document {
 
     pub fn revision(&self) -> u64 {
         self.revision
+    }
+
+    /// Identity of the text state: undo and redo bring back the id of the state they restore.
+    pub fn state(&self) -> u64 {
+        self.state
+    }
+
+    /// Keep (or stop keeping) the changes for [`Document::take_edits`]; off by default, so a
+    /// document nobody follows pays nothing.
+    pub fn track_edits(&mut self, on: bool) {
+        if on {
+            self.edits.get_or_insert_with(Vec::new);
+        } else {
+            self.edits = None;
+        }
+    }
+
+    /// The changes since the last call, oldest first (empty when not tracking).
+    pub fn take_edits(&mut self) -> Vec<EditBatch> {
+        self.edits.as_mut().map(std::mem::take).unwrap_or_default()
     }
 
     pub fn dirty(&self) -> bool {
@@ -447,6 +481,9 @@ impl Document {
 
     /// Rebuilds the text with break `i` written as `kind(i)`; lines and columns stay.
     fn rewrite_breaks(&mut self, kind: impl Fn(usize) -> LineEnding) {
+        if let Some(log) = self.edits.as_mut() {
+            log.push(EditBatch::Rewrite(self.rope.clone()));
+        }
         let mut b = ropey::RopeBuilder::new();
         let mut i = 0usize;
         let mut cr = false;
@@ -551,6 +588,14 @@ impl Document {
         if let Some(first) = changes.iter().map(|c| c.from).min() {
             let line = self.rope.char_to_line(first.min(self.rope.len_chars()));
             self.changed_from = Some(self.changed_from.map_or(line, |l| l.min(line)));
+        }
+        if let Some(log) = self.edits.as_mut() {
+            log.push(EditBatch::Changes(
+                changes
+                    .iter()
+                    .map(|c| (c.from, c.to, c.text.chars().count()))
+                    .collect(),
+            ));
         }
         let mut inverse = Vec::with_capacity(changes.len());
         let mut delta: isize = 0;

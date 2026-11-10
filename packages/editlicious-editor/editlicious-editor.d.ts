@@ -51,6 +51,87 @@ export interface EdCaret {
   selEnd: EdPos;
 }
 
+/** One suggestion of a {@link CompletionProvider}. */
+export interface CompletionItem {
+  /** What the list shows (and what is inserted without `insertText`). */
+  label: string;
+  insertText?: string;
+  /** `insertText` is a snippet with placeholders (`${1:name}`, `$0` – see `insertSnippet`). */
+  snippet?: boolean;
+  /**
+   * A class of your own (`table`, `column` …). Its first letter is the entry's icon; style it
+   * with `editlicious-editor::part(icon-table)` and the row with `::part(item-table)`.
+   */
+  kind?: string;
+  /** Shown at the right (a type, a schema). */
+  detail?: string;
+  /** Shown below the list while the entry is active. */
+  documentation?: string;
+  /** Order in the list (default: `label`). */
+  sortText?: string;
+  /** What typing filters on (default: `label`). */
+  filterText?: string;
+  /** The text to replace (default: the word begun, up to the caret). */
+  range?: { start: EdPos; end: EdPos };
+}
+
+/** What a {@link CompletionProvider} is asked with – a few characters, never the whole text. */
+export interface CompletionContext {
+  /** The caret. */
+  position: EdPos;
+  /** The line up to the caret (its last 2000 characters at most). */
+  lineText: string;
+  /** The word begun left of the caret (empty after a blank or a dot). */
+  word: string;
+  wordStart: EdPos;
+  /** `invoke`: Ctrl+Space; `type`: while typing; `character`: a trigger character was typed. */
+  trigger: 'invoke' | 'type' | 'character';
+  triggerCharacter: string | null;
+  /** Aborted as soon as the answer is no longer wanted (typed on, caret moved). */
+  signal: AbortSignal;
+  /** Text around the caret – only when you ask for it. */
+  getRange(start: EdPos, end: EdPos): Promise<string>;
+  /** Lines `from..to` (1-based, inclusive). */
+  getSlice(from: number, to: number): Promise<string>;
+}
+
+/**
+ * The answer: the entries, or `null` for none. An array is complete – typing on filters it
+ * without asking again; `{ items, incomplete: true }` is asked again on every key.
+ */
+export type CompletionResult =
+  | CompletionItem[]
+  | { items: CompletionItem[]; incomplete?: boolean }
+  | null
+  | undefined;
+
+export interface CompletionProviderFunction {
+  (ctx: CompletionContext): CompletionResult | Promise<CompletionResult>;
+  /** Characters that ask the provider when typed (`.`, a blank …). */
+  triggerCharacters?: string | string[];
+}
+
+/** Suggestions the page provides: a function, or an object with the function. */
+export type CompletionProvider =
+  | CompletionProviderFunction
+  | { provideCompletions: CompletionProviderFunction; triggerCharacters?: string | string[] };
+
+/** A snippet offered by its prefix (in the suggestion list; Tab behind the prefix expands it). */
+export interface Snippet {
+  prefix: string;
+  /** The template (see {@link EditliciousEditorElement.insertSnippet}); an array is its lines. */
+  body: string | string[];
+  description?: string;
+}
+
+/** Options of {@link EditliciousEditorElement.insertSnippet}. */
+export interface SnippetOptions {
+  /** The text to replace (default: the selection). */
+  range?: { start: EdPos; end: EdPos };
+  /** Values of the template's variables: `{ TABLE: 'orders' }` for `$TABLE`. */
+  vars?: Record<string, string>;
+}
+
 /** Options of {@link EditliciousEditorElement.find}. */
 export interface FindOptions {
   regex?: boolean;
@@ -110,6 +191,16 @@ export interface EditliciousEditorElement extends HTMLElement {
   mathHints: boolean;
   wordSuggest: boolean;
   uiLanguage: 'auto' | 'en' | 'de';
+  /**
+   * Suggestions from the page (property only). Asked on Ctrl+Space, at its `triggerCharacters`
+   * and – with `wordSuggest` – while typing (from two characters of a word). It never blocks
+   * typing; an answer that comes after the text or the caret changed is dropped.
+   */
+  completionProvider: CompletionProvider | null;
+  /** With a provider: `both` = its entries, then the words of the text; or only one of them. */
+  completionSources: 'both' | 'provider' | 'words';
+  /** Snippets by prefix (property only). */
+  snippets: Snippet[] | null;
 
   /** The whole text – crosses into the page only when asked for. */
   getValue(): Promise<string>;
@@ -135,6 +226,16 @@ export interface EditliciousEditorElement extends HTMLElement {
   replaceRange(start: EdPos, end: EdPos, text: string): Promise<void>;
   /** Replaces every selection by `text` (inserts it at a caret) as one undo step. */
   replaceSelection(text: string): Promise<void>;
+  /**
+   * Inserts a snippet in place of the selection (or `range`) as one undo step and selects its
+   * first placeholder; Tab / Shift+Tab go on, Escape or leaving the placeholder ends it.
+   * Syntax: `$1`, `${1:default}`, `${1|one,two|}`, `$0` (where the caret ends); the same number
+   * in several places is typed together; `$NAME` / `${NAME:default}` are variables (`vars`, and
+   * built in: `SELECTION`, `DATE`, `TIME`, `CURRENT_YEAR`, `CURRENT_MONTH`, `CURRENT_DATE`,
+   * `CURRENT_HOUR`, `CURRENT_MINUTE`, `CURRENT_SECOND`); `\$`, `\}` and `\\` are the characters
+   * themselves. New lines take the indentation of the line, tabs the editor's indentation.
+   */
+  insertSnippet(template: string, options?: SnippetOptions | { start: EdPos; end: EdPos }): Promise<void>;
   /** Replaces the whole text (clean, no undo back into the old one). */
   setValue(text: string): Promise<void>;
   /** A new text, optionally in another language. */

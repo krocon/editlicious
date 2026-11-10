@@ -41,6 +41,9 @@ class FakeEditor implements WasmEditor {
   slice(from: number, to: number): string {
     return this.body.split('\n').slice(from, to).join('\n');
   }
+  completionContext(words: boolean): string {
+    return JSON.stringify({ line: 0, ch: 2, words: words ? [['word', false]] : [] });
+  }
   selections(): string {
     return JSON.stringify({
       primary: 1,
@@ -91,6 +94,8 @@ describe('engine host (design 025 E4)', () => {
     expect(h('clipboard', [a])).toEqual({ text: 'c', html: null });
     expect(h('languages', [])).toBe('["Rust"]');
     expect(h('scriptSteps', ['x'])).toContain('"text":"x"');
+    expect(h('completionContext', [a, true])).toContain('"word"');
+    expect(h('completionContext', [a, false])).toContain('"words":[]');
     // selections come with their texts in one step; a caret has none (design 027 E1)
     expect(h('selections', [a])).toEqual({
       primary: 1,

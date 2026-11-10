@@ -66,6 +66,19 @@
       label {
         font: inherit;
       }
+      /* the page styles the kinds of its suggestions (prompt 028) */
+      #c::part(icon-table) {
+        color: var(--app-bg);
+        background: var(--app-type);
+      }
+      #c::part(icon-column) {
+        color: var(--app-bg);
+        background: var(--app-string);
+      }
+      #c::part(icon-function) {
+        color: var(--app-bg);
+        background: var(--app-function);
+      }
       /* C has no built-in scheme: the page maps its own theme variables onto the editor's
          (prompt 026); the buttons switch the page theme on <html>, the editor follows at once */
       :root {
@@ -149,6 +162,8 @@
           <strong>C</strong> SQL · scheme="none", colours from the page
           <button type="button" data-app-theme="">page theme: day</button>
           <button type="button" data-app-theme="dusk">page theme: dusk</button>
+          <label><input type="checkbox" id="slow" /> provider takes 2 s</label>
+          <button type="button" id="snippet">insertSnippet()</button>
         </figcaption>
         <editlicious-editor id="c" language="SQL" scheme="none" color-scheme="light" status-bar></editlicious-editor>
       </figure>
@@ -170,6 +185,38 @@
           c.colorScheme = t ? 'dark' : 'light';
         });
       }
+      // Suggestions from the page (prompt 028): 50 000 entries – tables, columns, functions.
+      // Ctrl+Space asks, typing asks from two characters, a dot asks for columns.
+      const ENTRIES = [];
+      for (let t = 0; t < 2500; t++) {
+        const table = `${['orders', 'customers', 'invoices', 'products', 'events'][t % 5]}_${String(t).padStart(4, '0')}`;
+        ENTRIES.push({ label: table, kind: 'table', detail: 'public', documentation: `Table public.${table}` });
+        for (let k = 0; k < 19; k++) {
+          ENTRIES.push({ label: `${table}.col_${k}`, kind: 'column', detail: k % 2 ? 'text' : 'bigint', filterText: `col_${k} ${table}` });
+        }
+      }
+      for (const f of ['NOW', 'COUNT', 'COALESCE', 'SUM', 'LOWER', 'UPPER']) {
+        ENTRIES.push({ label: f, insertText: f + '($1)$0', snippet: true, kind: 'function', detail: 'function', sortText: '!' + f });
+      }
+      const slow = document.getElementById('slow');
+      const provider = async (ctx) => {
+        if (slow.checked) await new Promise((r) => setTimeout(r, 2000));
+        if (ctx.signal.aborted) return null;
+        write(`c provider asked: ${ctx.trigger} "${ctx.word}" at ${ctx.position.line}:${ctx.position.ch}`);
+        return ENTRIES;
+      };
+      provider.triggerCharacters = ['.'];
+      c.completionProvider = provider;
+      c.wordSuggest = true;
+      // Snippets (prompt 030): `sel` + Tab, or from the list
+      c.snippets = [
+        { prefix: 'sel', body: 'SELECT ${1:*} FROM ${2:table} WHERE ${3:1=1};$0', description: 'select statement' },
+        { prefix: 'ins', body: ['INSERT INTO ${1:table} (${2:columns})', 'VALUES (${3:values});$0'], description: 'insert' },
+      ];
+      document.getElementById('snippet').addEventListener('click', async () => {
+        await c.insertSnippet('-- ${1:note} ($DATE, $WHO)\n$0', { vars: { WHO: 'the page' } });
+        c.focus();
+      });
       const log = document.getElementById('log');
       const write = (line) => {
         log.textContent += line + '\n';

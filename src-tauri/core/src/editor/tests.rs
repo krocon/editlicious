@@ -2487,3 +2487,240 @@ fn measure_027_small_selection_in_five_million_lines() {
     println!("027: selection text in 5 M lines: {per:.2} µs per call ({n} bytes)");
     assert!(per < 200.0);
 }
+
+// ---------------------------------------------------------------- snippets (design 030)
+
+fn snippet(s: &mut Session, template: &str) -> Frame {
+    run(
+        s,
+        Command::InsertSnippet {
+            template: template.into(),
+            from: None,
+            to: None,
+            vars: Default::default(),
+        },
+    )
+}
+
+fn selected(s: &Session) -> Vec<String> {
+    s.cursors()
+        .iter()
+        .map(|c| s.doc.text(c.start(), c.end()).unwrap())
+        .collect()
+}
+
+#[test]
+fn a_snippet_is_filled_in_with_tab_and_typing_only() {
+    let mut s = session("");
+    let f = snippet(&mut s, "SELECT ${1:*} FROM ${2:table} WHERE ${3:1=1};$0");
+    assert!(f.snippet);
+    assert_eq!(text(&s), "SELECT * FROM table WHERE 1=1;");
+    assert_eq!(selected(&s), ["*"]);
+    typ(&mut s, "i");
+    typ(&mut s, "d");
+    run(&mut s, Command::Indent);
+    assert_eq!(selected(&s), ["table"]);
+    typ(&mut s, "orders");
+    // back and forth: the placeholders followed the typing
+    run(&mut s, Command::Outdent);
+    assert_eq!(selected(&s), ["id"]);
+    run(&mut s, Command::Indent);
+    assert_eq!(selected(&s), ["orders"]);
+    run(&mut s, Command::Indent);
+    assert_eq!(selected(&s), ["1=1"]);
+    typ(&mut s, "x");
+    let f = run(&mut s, Command::Indent);
+    assert_eq!(text(&s), "SELECT id FROM orders WHERE x;");
+    assert_eq!(caret(&s), (0, 30), "the caret ends at $0");
+    assert!(!f.snippet, "the last stop ends the mode");
+    // Tab is a tab again
+    run(&mut s, Command::Indent);
+    assert_ne!(text(&s), "SELECT id FROM orders WHERE x;");
+}
+
+#[test]
+fn the_same_number_in_three_places_is_typed_together() {
+    let mut s = session("");
+    snippet(&mut s, "for (${1:i} = 0; $1 < n; $1++) {$0}");
+    assert_eq!(text(&s), "for (i = 0; i < n; i++) {}");
+    assert_eq!(s.cursors().len(), 3);
+    typ(&mut s, "i");
+    typ(&mut s, "d");
+    typ(&mut s, "x");
+    assert_eq!(text(&s), "for (idx = 0; idx < n; idx++) {}");
+    run(&mut s, Command::Backspace);
+    assert_eq!(text(&s), "for (id = 0; id < n; id++) {}");
+    let f = run(&mut s, Command::Indent);
+    assert_eq!(s.cursors().len(), 1);
+    assert_eq!(caret(&s), (0, 28));
+    assert!(!f.snippet);
+}
+
+#[test]
+fn a_snippet_is_one_undo_step_and_its_mode_survives_undo_and_redo() {
+    let mut s = session("x\n");
+    put(&mut s, 1, 0);
+    snippet(&mut s, "a ${1:one} b ${2:two}");
+    assert!(s.doc.info(1).can_undo);
+    typ(&mut s, "Q");
+    assert_eq!(text(&s), "x\na Q b two");
+    // undo the typing: the placeholder is selected again and Tab still knows the next one
+    run(&mut s, Command::Undo);
+    assert_eq!(text(&s), "x\na one b two");
+    assert_eq!(selected(&s), ["one"]);
+    let f = run(&mut s, Command::Redo);
+    assert!(f.snippet);
+    run(&mut s, Command::Indent);
+    assert_eq!(selected(&s), ["two"]);
+    // undo back before the snippet: one step for the insertion, the mode is over
+    run(&mut s, Command::Undo);
+    let f = run(&mut s, Command::Undo);
+    assert_eq!(text(&s), "x\n");
+    assert!(!f.snippet);
+    assert!(!s.doc.info(1).can_undo);
+}
+
+#[test]
+fn escape_or_leaving_the_placeholder_ends_the_mode() {
+    let mut s = session("\n");
+    snippet(&mut s, "${1:a} ${2:b}");
+    let f = run(&mut s, Command::SingleCursor);
+    assert!(!f.snippet);
+    // moving inside the placeholder keeps it, moving out ends it
+    let mut s = session("\nother");
+    snippet(&mut s, "${1:abc} ${2:b}");
+    let f = run(
+        &mut s,
+        Command::Move {
+            to: Motion::Left,
+            select: false,
+        },
+    );
+    assert!(f.snippet);
+    let f = run(
+        &mut s,
+        Command::Move {
+            to: Motion::Down,
+            select: false,
+        },
+    );
+    assert!(!f.snippet);
+    run(&mut s, Command::Indent);
+    assert!(text(&s).contains("other"), "a plain tab now");
+    assert_ne!(text(&s), "abc b\nother");
+}
+
+#[test]
+fn a_snippet_takes_the_indentation_variables_and_the_selection() {
+    let mut s = session("    word\r\n");
+    run(
+        &mut s,
+        Command::Configure {
+            tab_width: Some(2),
+            insert_spaces: Some(true),
+            detect: false,
+            wrap: None,
+            colors: None,
+            expand_weights: None,
+            math: None,
+            words: None,
+        },
+    );
+    run(
+        &mut s,
+        Command::Select {
+            sels: vec![Sel {
+                anchor: Pos::new(0, 4),
+                head: Pos::new(0, 8),
+            }],
+        },
+    );
+    let mut vars = std::collections::HashMap::new();
+    vars.insert("TABLE".to_owned(), "orders".to_owned());
+    run(
+        &mut s,
+        Command::InsertSnippet {
+            template: "BEGIN\n\t${1:$SELECTION} $TABLE\nEND$0".into(),
+            from: None,
+            to: None,
+            vars,
+        },
+    );
+    assert_eq!(text(&s), "    BEGIN\r\n      word orders\r\n    END\r\n");
+    assert_eq!(selected(&s), ["word"]);
+    // an explicit range replaces that text instead of the selection
+    let mut s = session("abc def");
+    run(
+        &mut s,
+        Command::InsertSnippet {
+            template: "[${1:x}]".into(),
+            from: Some(Pos::new(0, 4)),
+            to: Some(Pos::new(0, 7)),
+            vars: Default::default(),
+        },
+    );
+    assert_eq!(text(&s), "abc [x]");
+    assert_eq!(selected(&s), ["x"]);
+    // no placeholder: just text, caret behind it, no mode
+    let mut s = session("");
+    let f = snippet(&mut s, r"costs \$5");
+    assert_eq!(text(&s), "costs $5");
+    assert_eq!(caret(&s), (0, 8));
+    assert!(!f.snippet);
+}
+
+#[test]
+fn adjacent_and_nested_placeholders_keep_apart() {
+    // typing at the end of 1 does not grow 2 right behind it
+    let mut s = session("");
+    snippet(&mut s, "${1:a}${2:b}");
+    typ(&mut s, "x");
+    typ(&mut s, "y");
+    run(&mut s, Command::Indent);
+    assert_eq!(selected(&s), ["b"]);
+    assert_eq!(text(&s), "xyb");
+    // typing in an inner placeholder grows the outer one
+    let mut s = session("");
+    snippet(&mut s, "${1:f(${2:x})} $0");
+    run(&mut s, Command::Indent);
+    typ(&mut s, "abc");
+    run(&mut s, Command::Outdent);
+    assert_eq!(selected(&s), ["f(abc)"]);
+}
+
+// ---------------------------------------------------------------- completion from outside (design 028)
+
+#[test]
+fn the_completion_context_is_the_caret_its_line_and_the_word_begun() {
+    let mut s = session("alpha beta\n  SELECT nam FROM t👍 al\n");
+    put(&mut s, 1, 12);
+    let c = s.completion_context(true);
+    assert_eq!((c.line, c.ch), (1, 12));
+    assert_eq!(c.before, "  SELECT nam");
+    assert_eq!(c.word_from, 9);
+    assert_eq!(c.word_cell, 9);
+    assert!(c.single);
+    assert!(c.words.is_empty(), "no other word starts with nam");
+    // candidates of the word completion come along when asked for
+    put(&mut s, 1, 23);
+    let c = s.completion_context(true);
+    assert_eq!(c.word_from, 21, "characters, the emoji is one");
+    assert_eq!(c.words, vec![("alpha".to_owned(), false)]);
+    assert!(s.completion_context(false).words.is_empty());
+    // after a blank or a dot there is no word: it starts at the caret
+    put(&mut s, 1, 9);
+    let c = s.completion_context(true);
+    assert_eq!(c.word_from, 9);
+    // a selection or several carets: not a place to complete
+    run(&mut s, Command::SelectAll);
+    assert!(!s.completion_context(true).single);
+}
+
+#[test]
+fn the_completion_context_of_a_huge_line_is_small() {
+    let mut s = session(&"x ".repeat(400_000));
+    put(&mut s, 0, 700_001);
+    let c = s.completion_context(true);
+    assert_eq!(c.before.chars().count(), model::CONTEXT_CHARS);
+    assert_eq!(c.word_from, 700_000);
+}

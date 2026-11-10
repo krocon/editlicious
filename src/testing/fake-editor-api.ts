@@ -86,6 +86,7 @@ export function textFrame(lines: string[], over: Partial<Frame> = {}): Frame {
     hint: null,
     completion: null,
     readOnly: false,
+    snippet: false,
     ...over,
   };
 }

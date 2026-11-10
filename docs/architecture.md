@@ -155,3 +155,14 @@ Hell/Dunkel der Systemfarben.
 Engine-Befehl `replaceRange` (ein Undo-Schritt, gleicher Text = keine Änderung, Cursor bleiben im Text).
 Positionen der Seite: `{ line, ch }` 1-basiert, `ch` in Unicode-Codepunkten (README „Positions“).
 
+**Snippets (030):** `ed-core` `editor/snippet.rs` (Parser `$1`, `${1:…}`, `$0`, `$NAME`; Platzhalter-Modus in der
+Sitzung: Tab/Shift+Tab springen, gleiche Nummer = Mehrfach-Cursor) und `editor/track.rs`: Positionen wandern über
+das Änderungsprotokoll des Dokuments (`track_edits`/`take_edits`, nur aktiv, solange jemand folgt). Befehl
+`insertSnippet`, `Frame.snippet`.
+
+**Vervollständigung von außen (028):** `ProviderCompletion` (Fassade, je Instanz) fragt den Anbieter der Seite,
+filtert und fügt ein; die Ansicht zeichnet das in ihrer Vorschlagsliste über die Schnittstelle
+`ExternalCompletion` (`EDITOR_COMPLETION`, in der App `null`). Die Engine liefert nur den Kontext am Cursor
+(`completion_context`) – die Einträge der Seite überqueren die Engine-Grenze nie. Jede Text-/Caret-Änderung macht
+laufende Antworten wertlos (`seq` + `AbortSignal`).
+

@@ -417,6 +417,7 @@
   padding: 2px;
   list-style: none;
   min-width: 12ch;
+  max-width: min(70ch, 90%);
 
   li {
     display: flex;
@@ -438,5 +439,47 @@
 
   .kind {
     color: var(--color-text-muted);
+  }
+
+  /* suggestions of the page (design 028): a letter for the kind – `::part(icon-<kind>)` styles
+     it from outside –, the label takes the room, the detail keeps to the right */
+  .badge {
+    flex: none;
+    width: 1.4em;
+    margin-right: -1.2em;
+    border-radius: 3px;
+    text-align: center;
+    font-size: 0.85em;
+    color: var(--color-text-muted);
+    background: var(--color-surface-2);
+  }
+
+  .label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .more,
+  .doc {
+    display: block;
+    color: var(--color-text-muted);
+    cursor: default;
+  }
+
+  .more {
+    text-align: right;
+    font-size: 0.85em;
+  }
+
+  .doc {
+    max-width: 60ch;
+    max-height: calc(var(--lh) * 3);
+    margin-top: 2px;
+    padding-top: 2px;
+    overflow: hidden;
+    border-top: 1px solid var(--color-border);
+    border-radius: 0;
+    white-space: pre-wrap;
   }
 }

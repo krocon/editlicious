@@ -25,6 +25,7 @@ import { systemLanguage, useLanguage } from '../core/i18n/i18n';
 import { Scheme, SCHEMES } from '../core/settings/settings.models';
 import {
   EDITOR_CLIPBOARD,
+  EDITOR_COMPLETION,
   EDITOR_EMBEDDED,
   EDITOR_MCP,
   EDITOR_PLAYBACK,
@@ -38,7 +39,37 @@ import { DialogService } from '../shared/dialog/dialog.service';
 import { PickDialog } from '../shared/pick/pick-dialog';
 import { PickService } from '../shared/pick/pick.service';
 import { BrowserClipboard } from './browser-clipboard';
+import { before, EdPos, EdSelection, enginePos, pagePos } from './positions';
+
+export type { EdPos, EdSelection } from './positions';
+export type {
+  CompletionSources,
+  EdCompletionContext,
+  EdCompletionItem,
+  EdCompletionProvider,
+  EdCompletionResult,
+  EdSnippet,
+} from './provider-completion';
+
+/** Options of {@link EditliciousEditor.insertSnippet}. */
+export interface EdSnippetOptions {
+  /** The text to replace (default: the selection). */
+  range?: { start: EdPos; end: EdPos };
+  /** Values of the template's variables (`$TABLE`). */
+  vars?: Record<string, string>;
+}
+
+function sourcesAttribute(v: unknown): CompletionSources {
+  return v === 'provider' || v === 'words' ? v : 'both';
+}
 import { EmbeddedSettings } from './embedded-settings';
+import {
+  CompletionSources,
+  dateVars,
+  EdCompletionProvider,
+  EdSnippet,
+  ProviderCompletion,
+} from './provider-completion';
 import { EmbedEngineApi } from './wasm-editor-api';
 
 /** `textChange` / `ed-change`: what changed – never the text itself (design 025 E9). */
@@ -47,23 +78,6 @@ export interface EdChange {
   dirty: boolean;
   lineCount: number;
   charCount: number;
-}
-
-/**
- * A position in the text: line and column, both 1-based. The column counts characters as Unicode
- * code points within the line (an emoji is one, a combining mark is one of its own, the line
- * break none) – not UTF-16 units (design 027 E5).
- */
-export interface EdPos {
-  line: number;
-  ch: number;
-}
-
-/** A selected range in document order with its text. */
-export interface EdSelection {
-  text: string;
-  start: EdPos;
-  end: EdPos;
 }
 
 /** `caretChange` / `ed-caret`: 1-based line and column of the primary caret. */
@@ -76,22 +90,6 @@ export interface EdCaret {
   /** The primary selection in document order; both equal the caret when nothing is selected. */
   selStart: EdPos;
   selEnd: EdPos;
-}
-
-/** 1-based position of the page → the engine's 0-based one. */
-function enginePos(p: EdPos | null | undefined): Pos {
-  return {
-    line: Math.max(0, Math.round(Number(p?.line) || 1) - 1),
-    ch: Math.max(0, Math.round(Number(p?.ch) || 1) - 1),
-  };
-}
-
-function pagePos(p: Pos): EdPos {
-  return { line: p.line + 1, ch: p.ch + 1 };
-}
-
-function before(a: Pos, b: Pos): boolean {
-  return a.line < b.line || (a.line === b.line && a.ch <= b.ch);
 }
 
 /** Set by `element.ts`: the outputs also go out as DOM events `ed-change`, `ed-caret`, `ed-ready`. */
@@ -165,6 +163,8 @@ function lineNumbersAttribute(v: unknown): 'absolute' | 'relative' | 'off' {
     { provide: EDITOR_MCP, useValue: null },
     { provide: EDITOR_EMBEDDED, useValue: true },
     { provide: EDITOR_CLIPBOARD, useClass: BrowserClipboard },
+    ProviderCompletion,
+    { provide: EDITOR_COMPLETION, useExisting: ProviderCompletion },
   ],
   host: {
     '[attr.data-theme]': 'colors().theme',
@@ -222,6 +222,17 @@ export class EditliciousEditor {
   readonly mathHints = input(true, { transform: booleanAttribute });
   readonly wordSuggest = input(false, { transform: booleanAttribute });
   readonly uiLanguage = input<'auto' | 'en' | 'de'>('auto');
+  /**
+   * Suggestions the page provides (design 028): a function `(ctx) => items` (may be async), or
+   * `{ provideCompletions, triggerCharacters }`. Property only.
+   */
+  readonly completionProvider = input<EdCompletionProvider | null>(null);
+  /** With a provider: its entries and the words of the text (`both`), only one of them. */
+  readonly completionSources = input<CompletionSources, unknown>('both', {
+    transform: sourcesAttribute,
+  });
+  /** Snippets by prefix: in the suggestion list, Tab expands them (design 030 E6). Property only. */
+  readonly snippets = input<EdSnippet[] | null>(null);
 
   // ------------------------------------------------------------------ outputs
   readonly textChange = output<EdChange>();
@@ -286,6 +297,14 @@ export class EditliciousEditor {
         wordSuggest: this.wordSuggest(),
         statusBar: this.statusBar(),
       });
+    });
+    const completion = inject(ProviderCompletion);
+    effect(() => {
+      completion.provider.set(this.completionProvider() ?? null);
+      completion.sources.set(this.completionSources());
+      const snippets = this.snippets();
+      completion.snippets.set(Array.isArray(snippets) ? snippets : []);
+      completion.auto.set(this.wordSuggest());
     });
     effect(() => {
       const l = this.uiLanguage();
@@ -489,6 +508,27 @@ export class EditliciousEditor {
   /** Replaces every selection by `text` (inserts it at a caret) as one undo step. */
   replaceSelection(text: string): Promise<void> {
     return this.runCommand({ type: 'insert', text: String(text) });
+  }
+
+  /**
+   * Inserts a snippet with placeholders (design 030) in place of the selection (or `range`) as
+   * one undo step: `${1:name}`, `$2`, `$0`; Tab and Shift+Tab go from placeholder to placeholder.
+   * The second argument is a range or `{ range, vars }`.
+   */
+  insertSnippet(
+    template: string,
+    options?: EdSnippetOptions | { start: EdPos; end: EdPos },
+  ): Promise<void> {
+    const o = options as (EdSnippetOptions & { start?: EdPos; end?: EdPos }) | undefined;
+    const range = o?.start && o.end ? { start: o.start, end: o.end } : o?.range;
+    const vars: Record<string, string> = dateVars();
+    for (const [k, v] of Object.entries(o?.vars ?? {})) vars[k] = String(v);
+    return this.runCommand({
+      type: 'insertSnippet',
+      template: String(template),
+      ...(range ? { from: enginePos(range.start), to: enginePos(range.end) } : {}),
+      vars,
+    });
   }
 
   /** Replaces the whole text (clean, no undo back into the old one). */

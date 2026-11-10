@@ -219,20 +219,41 @@
     [id]="uid + 'completion-list'"
     [attr.aria-label]="texts.suggestions"
     [style.left.px]="c.x"
-    [style.top.px]="c.y"
+    [style.top.px]="c.top"
+    [style.bottom.px]="c.bottom"
     (mousedown)="$event.preventDefault(); $event.stopPropagation()"
   >
     @for (item of c.items; track $index) {
+      @let i = c.first + $index;
       <li
         role="option"
-        [id]="uid + 'completion-' + $index"
-        [attr.aria-selected]="$index === c.active"
-        [class.active]="$index === c.active"
-        (mousedown)="takeSuggestion($index, $event)"
+        [id]="uid + 'completion-' + i"
+        [attr.aria-selected]="i === c.active"
+        [attr.aria-posinset]="i + 1"
+        [attr.aria-setsize]="c.total"
+        [attr.part]="
+          c.external ? 'completion-item' + (item.kind ? ' item-' + item.kind : '') : null
+        "
+        [class.active]="i === c.active"
+        (mousedown)="takeSuggestion(i, $event)"
       >
+        @if (c.external) {
+          <span
+            class="badge"
+            aria-hidden="true"
+            [attr.part]="'completion-icon' + (item.kind ? ' icon-' + item.kind : '')"
+            >{{ item.badge }}</span
+          >
+        }
         <span class="label">{{ item.label }}</span>
-        <span class="kind">{{ kindLabel(item.kind) }}</span>
+        <span class="kind">{{ item.detail }}</span>
       </li>
+    }
+    @if (c.external && c.total > c.items.length) {
+      <li class="more" role="none">{{ c.active + 1 }} / {{ c.total }}</li>
+    }
+    @if (c.doc) {
+      <li class="doc" role="none" [id]="uid + 'completion-doc'">{{ c.doc }}</li>
     }
   </ul>
 }
@@ -248,7 +269,9 @@
   [attr.aria-activedescendant]="
     completionBox() ? uid + 'completion-' + completionBox()!.active : null
   "
-  [attr.aria-describedby]="hintBox() ? uid + 'math-hint' : null"
+  [attr.aria-describedby]="
+    hintBox() ? uid + 'math-hint' : completionBox()?.doc ? uid + 'completion-doc' : null
+  "
   autocapitalize="off"
   autocomplete="off"
   spellcheck="false"

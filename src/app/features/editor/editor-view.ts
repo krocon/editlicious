@@ -29,7 +29,12 @@ import { GotoBar } from '../find/goto-bar';
 import { PickService } from '../../shared/pick/pick.service';
 import { MENUS_TEXTS } from '../menus/menus-texts';
 import { ViewSettings } from '../settings/view-settings';
-import { EDITOR_CLIPBOARD, EDITOR_EMBEDDED, EDITOR_PLAYBACK } from './editor-host';
+import {
+  EDITOR_CLIPBOARD,
+  EDITOR_COMPLETION,
+  EDITOR_EMBEDDED,
+  EDITOR_PLAYBACK,
+} from './editor-host';
 import { language } from '../../core/i18n/i18n';
 
 /** Cells of padding left of the text. */
@@ -106,6 +111,8 @@ export class EditorView {
   private readonly rec = inject(EDITOR_PLAYBACK);
   private readonly embedded = inject(EDITOR_EMBEDDED);
   private readonly clipboard = inject(EDITOR_CLIPBOARD);
+  /** Suggestions from outside the engine (embedded editor, design 028); `null` in the app. */
+  private readonly ext = inject(EDITOR_COMPLETION);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly input = viewChild.required<ElementRef<HTMLTextAreaElement>>('input');
   private readonly measure = viewChild.required<ElementRef<HTMLElement>>('measure');
@@ -249,21 +256,53 @@ export class EditorView {
     return { ...pos, text, hex: h.hex };
   });
 
-  /** The suggestion list below the caret. */
+  /**
+   * The suggestion list below the caret: the engine's (arithmetic, words) or – embedded – the
+   * one a provider of the page fills (design 028 E4). `items` are the rows on screen, entry
+   * `top` first; `active` counts among all.
+   */
   protected readonly completionBox = computed(() => {
     const f = this.frame();
-    const c = f?.completion;
-    if (!f || !c || c.items.length === 0) return null;
+    if (!f) return null;
+    const c = f.completion;
+    const e = c && c.items.length ? null : (this.ext?.list() ?? null);
+    if ((!c || c.items.length === 0) && !e) return null;
+    const line = e ? e.line : c!.line;
+    const cell = e ? e.cell : c!.cell;
     // below the start of the word, so it stays put while typing (design 023 E14)
     const xy = this.caretXY();
-    const pos = this.anchor(f, c.line, c.cell) ?? {
+    const pos = this.anchor(f, line, cell) ?? {
       x: this.textLeft() + xy.x,
       y: xy.y + this.metrics().lh,
     };
+    const items = e
+      ? e.items.map((it) => ({
+          label: it.label,
+          kind: it.kind,
+          detail: it.detail || this.kindLabel(it.kind, true),
+          badge: (it.kind[0] ?? '').toUpperCase(),
+        }))
+      : c!.items.map((it) => ({
+          label: it.label,
+          kind: it.kind as string,
+          detail: this.kindLabel(it.kind),
+          badge: '',
+        }));
+    const total = e ? e.total : items.length;
+    // no room below: above the line
+    const lh = this.metrics().lh;
+    const height = items.length * lh + 8 + (e?.doc ? 3 * lh : 0);
+    const above = pos.y + height > this.size().height && pos.y - lh - height >= 0;
     return {
-      ...pos,
-      items: c.items,
-      active: Math.min(this.completionIndex(), c.items.length - 1),
+      x: pos.x,
+      top: above ? null : pos.y,
+      bottom: above ? this.size().height - (pos.y - lh) : null,
+      items,
+      first: e ? e.top : 0,
+      total,
+      active: e ? e.active : Math.min(this.completionIndex(), items.length - 1),
+      doc: e?.doc ?? '',
+      external: !!e,
     };
   });
 
@@ -279,7 +318,8 @@ export class EditorView {
     };
   }
 
-  protected kindLabel(kind: string): string {
+  /** The name of an entry's kind; `own`: a kind of the page (no name of ours: empty). */
+  protected kindLabel(kind: string, own = false): string {
     switch (kind) {
       case 'result':
         return this.texts.insertResult;
@@ -291,18 +331,22 @@ export class EditorView {
         return this.texts.wordKind;
       case 'keyword':
         return this.texts.keywordKind;
+      case 'snippet':
+        return this.texts.snippetKind;
       default:
-        return this.texts.hexadecimal;
+        return own ? '' : this.texts.hexadecimal;
     }
   }
 
   protected takeSuggestion(i: number, e?: MouseEvent): void {
     e?.preventDefault();
-    void this.send({ type: 'applyCompletion', index: i });
+    if (this.completionBox()?.external) this.ext?.accept(i);
+    else void this.send({ type: 'applyCompletion', index: i });
   }
 
   private registerCompletion(actions: ActionService): void {
     const step = (d: number) => {
+      if (this.completionBox()?.external) return this.ext?.move(d);
       const n = this.frame()?.completion?.items.length ?? 0;
       if (n) this.completionIndex.update((i) => (Math.min(i, n - 1) + d + n) % n);
     };
@@ -313,7 +357,12 @@ export class EditorView {
         'completion.accept': {
           run: () => this.takeSuggestion(this.completionBox()?.active ?? 0),
         },
-        'completion.close': { run: () => void this.send({ type: 'closeCompletion' }) },
+        'completion.close': {
+          run: () => {
+            if (this.completionBox()?.external) this.ext?.close();
+            else void this.send({ type: 'closeCompletion' });
+          },
+        },
       },
       this.destroyRef,
     );
@@ -351,6 +400,7 @@ export class EditorView {
   private overviewTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
+    this.ext?.bind({ docId: () => this.docId(), enqueue: (fn) => this.enqueue(fn) });
     afterNextRender(() => {
       this.measureFont();
       const ro = new ResizeObserver(() => this.onResize());
@@ -397,6 +447,8 @@ export class EditorView {
       const s = this.settings.settings();
       const comma =
         s.decimalSeparator === 'comma' || (s.decimalSeparator === 'auto' && language() === 'de');
+      // a provider of the page asks while typing instead of the engine (design 028 E5)
+      const external = !!this.ext?.on();
       untracked(
         () =>
           void this.send({
@@ -413,7 +465,7 @@ export class EditorView {
               decimals: s.mathDecimals < 0 ? null : s.mathDecimals,
               comma,
             },
-            words: { auto: s.wordSuggest, keywords: s.keywordSuggest },
+            words: { auto: s.wordSuggest && !external, keywords: s.keywordSuggest },
           }),
       );
     });
@@ -466,7 +518,8 @@ export class EditorView {
             this.gotoOpen() ||
             !!this.hintBox() ||
             !!this.frame()?.search ||
-            !!this.frame()?.multi,
+            !!this.frame()?.multi ||
+            !!this.frame()?.snippet,
         },
         'goto.line': { run: () => this.gotoOpen.set(true) },
         'view.language': { run: () => void this.chooseLanguage() },
@@ -787,6 +840,19 @@ export class EditorView {
       });
       return this.chain;
     }
+    const ext = this.ext?.on() ? this.ext : null;
+    if (ext && cmd.type === 'complete' && !this.frame()?.hint) {
+      // "show suggestions" asks the page's provider; arithmetic at the caret stays the engine's
+      ext.invoke();
+      return this.chain;
+    }
+    if (ext && cmd.type === 'indent' && !this.frame()?.snippet) {
+      // Tab behind a snippet prefix expands it (design 030 E6), else it is a tab
+      this.chain = this.chain.then(async () =>
+        this.runNow(id, (await ext.tabCommand().catch(() => null)) ?? cmd),
+      );
+      return this.chain;
+    }
     this.chain = this.chain.then(() => this.runNow(id, cmd));
     if (this.clipboard && (cmd.type === 'copy' || cmd.type === 'cut' || cmd.type === 'copyHtml')) {
       this.clipboard.write(id, cmd.type === 'copyHtml', this.chain);
@@ -797,7 +863,10 @@ export class EditorView {
   private async runNow(id: number, cmd: Command): Promise<void> {
     try {
       const f = await this.api.command(id, cmd);
-      if (id === this.docId()) this.show(f);
+      if (id === this.docId()) {
+        this.show(f);
+        this.ext?.after(cmd);
+      }
     } catch (e) {
       this.status.set(describeFsError(toFsError(e)));
     }
@@ -992,6 +1061,14 @@ export class EditorView {
 
   protected onWheel(e: WheelEvent): void {
     e.preventDefault();
+    // the wheel over a long list of the page's suggestions scrolls the list (design 028 E4)
+    if (this.completionBox()?.external) {
+      if ((e.target as Element | null)?.closest?.('.completion')) {
+        this.ext?.scroll(Math.sign(e.deltaY) * Math.max(1, Math.round(Math.abs(e.deltaY) / 40)));
+        return;
+      }
+      this.ext?.close();
+    }
     // scrolling closes the hint and the suggestions (prompt 020)
     this.hiddenHint.set(this.hintKey(this.frame()));
     if (this.frame()?.completion) void this.send({ type: 'closeCompletion' });

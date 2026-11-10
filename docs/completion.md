@@ -52,3 +52,9 @@ CustomerRepository
 
 Your words come after the built-in ones; at most 5 000 words per file, 64 files of up to 256 KB. The lists are read
 again whenever a file opens.
+
+## Embedded editor: suggestions of the page
+
+In `<editlicious-editor>` a page can provide its own suggestions (`completionProvider`) and snippets (`snippets`,
+`insertSnippet()`); they show in the same list. See the README of the npm package `editlicious-editor`
+(“Suggestions from your page”, “Snippets”) and the designs 028 and 030.

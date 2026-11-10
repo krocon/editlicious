@@ -212,6 +212,19 @@ pub enum Command {
     SetReadOnly {
         read_only: bool,
     },
+    /// Inserts a snippet with placeholders (design 030): `$1`, `${2:default}`, `$0`, `$NAME` …
+    /// in place of `from..to` (default: the primary selection) as one undo step; Tab and
+    /// Shift+Tab then go from placeholder to placeholder.
+    InsertSnippet {
+        template: String,
+        #[serde(default)]
+        from: Option<Pos>,
+        #[serde(default)]
+        to: Option<Pos>,
+        /// Values of the template's variables (`$TABLE`).
+        #[serde(default)]
+        vars: std::collections::HashMap<String, String>,
+    },
     /// Replaces the text between two positions as one undo step (design 027 E3); the same text
     /// changes nothing. The cursors stay where they are in the text (moved along with it);
     /// `caret`: one caret behind the new text instead.
@@ -279,6 +292,28 @@ pub struct Completion {
     pub items: Vec<CompletionItem>,
 }
 
+/// What a completion provider of the page needs to know about the caret (design 028 E2) – a
+/// few characters, never the text.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompletionContext {
+    pub line: usize,
+    pub ch: usize,
+    /// One caret without a selection (completion only makes sense then).
+    pub single: bool,
+    /// The line up to the caret – its last [`CONTEXT_CHARS`] characters at most.
+    pub before: String,
+    /// Where the word left of the caret starts (`ch` when there is none) and its cell.
+    pub word_from: usize,
+    pub word_cell: usize,
+    pub revision: u64,
+    /// The word completion's candidates for that word (when asked for): text, from the lexicon.
+    pub words: Vec<(String, bool)>,
+}
+
+/// Most characters of the line a [`CompletionContext`] hands out.
+pub const CONTEXT_CHARS: usize = 2_000;
+
 impl Command {
     /// Only changes the view (size, scroll, settings, colours) – not recorded (design 015 E1),
     /// allowed while a playback runs (E10).
@@ -331,6 +366,7 @@ impl Command {
                 | Command::ApplyCompletion { .. }
                 | Command::Evaluate
                 | Command::ReplaceRange { .. }
+                | Command::InsertSnippet { .. }
         )
     }
 }
@@ -486,4 +522,6 @@ pub struct Frame {
     pub completion: Option<Completion>,
     /// The session refuses edits (design 025 E1).
     pub read_only: bool,
+    /// A snippet is being filled in: Tab goes to the next placeholder, Escape ends it (030).
+    pub snippet: bool,
 }

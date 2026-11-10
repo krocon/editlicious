@@ -1,6 +1,11 @@
 import { Injectable } from '@angular/core';
 import { DocInfo, Pos } from '../app/core/editor/editor.models';
-import { EmbedEngineApi, EngineSelections, ScriptStep } from '../app/embed/wasm-editor-api';
+import {
+  EmbedEngineApi,
+  EngineCompletionContext,
+  EngineSelections,
+  ScriptStep,
+} from '../app/embed/wasm-editor-api';
 import { docInfo, FakeEditorApi } from './fake-editor-api';
 
 /** Test double of the embedded editor's engine (design 025): texts in memory, no WebAssembly. */
@@ -40,6 +45,32 @@ export class FakeEmbedEngineApi extends FakeEditorApi implements EmbedEngineApi 
   slice(id: number, from: number, to: number): Promise<string> {
     const lines = (this.texts.get(id) ?? '').split('\n');
     return Promise.resolve(lines.slice(from, to).join('\n'));
+  }
+
+  /** What `completionContext` answers; tests move the caret by changing it. */
+  context: EngineCompletionContext = {
+    line: 0,
+    ch: 0,
+    single: true,
+    before: '',
+    wordFrom: 0,
+    wordCell: 0,
+    revision: 0,
+    words: [],
+  };
+  contextReads = 0;
+
+  completionContext(_id: number, words: boolean): Promise<EngineCompletionContext> {
+    this.contextReads++;
+    return Promise.resolve({ ...this.context, words: words ? this.context.words : [] });
+  }
+
+  /** The caret stands behind `before` (the word begun is its last run of word characters). */
+  caretAfter(before: string, line = 0): void {
+    const word = /[\p{L}\p{N}_]*$/u.exec(before)?.[0] ?? '';
+    const ch = Array.from(before).length;
+    const wordFrom = ch - Array.from(word).length;
+    this.context = { ...this.context, line, ch, before, wordFrom, wordCell: wordFrom };
   }
 
   /** What `selections` answers (0-based). */

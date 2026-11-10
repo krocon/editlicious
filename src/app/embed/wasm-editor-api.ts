@@ -29,6 +29,8 @@ export abstract class EmbedEngineApi extends EditorApi {
   abstract text(id: number): Promise<string>;
   /** Lines `from..to` (0-based, end exclusive). */
   abstract slice(id: number, from: number, to: number): Promise<string>;
+  /** The caret for a completion provider (0-based; `words`: with the word candidates; 028). */
+  abstract completionContext(id: number, words: boolean): Promise<EngineCompletionContext>;
   /** The selections in document order with their texts (0-based positions, design 027 E1). */
   abstract selections(id: number): Promise<EngineSelections>;
   /** The text between two positions (0-based, clamped, either order). */
@@ -39,6 +41,21 @@ export abstract class EmbedEngineApi extends EditorApi {
   abstract setClipboard(id: number, text: string): Promise<void>;
   /** The steps of a typing script (`*.edscript`, docs/scripts.md) on its own clock. */
   abstract scriptSteps(script: string): Promise<ScriptStep[]>;
+}
+
+/** Mirror of Rust `model::CompletionContext` (design 028 E2). */
+export interface EngineCompletionContext {
+  line: number;
+  ch: number;
+  /** One caret without a selection. */
+  single: boolean;
+  /** The line up to the caret (its last 2000 characters at most). */
+  before: string;
+  wordFrom: number;
+  wordCell: number;
+  revision: number;
+  /** Candidates of the word completion: text, from the lexicon. */
+  words: [string, boolean][];
 }
 
 /** Answer of {@link EmbedEngineApi.selections}. */
@@ -98,6 +115,12 @@ export class WasmEditorApi extends EmbedEngineApi {
   /** Lines `from..to` (end exclusive). */
   slice(id: number, from: number, to: number): Promise<string> {
     return this.call('slice', id, from, to) as Promise<string>;
+  }
+
+  async completionContext(id: number, words: boolean): Promise<EngineCompletionContext> {
+    return JSON.parse(
+      (await this.call('completionContext', id, words)) as string,
+    ) as EngineCompletionContext;
   }
 
   selections(id: number): Promise<EngineSelections> {

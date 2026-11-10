@@ -83,7 +83,10 @@ Every attribute is also a property (`el.wordWrap = true`). Properties may be set
 | `color-swatches` | `colorSwatches` | boolean | `true` |
 | `overview` | `overview` | boolean (marks of matches beside the scroll bar) | `true` |
 | `math-hints` | `mathHints` | boolean | `true` |
-| `word-suggest` | `wordSuggest` | boolean (suggest words while typing) | `false` |
+| `word-suggest` | `wordSuggest` | boolean (suggest while typing: words, and your [provider](#suggestions-from-your-page)) | `false` |
+| `completion-sources` | `completionSources` | `both`, `provider`, `words` – with a provider: its entries, the words of the text, or both | `both` |
+| – | `completionProvider` | a function `(ctx) => items` – see [Suggestions from your page](#suggestions-from-your-page) | `null` |
+| – | `snippets` | `[{ prefix, body, description? }]` – see [Snippets](#snippets) | `null` |
 | `ui-language` | `uiLanguage` | `auto`, `en`, `de` | `auto` |
 
 Boolean attributes follow HTML: present = `true` (`<editlicious-editor readonly word-wrap>`).
@@ -104,6 +107,7 @@ const all = await ed.getSelections();     // every cursor / block selection, in 
 const where = await ed.getRange({ line: 3, ch: 1 }, { line: 5, ch: 12 });
 await ed.replaceRange(sel.start, sel.end, format(sel.text)); // one undo step
 await ed.replaceSelection('NOW()');
+await ed.insertSnippet('SELECT ${1:*} FROM ${2:table};$0'); // Tab goes from placeholder to placeholder
 await ed.goTo(120, 5);                    // line 120, column 5
 const { total, current } = await ed.find('TODO', { wholeWord: true });
 await ed.runAction('edit.sortAsc');       // any action of the editor
@@ -122,6 +126,71 @@ document has. To turn `ch` into a UTF-16 index of a line's text: `[...lineText].
 
 `getSelection()` and `getRange()` cost as much as the range is long, not as the document is: a small selection in
 a text of five million lines is instant; selecting everything hands you everything (at most 64 MB).
+
+## Suggestions from your page
+
+The editor knows nothing about your language's names – your page does. Give it a provider and its entries appear in
+the editor's own suggestion list, sorted, filtered while typing and inserted on <kbd>Enter</kbd> or <kbd>Tab</kbd>:
+
+```js
+ed.completionProvider = async (ctx) => {
+  // ctx: position, lineText (the line up to the caret), word, wordStart, trigger, triggerCharacter, signal
+  const afterFrom = /\bFROM\s+\w*$/i.test(ctx.lineText);
+  const rows = await fetchNames(afterFrom ? 'tables' : 'columns', { signal: ctx.signal });
+  return rows.map((r) => ({
+    label: r.name,
+    kind: r.kind,                  // your own class: 'table', 'column', …
+    detail: r.type,                // at the right
+    documentation: r.comment,      // below the list while the entry is active
+    insertText: r.quoted,          // default: the label
+  }));
+};
+ed.completionProvider.triggerCharacters = ['.'];
+```
+
+- **When it is asked:** <kbd>Ctrl</kbd>+<kbd>Space</kbd>, a typed trigger character, and – with `word-suggest` –
+  while typing, from two characters of a word.
+- **It never blocks typing.** The provider may take as long as it likes; when the text or the caret changes
+  meanwhile, `ctx.signal` aborts and a late answer is dropped – no flicker, no stale list.
+- **An array is complete:** typing on filters it in the editor without asking again (50 000 entries stay fluid –
+  only ten rows are on screen). Return `{ items, incomplete: true }` to be asked on every key.
+- **More text only on request:** `await ctx.getRange(start, end)` or `ctx.getSlice(fromLine, toLine)`.
+- **`insertText` with placeholders:** set `snippet: true` (`'COUNT(${1:*})$0'`), see [Snippets](#snippets).
+- **With the editor's own word completion:** `completion-sources="both"` (default) lists your entries first, then
+  the words of the text; `provider` only yours; `words` only the editor's.
+- **Icons and colours of kinds:** the first letter of `kind` is the icon. Style it from your page:
+
+  ```css
+  editlicious-editor::part(icon-table) { color: white; background: #b58900; }
+  editlicious-editor::part(item-column) { font-style: italic; }
+  ```
+
+Without a provider the editor behaves as before.
+
+## Snippets
+
+`insertSnippet(template)` inserts a text with placeholders as one undo step. <kbd>Tab</kbd> and
+<kbd>Shift</kbd>+<kbd>Tab</kbd> go from placeholder to placeholder, <kbd>Esc</kbd> or leaving the placeholder ends
+it.
+
+| In the template | Meaning |
+|---|---|
+| `$1`, `${1:default}` | placeholder 1, with a default text |
+| the same number twice | typed together at every place |
+| `${1\|one,two\|}` | a choice (the first option is inserted) |
+| `$0` | where the caret ends (default: behind the snippet) |
+| `$NAME`, `${NAME:default}` | a variable: yours (`{ vars: { NAME: '…' } }`), or `SELECTION`, `DATE`, `TIME`, `CURRENT_YEAR`, `CURRENT_MONTH`, `CURRENT_DATE`, `CURRENT_HOUR`, `CURRENT_MINUTE`, `CURRENT_SECOND` |
+| `\$`, `\}`, `\\` | the characters themselves |
+
+```js
+await ed.insertSnippet('SELECT ${1:*} FROM $TABLE WHERE ${2:1=1};$0', { vars: { TABLE: 'orders' } });
+await ed.insertSnippet('/* $SELECTION */', { range: { start, end } });
+
+// by prefix: in the suggestion list, and Tab right behind the prefix expands it
+ed.snippets = [{ prefix: 'sel', body: 'SELECT ${1:*} FROM ${2:table};$0', description: 'select' }];
+```
+
+New lines of a template take the indentation of the line it is inserted in; a tab is the editor's indentation.
 
 ## Events
 

@@ -3,7 +3,14 @@ import { TestBed } from '@angular/core/testing';
 import { OS } from '../core/actions/platform';
 import { textFrame } from '../../testing/fake-editor-api';
 import { FakeEmbedEngineApi } from '../../testing/fake-embed-engine-api';
-import { EdCaret, EdChange, EditliciousEditor } from './editlicious-editor';
+import {
+  EdCaret,
+  EdChange,
+  EdCompletionProvider,
+  EditliciousEditor,
+  EdSnippet,
+} from './editlicious-editor';
+import { Command } from '../core/editor/editor.models';
 import { EmbedEngineApi } from './wasm-editor-api';
 
 const flush = async () => {
@@ -19,6 +26,9 @@ const flush = async () => {
       language="Rust"
       [scheme]="schemeA()"
       [colorScheme]="colorSchemeA()"
+      [completionProvider]="providerA()"
+      [snippets]="snippetsA()"
+      [wordSuggest]="suggestA()"
       [readOnly]="readOnlyA()"
       [wordWrap]="true"
       lineNumbers="relative"
@@ -34,6 +44,9 @@ class Host {
   readonly valueA = signal('fn main() {}\n');
   readonly schemeA = signal<'paper' | 'night' | 'auto' | 'none'>('paper');
   readonly colorSchemeA = signal<'light' | 'dark' | null>(null);
+  readonly providerA = signal<EdCompletionProvider | null>(null);
+  readonly snippetsA = signal<EdSnippet[] | null>(null);
+  readonly suggestA = signal(false);
   readonly readOnlyA = signal(false);
   changes: EdChange[] = [];
   carets: EdCaret[] = [];
@@ -233,6 +246,100 @@ describe('EditliciousEditor (design 025)', () => {
     ]);
     // the whole text never crossed for any of this
     expect(api.textReads).toBe(0);
+  });
+
+  it('shows the suggestions of the page in its list and takes one (design 028)', async () => {
+    const { a, b, api, host, fixture } = await setup();
+    const id = [...api.texts.keys()][0];
+    const words = () =>
+      (
+        api.commands.filter((c) => c.id === id && c.cmd.type === 'configure').at(-1)!
+          .cmd as Extract<Command, { type: 'configure' }>
+      ).words;
+    host.suggestA.set(true);
+    await fixture.whenStable();
+    await flush();
+    expect(words()?.auto).toBe(true);
+    host.providerA.set(() => [
+      { label: 'orders', kind: 'table', detail: 'public', documentation: 'All orders.' },
+      { label: 'order_items', kind: 'table' },
+    ]);
+    await fixture.whenStable();
+    await flush();
+    // the provider asks while typing now – the engine's own word list stays shut
+    expect(words()?.auto).toBe(false);
+    const ta = a.shadowRoot!.querySelector('textarea')!;
+    const key = (k: string, init: KeyboardEventInit = {}) =>
+      ta.dispatchEvent(
+        new KeyboardEvent('keydown', { key: k, bubbles: true, composed: true, ...init }),
+      );
+    api.caretAfter('ord');
+    key(' ', { ctrlKey: true, code: 'Space' });
+    await flush();
+    await fixture.whenStable();
+    const options = () => [...a.shadowRoot!.querySelectorAll('[role="option"]')];
+    expect(options().map((o) => o.querySelector('.label')!.textContent)).toEqual([
+      'order_items',
+      'orders',
+    ]);
+    expect(api.commands.some((c) => c.cmd.type === 'complete')).toBe(false);
+    expect(options()[1].getAttribute('part')).toBe('completion-item item-table');
+    expect(options()[1].querySelector('.badge')!.getAttribute('part')).toBe(
+      'completion-icon icon-table',
+    );
+    expect(options()[1].querySelector('.kind')!.textContent).toBe('public');
+    expect(options()[0].getAttribute('aria-setsize')).toBe('2');
+    expect(ta.getAttribute('aria-activedescendant')).toBe(options()[0].id);
+    expect(b.shadowRoot!.querySelector('[role="option"]')).toBeNull();
+    key('ArrowDown');
+    await fixture.whenStable();
+    expect(ta.getAttribute('aria-activedescendant')).toBe(options()[1].id);
+    expect(a.shadowRoot!.querySelector('.completion .doc')!.textContent).toBe('All orders.');
+    expect(ta.getAttribute('aria-describedby')).toBe(
+      a.shadowRoot!.querySelector('.completion .doc')!.id,
+    );
+    api.commands = [];
+    key('Enter');
+    await flush();
+    await fixture.whenStable();
+    expect(api.commands.find((c) => c.cmd.type === 'replaceRange')?.cmd).toMatchObject({
+      text: 'orders',
+      caret: true,
+    });
+    expect(api.commands.some((c) => c.cmd.type === 'newline')).toBe(false);
+    expect(options()).toEqual([]);
+  });
+
+  it('inserts snippets: by method, and Tab behind a prefix (design 030)', async () => {
+    const { a, api, ea, host, fixture } = await setup();
+    await ea.insertSnippet('SELECT ${1:*} FROM $TABLE', { vars: { TABLE: 'orders' } });
+    const cmd = api.commands.at(-1)!.cmd as Extract<Command, { type: 'insertSnippet' }>;
+    expect(cmd).toMatchObject({ type: 'insertSnippet', template: 'SELECT ${1:*} FROM $TABLE' });
+    expect(cmd.vars).toMatchObject({ TABLE: 'orders' });
+    expect(cmd.vars!['CURRENT_YEAR']).toMatch(/^\d{4}$/);
+    expect(cmd.from).toBeUndefined();
+    await ea.insertSnippet('x', { start: { line: 2, ch: 1 }, end: { line: 2, ch: 4 } });
+    expect(api.commands.at(-1)!.cmd).toMatchObject({
+      from: { line: 1, ch: 0 },
+      to: { line: 1, ch: 3 },
+    });
+    host.snippetsA.set([{ prefix: 'sel', body: 'SELECT ${1:*};$0' }]);
+    await fixture.whenStable();
+    const ta = a.shadowRoot!.querySelector('textarea')!;
+    const tab = () =>
+      ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, composed: true }));
+    api.caretAfter('sel');
+    api.commands = [];
+    tab();
+    await flush();
+    expect(api.commands.map((c) => c.cmd.type)).toContain('insertSnippet');
+    expect(api.commands.map((c) => c.cmd.type)).not.toContain('indent');
+    // no prefix before the caret: a tab
+    api.caretAfter('select ');
+    api.commands = [];
+    tab();
+    await flush();
+    expect(api.commands.map((c) => c.cmd.type)).toContain('indent');
   });
 
   it('follows value, readOnly and settles methods', async () => {

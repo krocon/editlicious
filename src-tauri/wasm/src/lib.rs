@@ -191,6 +191,13 @@ impl Editor {
             .to_string()
     }
 
+    /// The caret for a completion provider of the page (JSON `CompletionContext`, design 028):
+    /// position, the line up to the caret, the word begun; `words`: with the word candidates.
+    #[wasm_bindgen(js_name = completionContext)]
+    pub fn completion_context(&self, words: bool) -> String {
+        serde_json::to_string(&self.session.completion_context(words)).unwrap_or_default()
+    }
+
     /// The selections in document order (JSON `{ "primary": index, "ranges": [Sel] }`, 0-based
     /// lines and characters – design 027 E1).
     pub fn selections(&self) -> String {
@@ -572,6 +579,33 @@ mod tests {
         assert_eq!(e.text(), "a-b\r\ne\u{301}x\r\n");
         e.command(r#"{"type":"undo"}"#).unwrap();
         assert_eq!(e.text(), "a👍b\r\ne\u{301}x\r\n");
+    }
+
+    #[test]
+    fn completion_context_and_snippets() {
+        let mut e = Editor::new("SELECT name\nFROM ord", Some("SQL".into()));
+        e.command(r#"{"type":"goTo","line":1,"ch":8}"#).unwrap();
+        let c: serde_json::Value = serde_json::from_str(&e.completion_context(true)).unwrap();
+        assert_eq!(c["before"], "FROM ord");
+        assert_eq!(c["wordFrom"], 5);
+        assert_eq!(c["single"], true);
+        assert!(
+            c["words"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|w| w[0] == "order" || w[0] == "ORDER"),
+            "{c}"
+        );
+        let f = e
+            .command(r#"{"type":"insertSnippet","template":"${1:orders} o$0","from":{"line":1,"ch":5},"to":{"line":1,"ch":8}}"#)
+            .unwrap();
+        assert!(f.contains("\"snippet\":true"));
+        assert_eq!(e.text(), "SELECT name\nFROM orders o");
+        e.command(r#"{"type":"type","text":"t"}"#).unwrap();
+        let f = e.command(r#"{"type":"indent"}"#).unwrap();
+        assert!(f.contains("\"snippet\":false"));
+        assert_eq!(e.text(), "SELECT name\nFROM t o");
     }
 
     #[test]

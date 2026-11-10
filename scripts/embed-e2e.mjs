@@ -114,6 +114,54 @@ try {
   check(sel.same === 'a👍b\r\ne\u0301x\r\nlast', 'replaceRange() with the same text changes nothing');
   check(sel.replaced.endsWith('\r\nfirst') && sel.undone.endsWith('\r\nlast'), 'replaceRange() is one undo step');
 
+  // suggestions from the page (prompt 028): 50 000 entries stay fluid, a slow answer never shows late
+  const cOptions = () => page.evaluate(() => [...document.getElementById('c').shadowRoot.querySelectorAll('.completion [role="option"] .label')].map((e) => e.textContent));
+  await page.evaluate(() => document.getElementById('c').setValue('SELECT * FROM '));
+  await textarea('c').focus();
+  await page.keyboard.press('ControlOrMeta+End');
+  const k0 = Date.now();
+  await page.keyboard.type('orders_00');
+  await page.waitForFunction(() => document.getElementById('c').shadowRoot.querySelector('.completion [role="option"]'), null, { timeout: 5000 });
+  check(Date.now() - k0 < 3000, `typing with a provider of 50 000 entries: ${Date.now() - k0} ms for 9 keys`);
+  const opts = await cOptions();
+  check(opts.length === 10 && opts[0].startsWith('orders_00'), `the list shows ten of the matches (${opts[0]})`);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(200);
+  const taken = await page.evaluate(() => document.getElementById('c').getValue());
+  check(/^SELECT \* FROM orders_00\d\d/.test(taken) && (await cOptions()).length === 0, `Enter takes the entry (${JSON.stringify(taken)})`);
+  await page.check('#slow');
+  await page.keyboard.type(' WHERE cust');
+  await page.waitForTimeout(300);
+  const typedOn = await page.evaluate(() => document.getElementById('c').getValue());
+  check(typedOn.endsWith(' WHERE cust'), 'a provider that takes 2 s does not hold up typing');
+  await page.keyboard.press('ArrowLeft');
+  await page.waitForTimeout(2600);
+  check((await cOptions()).length === 0, 'its late answer does not show after the caret moved');
+  await page.uncheck('#slow');
+  // snippets (prompt 030): prefix + Tab, then Tab from placeholder to placeholder
+  await page.evaluate(() => {
+    const c = document.getElementById('c');
+    c.wordSuggest = false; // no list while typing: Tab is the snippet's
+    return c.setValue('');
+  });
+  await textarea('c').focus();
+  await page.keyboard.type('sel');
+  await page.keyboard.press('Tab');
+  await page.keyboard.type('id');
+  await page.keyboard.press('Tab');
+  await page.keyboard.type('t');
+  await page.keyboard.press('Tab');
+  await page.keyboard.type('x>1');
+  await page.keyboard.press('Tab');
+  await page.waitForTimeout(200);
+  const filled = await page.evaluate(() => {
+    const c = document.getElementById('c');
+    c.wordSuggest = true;
+    return c.getValue();
+  });
+  check(filled === 'SELECT id FROM t WHERE x>1;', `a snippet is filled in with Tab and typing (${JSON.stringify(filled)})`);
+
   // copy goes to the system clipboard
   await page.evaluate(() => document.getElementById('a').runCommand({ type: 'selectAll' }));
   await textarea('a').focus();

@@ -14,6 +14,7 @@ import { Command, MatchCount, Query } from './app/core/editor/editor.models';
 import {
   EdPos,
   EdSelection,
+  EdSnippetOptions,
   EditliciousEditor,
   EMIT_DOM_EVENTS,
   FACADE,
@@ -21,7 +22,19 @@ import {
 import { initEditlicious } from './app/embed/engine';
 
 export { initEditlicious };
-export type { EdCaret, EdChange, EdPos, EdSelection } from './app/embed/editlicious-editor';
+export type {
+  CompletionSources,
+  EdCaret,
+  EdChange,
+  EdCompletionContext,
+  EdCompletionItem,
+  EdCompletionProvider,
+  EdCompletionResult,
+  EdPos,
+  EdSelection,
+  EdSnippet,
+  EdSnippetOptions,
+} from './app/embed/editlicious-editor';
 
 const TAG = 'editlicious-editor';
 
@@ -60,6 +73,12 @@ function withMethods(base: NgElementConstructor<unknown>): CustomElementConstruc
     }
     replaceSelection(text: string): Promise<void> {
       return facade(this).then((f) => f.replaceSelection(text));
+    }
+    insertSnippet(
+      template: string,
+      options?: EdSnippetOptions | { start: EdPos; end: EdPos },
+    ): Promise<void> {
+      return facade(this).then((f) => f.insertSnippet(template, options));
     }
     setValue(text: string): Promise<void> {
       return facade(this).then((f) => f.setValue(text));

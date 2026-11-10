@@ -17,6 +17,8 @@ export interface WasmEditor {
   setClipboard(text: string): void;
   text(): string;
   slice(from: number, to: number): string;
+  /** JSON `CompletionContext` (design 028). */
+  completionContext(words: boolean): string;
   /** JSON `{ primary, ranges: Sel[] }` (0-based, design 027). */
   selections(): string;
   rangeText(fromLine: number, fromCh: number, toLine: number, toCh: number): string;
@@ -104,6 +106,8 @@ export function createEngineHost(mod: WasmModule): EngineHandler {
         return get(a[0]).text();
       case 'slice':
         return get(a[0]).slice(a[1] as number, a[2] as number);
+      case 'completionContext':
+        return get(a[0]).completionContext(a[1] === true);
       case 'selections': {
         // positions and texts in one step – nothing can change in between (design 027 E1)
         const s = get(a[0]);
