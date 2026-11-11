@@ -39,3 +39,5 @@ Thumbs.db
 # MCP sidecar for the bundles (scripts/mcp-sidecar.mjs)
 /src-tauri/binaries
 site/embed/lib/
+/.npmrc
+/.env
