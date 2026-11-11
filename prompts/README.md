@@ -54,6 +54,7 @@ Kritischer Pfad zum ersten nutzbaren Editor: **001 → 002 → 003 → 004**. Da
 | 028 | [028-vervollstaendigung-von-aussen.md](done/028-vervollstaendigung-von-aussen.md) | Web Component: Anbieter für Vorschläge, den die Seite liefert (schema-commander E3) | 027, 030 | M–L | ✅ 10.11.2026 |
 | 029 | [029-markierungen-von-aussen.md](done/029-markierungen-von-aussen.md) | Web Component: Unterstreichungen, Randmarken und Hinweise von außen, wandern mit dem Text (schema-commander E4) | 026, 027 | M | ✅ 10.11.2026 |
 | 030 | [030-snippets.md](done/030-snippets.md) | Textbausteine mit Platzhaltern und Tab-Stopps (schema-commander E5) | 027 | M | ✅ 10.11.2026 |
+| 031 | [031-scroll-nach-kuerzen-kommentar-umschalten.md](031-scroll-nach-kuerzen-kommentar-umschalten.md) | Ansicht folgt, wenn die längste Zeile kürzer wird (kein Verschieben nach `replaceRange`); Aktion „Zeilenkommentar umschalten“ mit dem Zeichen der Sprache (schema-commander 023) | 025, 027 | S–M | offen |
 
 ## Folge-Ideen (noch ohne Prompt)
 
