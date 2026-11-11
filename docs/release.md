@@ -23,7 +23,7 @@ pnpm version:check          # Teil von `pnpm check` und beider Workflows
 |---|---|---|
 | **Pre-flight** | Versionen gleich (und = Tag), alle `scripts/*.test.mjs`, Release Notes seit dem letzten Tag erzeugt (in die Zusammenfassung des Laufs und in den Entwurf) | immer |
 | **Packages (macos / linux / windows)** | `pnpm notices:check`, optional Signierung, Bauen mit `tauri-action`; dann `scripts/collect-packages.mjs`: alle erwarteten Pakete da (dmg + app / msi + setup.exe / deb + rpm + AppImage), Größen und SHA-256 in der Zusammenfassung. Linux: `.deb` enthält Programm, Lizenzhinweise und `.desktop` mit `%F`/`MimeType`. macOS: App ist universal (x86_64 + arm64), Lizenzhinweise drin, Dokumenttypen mit Rang `Alternate`. Artefakt `packages-<os>` (14 Tage) | immer |
-| **SHA256SUMS.txt** | eine Prüfsummendatei über alle Pakete, `sha256sum -c` geprüft; Artefakt und – bei Entwurf – am Release | immer |
+| **SHA256SUMS.txt** | eine Prüfsummendatei über alle Pakete, `sha256sum -c` geprüft; Artefakt und – bei Entwurf – am Release. Beim Entwurf aus den Dateien **am Release** gebildet (`scripts/release-sums.mjs`): `tauri-action` packt die macOS-`.app` selbst (`editlicious_universal.app.tar.gz`, andere Bytes als unser Archiv); alle anderen Pakete müssen am Release byte-gleich mit dem Bau sein | immer |
 
 | Auslöser | Ergebnis |
 |---|---|

@@ -276,7 +276,11 @@ jobs:
     name: SHA256SUMS.txt
     needs: [check, build]
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
     steps:
+      - uses: actions/checkout@v5
       - uses: actions/download-artifact@v4
         with:
           pattern: packages-*
@@ -287,14 +291,24 @@ jobs:
           cd all
           cat SHA256SUMS-*.txt | sort -k2 > SHA256SUMS.txt
           sha256sum -c SHA256SUMS.txt
-          { echo '### SHA256SUMS.txt'; echo; echo '```'; cat SHA256SUMS.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      # With a release the file must describe what hangs on it: tauri-action uploads its own
+      # archive of the macOS .app (other name, other bytes than ours – v1.2.0 named a missing file).
+      # So: download the draft's files, sum them, check every built package is there unchanged.
+      - name: Checksums of the files on the draft release
+        if: needs.check.outputs.publish == 'true'
+        run: |
+          mkdir release
+          gh release download "v${{ needs.check.outputs.version }}" --dir release
+          node scripts/release-sums.mjs release all
+          (cd release && sha256sum -c SHA256SUMS.txt)
+          cp release/SHA256SUMS.txt all/SHA256SUMS.txt
+      - name: Summary
+        run: |
+          { echo '### SHA256SUMS.txt'; echo; echo '```'; cat all/SHA256SUMS.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: SHA256SUMS
           path: all/SHA256SUMS.txt
       - name: Attach to the draft release
         if: needs.check.outputs.publish == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
         run: gh release upload "v${{ needs.check.outputs.version }}" all/SHA256SUMS.txt --clobber

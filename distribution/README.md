@@ -58,7 +58,10 @@ weniger SmartScreen-Warnungen) – vorbereitet in `docs/release.md`. Daneben: Gi
 - **`SHA256SUMS.txt` von v1.2.0 nennt eine Datei, die es am Release nicht gibt:** sechs Zeilen (dmg, setup.exe, msi,
   deb, rpm, AppImage) stimmen mit den Assets überein, die siebte heißt `editlicious.app.tar.gz` (`48b7c811…`), das
   Asset aber `editlicious_universal.app.tar.gz` (`5650d4ee…`). `sha256sum -c SHA256SUMS.txt` meldet deshalb eine
-  fehlende Datei. Ursache im Release-Workflow suchen (Summen vor dem Umbenennen/Neupacken des macOS-Archivs?).
+  fehlende Datei. Ursache: die Summen kamen aus den Bau-Artefakten, deren `.app`-Archiv `scripts/collect-packages.mjs`
+  selbst packt; ans Release lädt `tauri-action` ein eigenes. Behoben ab dem nächsten Release (`scripts/release-sums.mjs`
+  summiert die Dateien am Entwurf). Für v1.2.0 nachreichen: `node scripts/release-sums.mjs <download-ordner> <ordner>`
+  und hochladen – nur mit Marcs Freigabe (Release-Änderung).
 - v1.0.0 hatte gar kein `SHA256SUMS.txt` (v0.1.0 schon). Vermutlich wurde 1.0.0 nach dem fehlgeschlagenen macOS-Lauf (Fix `584fd18`) ohne den
   Prüfsummen-Job veröffentlicht. Nachreichen nur mit Marcs Freigabe (Release-Änderung).
 - GitHub-Repo: **Description, Website und Topics sind leer** – vor den Verzeichnis-Einträgen setzen (der Prompt fragt
