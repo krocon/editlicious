@@ -47,14 +47,27 @@ The same editor view and engine (as WebAssembly in a worker) also come as a stan
 ```
 
 Attributes / properties: `value`, `language` (grammar, `TypeScript`, or a file name like `app.ts`), `scheme`
-(`auto` or one of the 13 schemes), `readonly`, `word-wrap`, `line-numbers`, `status-bar`, `tab-width`,
-`insert-spaces`, `font-size`, `font-family`, `indent-guides`, `color-swatches`, `overview`, `math-hints`,
-`word-suggest`, `ui-language`. Events `ed-change` (revision, dirty, line and character count – never the text),
-`ed-caret`, `ed-ready`; methods `getValue()`, `getSlice()`, `setValue()`, `loadText()`, `focus()`, `runCommand()`,
-`runAction()`, `find()`, `goTo()`, `playScript()`. In Angular: `<ed-editor [value]="…" language="TypeScript" [readOnly]="true" />`
-(`src/app/embed/editlicious-editor.ts`). Build with `pnpm build:element` (→ `dist/element/editlicious-editor/`, the npm package `editlicious-editor` – see
-[its README](packages/editlicious-editor/README.md));
-`site/embed/` shows two editors side by side.
+(`auto`, one of the 13 schemes, or `none` – only the page's own colours, with `color-scheme`), `readonly`,
+`word-wrap`, `line-numbers`, `status-bar`, `tab-width`, `insert-spaces`, `font-size`, `font-family`,
+`indent-guides`, `color-swatches`, `overview`, `math-hints`, `word-suggest`, `completion-sources`, `ui-language`;
+properties only: `completionProvider`, `snippets`. Events `ed-change` (revision, dirty, line and character count –
+never the text), `ed-caret`, `ed-ready`, `ed-marker-click`; methods `getValue()`, `getSlice()`, `setValue()`,
+`loadText()`, `focus()`, `runCommand()`, `runAction()`, `find()`, `goTo()`, `playScript()`.
+
+Since 1.2 a page can extend the editor without the editor knowing its language – everything optional:
+
+- **Colours:** every colour is a documented CSS variable on the element (`--ed-*`, `--syn-*`, `--color-*`).
+- **Selections and ranges:** `getSelection()`, `getSelections()`, `getRange()`, `replaceRange()`,
+  `replaceSelection()`.
+- **Suggestions:** `completionProvider` – the page's entries in the editor's suggestion list.
+- **Markers:** `setMarkers(owner, …)`, `clearMarkers()`, `getMarkers()` – underlines, gutter symbols and hints
+  that follow the text.
+- **Snippets:** `insertSnippet()` and `snippets` – placeholders, Tab from stop to stop.
+
+In Angular: `<ed-editor [value]="…" language="TypeScript" [readOnly]="true" />`
+(`src/app/embed/editlicious-editor.ts`). Build with `pnpm build:element` (→ `dist/element/editlicious-editor/`, the
+npm package `editlicious-editor` – see [its README](packages/editlicious-editor/README.md) for the full reference);
+`site/embed/` shows three editors side by side.
 
 ## Development
 
