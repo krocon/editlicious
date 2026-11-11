@@ -1,13 +1,13 @@
 {
-    "version": "1.0.0",
+    "version": "1.2.0",
     "description": "Calm, keyboard-first text editor for huge files",
     "homepage": "https://krocon.de/products/editlicious/",
     "license": "MIT",
     "notes": "Needs the Microsoft Edge WebView2 Runtime. The executables are not code-signed. AI control (off by default): $dir\\editlicious-mcp.exe",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/krocon/editlicious/releases/download/v1.0.0/editlicious_1.0.0_x64-setup.exe#/dl.7z",
-            "hash": "acec1979b3d76e0e4754c7b90a522b4be98bf14caa78b08a85d267c75ebd0982"
+            "url": "https://github.com/krocon/editlicious/releases/download/v1.2.0/editlicious_1.2.0_x64-setup.exe#/dl.7z",
+            "hash": "3cf1795e3b0abd622c932079d755162241c574d3c387aa1246c885f9fbaf7ea5"
         }
     },
     "pre_install": "Remove-Item \"$dir\\`$PLUGINSDIR\" -Recurse -Force -ErrorAction SilentlyContinue",

@@ -2,13 +2,13 @@
 #
 # Repackages the official .deb (built on Ubuntu → base core22, GNOME extension provides WebKitGTK 4.1).
 # Steps (Marc, needs snapcraft CLI or Launchpad remote build): register the name `editlicious` on snapcraft.io
-# (browser), `snapcraft` locally, `snap install --dangerous ./editlicious_1.0.0_amd64.snap`, test,
+# (browser), `snapcraft` locally, `snap install --dangerous ./editlicious_1.2.0_amd64.snap`, test,
 # `snapcraft upload --release=edge …`. Strict confinement: files via the `home`/`removable-media` plugs; files
 # outside home (e.g. /var/log) are not reachable – say so in the store description or ask for classic confinement.
 # Icon: add `icon:` (e.g. snap/gui/editlicious.png = src-tauri/icons/128x128@2x.png) once the file lives in the repo.
 name: editlicious
 title: editlicious
-version: '1.0.0'
+version: '1.2.0'
 summary: Calm, keyboard-first text editor for huge files
 description: |
   editlicious is a calm, keyboard-first text editor that opens and edits huge files – millions of lines, lines with
@@ -37,9 +37,9 @@ apps:
 parts:
   editlicious:
     plugin: dump
-    source: https://github.com/krocon/editlicious/releases/download/v1.0.0/editlicious_1.0.0_amd64.deb
+    source: https://github.com/krocon/editlicious/releases/download/v1.2.0/editlicious_1.2.0_amd64.deb
     source-type: deb
-    source-checksum: sha256/bacd01bf4325340079548f69b187f8df5d57a96c0cbd055da913972ee3c3b1a4
+    source-checksum: sha256/21dfb8233dfec8aea12d1fbf3c6806a69f3e2909d0bd11b4b08652f2634d0796
     override-prime: |
       craftctl default
       sed -i 's|^Icon=.*|Icon=${SNAP}/usr/share/icons/hicolor/128x128/apps/editlicious.png|' \

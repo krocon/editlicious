@@ -3,7 +3,7 @@
 > Prompt `prompts/done/022-distribution.md` (27.10.2026), analog zu comic-commander-tauri `prompts/014-distribution.md`.
 > Inhalt: ein Prompt für Claude im Browser, der editlicious bei Paketmanagern, Verzeichnissen und
 > Discovery-Plattformen einträgt, dazu Fakten, Texte und Manifeste, die er nutzt.
-> Stand: Release **v1.0.0** (26.10.2026, unsigniert).
+> Stand: Release **v1.2.0** (11.11.2026, unsigniert); davor v1.0.0 (Erstfassung dieses Ordners, 27.10.2026).
 
 ## Dateien
 
@@ -12,7 +12,7 @@
 | [`browser-agent-prompt.md`](browser-agent-prompt.md) | **Der Prompt** – Abschnitt zwischen „PROMPT BEGINNT/ENDET“ in Claude (Browser) kopieren |
 | [`facts.json`](facts.json) | einzige Quelle der Fakten: Version, URLs, SHA-256, OS, Paketdetails, Features, Unbekanntes |
 | [`listing.md`](listing.md) | Texte EN/DE (Tagline, kurz, lang), Kategorien, Tags, Show-HN- und This-Week-in-Rust-Entwurf |
-| `manifests/winget/…/1.0.0/` | WinGet: version, installer (NSIS user + MSI machine), locale en-US |
+| `manifests/winget/…/1.2.0/` | WinGet: version, installer (NSIS user + MSI machine), locale en-US |
 | `manifests/scoop/editlicious.json` | Scoop (Extras oder eigener Bucket), NSIS als 7z entpackt, `checkver`/`autoupdate` |
 | `manifests/homebrew/editlicious.rb` | Homebrew Cask (+ `binary` für `editlicious-mcp`) – **offizieller Tap blockiert** bis Signierung + Notarisierung |
 | `manifests/chocolatey/editlicious/` | Chocolatey: `.nuspec` + `tools/chocolateyinstall.ps1` (MSI) |
@@ -24,20 +24,22 @@
 Der Browser-Agent liest die Dateien auf GitHub → **`distribution/` muss auf `main` gepusht sein**, bevor der Prompt
 läuft (ist es seit dem Commit dieses Ordners).
 
-## Woher die Werte kommen (geprüft am 27.10.2026)
+## Woher die Werte kommen (geprüft am 11.11.2026; Plattformregeln: Recherche vom 27.10.2026)
 
-- Version, Asset-Namen, Größen, SHA-256: GitHub-Release-API für `v1.0.0`; alle sieben Pakete heruntergeladen und die
+- Version, Asset-Namen, Größen, SHA-256: GitHub-Release-API für `v1.2.0`; alle sieben Pakete heruntergeladen und die
   Summen lokal nachgerechnet (alle gleich).
 - Aus den Paketen gelesen: Linux-Binaries `/usr/bin/editlicious` und `/usr/bin/editlicious-mcp`, Desktop-Datei
   `editlicious.desktop` (`Categories=Development;`, `MimeType=text/plain;`), Icon-Name `editlicious`,
   deb-Abhängigkeiten, keine AppStream-Datei; Windows-Exe `editlicious.exe` + `editlicious-mcp.exe` (MSI und NSIS),
-  MSI-`ProductCode` `{1B63B59C-…}`, `UpgradeCode` `{0CAA1787-…}` (= `tauri.conf.json`), `ALLUSERS=1`; macOS
+  MSI-`ProductCode` `{B7A8AEC5-…}`, `UpgradeCode` `{0CAA1787-…}` (= `tauri.conf.json`), `ALLUSERS=1`; macOS
   `editlicious.app` universal (x86_64 + arm64, auch das Sidecar), `LSMinimumSystemVersion` 12.0.
 - Features, Plattformen, Hinweise: Produktseite https://krocon.de/products/editlicious/ und `README.md`.
-- LICENSE am Tag `v1.0.0`: SHA-256 `786cdc49…` (im PKGBUILD).
+- LICENSE am Tag `v1.2.0`: SHA-256 `786cdc49…` (im PKGBUILD).
 - Plattformregeln: Homebrew (Gatekeeper-Pflicht seit 1.9.2026, Homebrew 5.0), awesome-rust (> 50 Stars oder
   > 2 000 crates.io-Downloads), MCP Registry (Paket in npm/PyPI/NuGet/crates.io/OCI oder `.mcpb` am Release).
-- Geprüft: `appstreamcli validate` und `desktop-file-validate` (s. unten), JSON/YAML syntaktisch. **Nicht** geprüft
+- Geprüft (für v1.0.0, 27.10.2026): `appstreamcli validate` und `desktop-file-validate`, JSON/YAML syntaktisch. Für v1.2.0
+  wurden nur Version, Datum, URLs, Summen und der MSI-ProductCode ersetzt (JSON/YAML/XML wieder syntaktisch geprüft;
+  `.SRCINFO` von Hand angepasst, nicht per `makepkg --printsrcinfo`). **Nicht** geprüft
   (kein Werkzeug im Container): `winget validate` (die drei winget-Dateien sind aber gegen die JSON-Schemas 1.10.0 aus `microsoft/winget-cli` geprüft), `makepkg`/`namcap`, `brew audit`, `flatpak-builder`, `snapcraft`,
   `choco pack` – im Prompt als ungetestet markiert.
 
@@ -53,8 +55,11 @@ weniger SmartScreen-Warnungen) – vorbereitet in `docs/release.md`. Daneben: Gi
 
 ## Befunde für das nächste Release
 
-- **v1.0.0 hat kein `SHA256SUMS.txt`** (v0.1.0 schon) – die Produktseite und `docs/release.md` versprechen es für
-  jedes Release. Vermutlich wurde 1.0.0 nach dem fehlgeschlagenen macOS-Lauf (Fix `584fd18`) ohne den
+- **`SHA256SUMS.txt` von v1.2.0 nennt eine Datei, die es am Release nicht gibt:** sechs Zeilen (dmg, setup.exe, msi,
+  deb, rpm, AppImage) stimmen mit den Assets überein, die siebte heißt `editlicious.app.tar.gz` (`48b7c811…`), das
+  Asset aber `editlicious_universal.app.tar.gz` (`5650d4ee…`). `sha256sum -c SHA256SUMS.txt` meldet deshalb eine
+  fehlende Datei. Ursache im Release-Workflow suchen (Summen vor dem Umbenennen/Neupacken des macOS-Archivs?).
+- v1.0.0 hatte gar kein `SHA256SUMS.txt` (v0.1.0 schon). Vermutlich wurde 1.0.0 nach dem fehlgeschlagenen macOS-Lauf (Fix `584fd18`) ohne den
   Prüfsummen-Job veröffentlicht. Nachreichen nur mit Marcs Freigabe (Release-Änderung).
 - GitHub-Repo: **Description, Website und Topics sind leer** – vor den Verzeichnis-Einträgen setzen (der Prompt fragt
   danach, Freigabe A).

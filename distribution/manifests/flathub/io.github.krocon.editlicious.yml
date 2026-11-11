@@ -31,8 +31,8 @@ modules:
     sources:
       - type: file
         dest-filename: editlicious.deb
-        url: https://github.com/krocon/editlicious/releases/download/v1.0.0/editlicious_1.0.0_amd64.deb
-        sha256: bacd01bf4325340079548f69b187f8df5d57a96c0cbd055da913972ee3c3b1a4
+        url: https://github.com/krocon/editlicious/releases/download/v1.2.0/editlicious_1.2.0_amd64.deb
+        sha256: 21dfb8233dfec8aea12d1fbf3c6806a69f3e2909d0bd11b4b08652f2634d0796
         only-arches: [x86_64]
       - type: file
         path: io.github.krocon.editlicious.metainfo.xml

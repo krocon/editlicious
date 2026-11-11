@@ -2,7 +2,7 @@
 # Texts: distribution/listing.md. No personal e-mail address in public manifests (support = GitHub issues).
 
 PackageIdentifier: MarcKronberg.editlicious
-PackageVersion: 1.0.0
+PackageVersion: 1.2.0
 PackageLocale: en-US
 Publisher: Marc Kronberg
 PublisherUrl: https://krocon.de/
@@ -29,6 +29,6 @@ Tags:
   - multiple-cursors
   - syntax-highlighting
   - encoding
-ReleaseNotesUrl: https://github.com/krocon/editlicious/releases/tag/v1.0.0
+ReleaseNotesUrl: https://github.com/krocon/editlicious/releases/tag/v1.2.0
 ManifestType: defaultLocale
 ManifestVersion: 1.10.0

@@ -5,7 +5,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>editlicious</id>
-    <version>1.0.0</version>
+    <version>1.2.0</version>
     <packageSourceUrl>https://github.com/krocon/editlicious/tree/main/distribution/manifests/chocolatey</packageSourceUrl>
     <owners>{{CHOCOLATEY_USERNAME}}</owners>
     <title>editlicious</title>
@@ -29,7 +29,7 @@
 - No telemetry, no accounts, no update pings
 
 Free and open source (MIT). Requires the Microsoft Edge WebView2 Runtime. The installer is not code-signed.]]></description>
-    <releaseNotes>https://github.com/krocon/editlicious/releases/tag/v1.0.0</releaseNotes>
+    <releaseNotes>https://github.com/krocon/editlicious/releases/tag/v1.2.0</releaseNotes>
   </metadata>
   <files>
     <file src="tools\**" target="tools" />

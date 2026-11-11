@@ -5,7 +5,7 @@
 
 pkgname=editlicious-bin
 _pkgname=editlicious
-pkgver=1.0.0
+pkgver=1.2.0
 pkgrel=1
 pkgdesc='Calm, keyboard-first text editor for huge files'
 arch=('x86_64')
@@ -19,7 +19,7 @@ options=('!strip' '!debug')
 source=("${_pkgname}-${pkgver}.deb::https://github.com/krocon/editlicious/releases/download/v${pkgver}/editlicious_${pkgver}_amd64.deb"
         "LICENSE-${pkgver}::https://raw.githubusercontent.com/krocon/editlicious/v${pkgver}/LICENSE")
 noextract=("${_pkgname}-${pkgver}.deb")
-sha256sums=('bacd01bf4325340079548f69b187f8df5d57a96c0cbd055da913972ee3c3b1a4'
+sha256sums=('21dfb8233dfec8aea12d1fbf3c6806a69f3e2909d0bd11b4b08652f2634d0796'
             '786cdc49559acade1d3ff493832ec03a03382c3b3ac4ad3dd4b2047b74be1526')
 
 package() {

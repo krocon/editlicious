@@ -3,7 +3,7 @@
 > So benutzen: den Abschnitt ab **„— PROMPT BEGINNT —“** vollständig in eine neue Sitzung von Claude im Browser
 > (Claude in Chrome oder der eingebaute Browser der Claude-App) kopieren. Voraussetzung: der Ordner `distribution/`
 > ist auf `main` von `krocon/editlicious` gepusht (der Agent liest die Manifeste dort im Browser).
-> Erstellt am 27.10.2026 für Release **v1.0.0** (Prompt `prompts/done/022-distribution.md`). Für ein neues Release
+> Erstellt am 27.10.2026 für v1.0.0, aktualisiert am 11.11.2026 für Release **v1.2.0** (Prompt `prompts/done/022-distribution.md`). Für ein neues Release
 > zuerst `distribution/facts.json` und die Manifeste aktualisieren (`distribution/README.md`).
 
 ---
@@ -43,7 +43,7 @@ Erfolg, den du nicht auf der Plattform selbst gesehen hast (Bestätigungsseite, 
    ist `EINGEREICHT`, erst eine sichtbare Freischaltung ist `VERÖFFENTLICHT`.
 8. **Name immer klein:** „editlicious“, auch am Satzanfang und in Titelfeldern (sofern das Formular es zulässt).
 
-## 2. Quellen und Fakten (Stand v1.0.0)
+## 2. Quellen und Fakten (Stand v1.2.0)
 
 Lies zuerst diese Seiten im Browser und gleiche ab. Weicht etwas von der Tabelle ab, gilt die Quelle – dann den
 Unterschied im Bericht nennen.
@@ -53,17 +53,17 @@ Unterschied im Bericht nennen.
 | Produktseite (maßgeblich für Features) | https://krocon.de/products/editlicious/ |
 | Live-Demo (Engine als WebAssembly) | https://krocon.de/products/editlicious/demo/ |
 | Repository + README | https://github.com/krocon/editlicious |
-| Release v1.0.0 (Pakete, Prüfsummen je Asset) | https://github.com/krocon/editlicious/releases/tag/v1.0.0 |
+| Release v1.2.0 (Pakete, Prüfsummen je Asset) | https://github.com/krocon/editlicious/releases/tag/v1.2.0 |
 | KI-Steuerung (MCP) | https://github.com/krocon/editlicious/blob/main/docs/mcp.md |
 | **Faktendatei** | https://github.com/krocon/editlicious/blob/main/distribution/facts.json |
 | **Eintragstexte EN/DE, Tags, Kategorien** | https://github.com/krocon/editlicious/blob/main/distribution/listing.md |
 | **Manifeste** | https://github.com/krocon/editlicious/tree/main/distribution/manifests |
 | Rohdateien (zum Kopieren) | `https://raw.githubusercontent.com/krocon/editlicious/main/distribution/<pfad>` |
 
-Kernfakten (aus Release-API, Paketen, README und Produktseite am 27.10.2026 geprüft):
+Kernfakten (aus Release-API, Paketen, README und Produktseite am 11.11.2026 geprüft):
 
-- **Name:** editlicious · **Version:** 1.0.0 (Tag `v1.0.0`, veröffentlicht 26.10.2026, kein Pre-release; davor
-  v0.1.0 als Pre-release) · **Lizenz:** MIT (Drittteile: `THIRD-PARTY-NOTICES.txt` im Paket) · **Preis:** kostenlos,
+- **Name:** editlicious · **Version:** 1.2.0 (Tag `v1.2.0`, veröffentlicht 11.11.2026, kein Pre-release; davor
+  v1.1.0 und v1.0.0, v0.1.0 als Pre-release) · **Lizenz:** MIT (Drittteile: `THIRD-PARTY-NOTICES.txt` im Paket) · **Preis:** kostenlos,
   Open Source · **Autor/Publisher:** Marc Kronberg · **Technik:** Tauri 2, Rust (Engine `ed-core`), Angular.
 - **Was es ist:** Texteditor für riesige Dateien (Millionen Zeilen, Zeilen mit Millionen Zeichen, bis 4 GB),
   tastaturgesteuert und ablenkungsarm. **Keine IDE** (keine Projektansicht, kein Language Server, kein Plugin-Store).
@@ -75,19 +75,22 @@ Kernfakten (aus Release-API, Paketen, README und Produktseite am 27.10.2026 gepr
   Plattformen (s. Abschnitt 4).
 - **Beigaben in jedem Paket:** `editlicious-mcp` (MCP-Server für KI-Assistenten, in der App standardmäßig aus, nur
   lokal) und die CLI `editlicious render` (Aufnahmen/Skripte als Video, MP4 braucht ein externes ffmpeg).
-- **Prüfsummendatei:** v1.0.0 hat **kein** `SHA256SUMS.txt` (die Produktseite behauptet es für jedes Release) – die
-  Release-Seite zeigt je Asset ein `sha256:`; das sind die Werte unten. Im Bericht als Befund nennen, nicht
-  „reparieren“.
+- **Prüfsummendatei:** v1.2.0 hat ein `SHA256SUMS.txt`; seine Zeilen für die sechs Pakete unten stimmen mit den
+  `sha256:`-Angaben der Release-Seite überein (das sind die Werte unten). Die siebte Zeile nennt
+  `editlicious.app.tar.gz`, das Asset heißt aber `editlicious_universal.app.tar.gz` und hat eine andere Summe –
+  im Bericht als Befund nennen, nicht „reparieren“.
+- **Web Component:** Der Editor gibt es auch als npm-Paket `editlicious-editor` (für Webseiten). Das ist eine
+  Bibliothek, nicht die Desktop-App und kein MCP-Server – für die Einträge hier nur als Zusatzinformation.
 - **Downloads (stabil, versioniert):**
 
 | Paket | URL | SHA-256 |
 |---|---|---|
-| macOS dmg | https://github.com/krocon/editlicious/releases/download/v1.0.0/editlicious_1.0.0_universal.dmg | `4ff4af99be572c636b260e932d7651296a7f8acc4703382408978b20a5d2320f` |
-| Windows setup.exe | https://github.com/krocon/editlicious/releases/download/v1.0.0/editlicious_1.0.0_x64-setup.exe | `acec1979b3d76e0e4754c7b90a522b4be98bf14caa78b08a85d267c75ebd0982` |
-| Windows msi | https://github.com/krocon/editlicious/releases/download/v1.0.0/editlicious_1.0.0_x64_en-US.msi | `6ce8722d1895eeb90c0a43f06b97de2f0071b3eb301d418a46870a6b4d03941e` |
-| Linux deb | https://github.com/krocon/editlicious/releases/download/v1.0.0/editlicious_1.0.0_amd64.deb | `bacd01bf4325340079548f69b187f8df5d57a96c0cbd055da913972ee3c3b1a4` |
-| Linux rpm | https://github.com/krocon/editlicious/releases/download/v1.0.0/editlicious-1.0.0-1.x86_64.rpm | `4d5902a36cc7861a01910c4618b09cbe7d368a67a0707488ea2e2f85edb8810e` |
-| Linux AppImage | https://github.com/krocon/editlicious/releases/download/v1.0.0/editlicious_1.0.0_amd64.AppImage | `55e95eebd8a9397733605b14c98abfda331d001d983955ad9995d4d981b33a6a` |
+| macOS dmg | https://github.com/krocon/editlicious/releases/download/v1.2.0/editlicious_1.2.0_universal.dmg | `4c902b37293df54cdac0d1a06136c7876f6d007fa33358907ad507968972632a` |
+| Windows setup.exe | https://github.com/krocon/editlicious/releases/download/v1.2.0/editlicious_1.2.0_x64-setup.exe | `3cf1795e3b0abd622c932079d755162241c574d3c387aa1246c885f9fbaf7ea5` |
+| Windows msi | https://github.com/krocon/editlicious/releases/download/v1.2.0/editlicious_1.2.0_x64_en-US.msi | `dc3ea0fb6a800c22e6e6d1960c2e9e0d3793e4a3d1cf40435f581f27b6e34982` |
+| Linux deb | https://github.com/krocon/editlicious/releases/download/v1.2.0/editlicious_1.2.0_amd64.deb | `21dfb8233dfec8aea12d1fbf3c6806a69f3e2909d0bd11b4b08652f2634d0796` |
+| Linux rpm | https://github.com/krocon/editlicious/releases/download/v1.2.0/editlicious-1.2.0-1.x86_64.rpm | `9cc9b825fa7580767e447e50225b27f4f2826be3588da3aa2a4b5fc9be8ebb3b` |
+| Linux AppImage | https://github.com/krocon/editlicious/releases/download/v1.2.0/editlicious_1.2.0_amd64.AppImage | `054eaba20f9f15b260285fd282b7e31f0e242654797d6b114bcd219cb8580ab4` |
 
   Für Verzeichnisse, die nur einen Download-Link wollen: **https://github.com/krocon/editlicious/releases** (bleibt
   bei neuen Versionen gültig). Für Paketmanager immer die versionierten URLs oben. `editlicious_universal.app.tar.gz`
@@ -121,7 +124,7 @@ Flathub-Build, Chocolatey-Push) · `CLI-NÖTIG` (nur per Kommandozeile/SSH, Brow
 - Passt das Produkt? (Desktop-App, kostenlos, Open Source, die angebotenen OS, Kategorie Texteditor/Entwicklerwerkzeug.)
   Nein → `UNGEEIGNET`.
 - Technische Voraussetzung erfüllt? (Signierung, Architektur, Build aus Quellen, Bekanntheitsschwellen wie Stars –
-  das Repo ist neu, Stand 27.10.2026: 0 Stars.) Nein → `BLOCKIERT` mit genauer Anforderung und Quelle (Link auf die
+  das Repo ist neu, Stand 11.11.2026: 0 Stars.) Nein → `BLOCKIERT` mit genauer Anforderung und Quelle (Link auf die
   Regel).
 - Kostet etwas? → nur mit Freigabe (Abschnitt 6), sonst `WARTET_AUF_MARC`.
 - Priorität = Reichweite × Relevanz × Erfolgsaussicht ÷ Aufwand. Zielgruppe: Entwickler, Admins, Datenleute – wer
@@ -144,12 +147,12 @@ wenn sie nicht mehr stimmt.
 
 | # | Plattform | Methode | Vorbewertung | Vorbereitete Datei |
 |---|---|---|---|---|
-| P1 | **WinGet** (microsoft/winget-pkgs) | PR-WEB | geeignet. Unsignierte Installer sind zulässig, die Validierung prüft aber mit Defender/SmartScreen. Identifier `MarcKronberg.editlicious` (Schreibweise im Repo bei ähnlichen Paketen prüfen). Microsoft-CLA wird im PR verlangt → **Freigabe C**. | `manifests/winget/manifests/m/MarcKronberg/editlicious/1.0.0/` (3 Dateien) |
+| P1 | **WinGet** (microsoft/winget-pkgs) | PR-WEB | geeignet. Unsignierte Installer sind zulässig, die Validierung prüft aber mit Defender/SmartScreen. Identifier `MarcKronberg.editlicious` (Schreibweise im Repo bei ähnlichen Paketen prüfen). Microsoft-CLA wird im PR verlangt → **Freigabe C**. | `manifests/winget/manifests/m/MarcKronberg/editlicious/1.2.0/` (3 Dateien) |
 | P2 | **Scoop** – Bucket `ScoopInstaller/Extras` | PR-WEB | Aufnahmekriterien in `CONTRIBUTING.md` des Buckets lesen (Bekanntheit!) – bei 0 Stars wahrscheinlich `BLOCKIERT`. Alternative: eigener Bucket `krocon/scoop-bucket` → neues Repo → **Freigabe B**. | `manifests/scoop/editlicious.json` |
 | P3 | **AUR** (`editlicious-bin`) | CLI-NÖTIG | geeignet, Binärpaket aus dem .deb. Account-Anlage geht im Browser (aur.archlinux.org/register, **Freigabe G**), das Hochladen nur per `git push` über SSH → Marc. Prüfe, dass der Name frei ist. | `manifests/aur/editlicious-bin/PKGBUILD`, `.SRCINFO` |
 | P4 | **AppImageHub** (AppImage/appimage.github.io) | PR-WEB | wahrscheinlich geeignet: neue Datei `data/editlicious` mit der Releases-URL. Die CI dort startet das AppImage auf einer älteren Distribution und liest AppStream-Daten – fehlt `metainfo.xml` im AppImage oder scheitert der Start, CI-Log lesen und `BLOCKIERT` melden. README/Regeln des Repos zuerst lesen. | `manifests/appimagehub/editlicious` |
 | P5 | **Chocolatey** Community | BUILD-SYSTEM / CLI-NÖTIG | geeignet, aber das Paket wird per `choco push` mit API-Key hochgeladen; prüfe, ob die Website heute einen Upload im Browser anbietet. Moderation prüft das Paket, Wochen Laufzeit. Account im Browser (Freigabe G); API-Key nie anzeigen. | `manifests/chocolatey/editlicious/` (`.nuspec`, `tools/chocolateyinstall.ps1`; Platzhalter `{{CHOCOLATEY_USERNAME}}`) |
-| P6 | **Homebrew Cask** – offizieller Tap | PR-WEB | **BLOCKIERT**: Homebrew unterstützt seit 1. September 2026 keine Casks mehr, die Gatekeeper nicht bestehen (signiert + notarisiert); v1.0.0 ist unsigniert. Regel auf https://docs.brew.sh/Acceptable-Casks nachlesen und zitieren. | `manifests/homebrew/editlicious.rb` |
+| P6 | **Homebrew Cask** – offizieller Tap | PR-WEB | **BLOCKIERT**: Homebrew unterstützt seit 1. September 2026 keine Casks mehr, die Gatekeeper nicht bestehen (signiert + notarisiert); v1.2.0 ist unsigniert. Regel auf https://docs.brew.sh/Acceptable-Casks nachlesen und zitieren. | `manifests/homebrew/editlicious.rb` |
 | P6b | Homebrew – eigener Tap `krocon/homebrew-tap` | REPO-NÖTIG | möglich (auch für Comic Commander nutzbar), aber Nutzer müssen die unsignierte App selbst freigeben. Nur mit **Freigabe B**; sonst `WARTET_AUF_MARC`. | dieselbe `.rb` unter `Casks/` |
 | P7 | **Flathub** | PR-WEB + BUILD-SYSTEM | grundsätzlich geeignet (App-ID `io.github.krocon.editlicious` passt zum GitHub-Konto, Verifizierung über GitHub). Flathub erwartet bei Open Source in der Regel einen Build aus den Quellen (Cargo- und pnpm-Quellen offline); der Entwurf nutzt das .deb und ist **nur für lokale Tests**. Ein Texteditor braucht breiten Dateizugriff (`--filesystem=home`) – das muss im PR begründet werden. Einreichung = PR gegen `flathub/flathub` (Branch `new-pr`) – erst nach lokalem Build durch Marc → `VORBEREITET`, `WARTET_AUF_MARC`. Anforderungen unter https://docs.flathub.org/docs/for-app-authors/requirements lesen. | `manifests/flathub/io.github.krocon.editlicious.yml`, `.metainfo.xml` |
 | P8 | **Snap Store** | BUILD-SYSTEM | möglich: Name `editlicious` auf snapcraft.io registrieren (Account nötig, **Freigabe C/G**), Bauen/Hochladen per snapcraft-CLI oder Launchpad → Marc. Strict confinement sperrt Dateien außerhalb von Home (z. B. `/var/log`) – für einen Log-Editor relevant; „classic“ müsste beantragt werden (Regeln lesen). | `manifests/snap/snapcraft.yaml` (Entwurf, ungetestet) |
@@ -168,7 +171,7 @@ desktop app“).
 
 | # | Plattform | Vorbewertung |
 |---|---|---|
-| M1 | Offizielle **MCP Registry** (registry.modelcontextprotocol.io) | **BLOCKIERT**: verlangt ein Paket in npm/PyPI/NuGet/crates.io/OCI oder ein `.mcpb`-Bundle am GitHub-Release (URL muss „mcp“ enthalten, `fileSha256`); gibt es für v1.0.0 nicht. Veröffentlichung geht außerdem per `mcp-publisher`-CLI, nicht im Browser. Nur im Bericht als Option für ein späteres Release (MCPB-Asset) führen. Regeln: https://modelcontextprotocol.io/registry/package-types |
+| M1 | Offizielle **MCP Registry** (registry.modelcontextprotocol.io) | **BLOCKIERT**: verlangt ein Paket in npm/PyPI/NuGet/crates.io/OCI oder ein `.mcpb`-Bundle am GitHub-Release (URL muss „mcp“ enthalten, `fileSha256`); gibt es für v1.2.0 nicht. Veröffentlichung geht außerdem per `mcp-publisher`-CLI, nicht im Browser. Nur im Bericht als Option für ein späteres Release (MCPB-Asset) führen. Regeln: https://modelcontextprotocol.io/registry/package-types |
 | M2 | Kuratierte MCP-Listen (z. B. `punkpeye/awesome-mcp-servers`, Abschnitt für Editoren/Developer Tools) | prüfen: Regeln lesen; nur eintragen, wenn die Liste auch Server zulässt, die eine Desktop-App voraussetzen. Zeile mit Hinweis „needs the editlicious app“. |
 | M3 | Weitere MCP-Kataloge (mcp.so, Glama, Smithery, PulseMCP) | einzeln prüfen: viele indizieren GitHub-Repos selbst oder wollen ein installierbares Paket. Nur offizielle Einreichungswege, keine Angaben, die einen eigenständigen Server vortäuschen. Sonst `UNGEEIGNET`. |
 
@@ -232,10 +235,10 @@ posten. Regeln der Community zur Eigenwerbung vorher lesen und im Bericht verlin
 
 ### Phase 1 – Bestandsaufnahme (≈ 15 min)
 
-1. Produktseite, Live-Demo, Repository/README, Release v1.0.0, `facts.json` und `listing.md` öffnen (Abschnitt 2).
+1. Produktseite, Live-Demo, Repository/README, Release v1.2.0, `facts.json` und `listing.md` öffnen (Abschnitt 2).
 2. Prüfe: Name, Beschreibung, Features, OS, Lizenz, Version, Release-Assets und Prüfsummen (auf der Release-Seite
    steht je Asset ein `sha256:`), Signierstatus, Bild-URLs, Kontakt. Notiere Abweichungen.
-3. Prüfe: Gibt es eine neuere Version als 1.0.0? Dann **anhalten**: Manifeste passen nicht mehr → Marc bitten,
+3. Prüfe: Gibt es eine neuere Version als 1.2.0? Dann **anhalten**: Manifeste passen nicht mehr → Marc bitten,
    `distribution/` zu aktualisieren (oder nur Verzeichnisse mit der allgemeinen Releases-URL bearbeiten).
 4. Ergebnis: kurze Faktenliste im Chat, Spalte „unbekannt“ für Fehlendes.
 
@@ -268,10 +271,10 @@ Für **jede** Plattform:
 3. Formular/PR vollständig ausfüllen. Bei Datei-Uploads (Screenshots, Icon): Marc bitten, die Datei auszuwählen,
    wenn du keinen Zugriff hast.
 4. **PR über die GitHub-Weboberfläche:** Fork des Ziel-Repos in Marcs Konto (Fork ist reversibel, keine Freigabe
-   nötig), Branch `editlicious-1.0.0`, Dateien anlegen (Inhalt aus der Rohdatei kopieren, Pfad exakt wie vorgegeben),
+   nötig), Branch `editlicious-1.2.0`, Dateien anlegen (Inhalt aus der Rohdatei kopieren, Pfad exakt wie vorgegeben),
    Commit-Nachricht und PR-Titel nach der Konvention des Repos – Vorschläge:
-   - winget: `New package: MarcKronberg.editlicious version 1.0.0`
-   - Scoop Extras: `editlicious: Add version 1.0.0`
+   - winget: `New package: MarcKronberg.editlicious version 1.2.0`
+   - Scoop Extras: `editlicious: Add version 1.2.0`
    - AppImageHub: `Add editlicious`
    - awesome-Listen: `Add editlicious`
    PR-Vorlage des Repos vollständig ausfüllen (Checkboxen nur ankreuzen, wenn wahr).
@@ -299,7 +302,7 @@ Vor diesen Aktionen **anhalten und ausdrücklich fragen** (Marc muss mit „ja�
 
 | Freigabe | Was |
 |---|---|
-| **A** | Änderungen an Marcs bestehenden öffentlichen Projekten: Repo-Description/Topics/Website, Releases (Texte, Assets), README, Produktseite. **Releases nie ändern**, nur vorschlagen (z. B. fehlendes `SHA256SUMS.txt`). |
+| **A** | Änderungen an Marcs bestehenden öffentlichen Projekten: Repo-Description/Topics/Website, Releases (Texte, Assets), README, Produktseite. **Releases nie ändern**, nur vorschlagen (z. B. fehlerhaftes `SHA256SUMS.txt`). |
 | **B** | Neue öffentliche Repositories oder Projekte in Marcs Namen (Homebrew-Tap, Scoop-Bucket, SourceForge-Projekt), Commits in Marcs Repos, Reservieren von Paketnamen (crates.io, Snap-Name). |
 | **C** | Bedingungen akzeptieren, die über normale Nutzung hinausgehen: CLA (Microsoft bei winget), Publisher-/Developer-Agreements (Snapcraft, Chocolatey, Stores), rechtlich verbindliche Erklärungen („Ich bin Rechteinhaber …“). Den Wortlaut bzw. Link zeigen. |
 | **D** | Jeder öffentliche Beitrag in Marcs Namen (HN, Product Hunt, Reddit, Lobsters, This Week in Rust, Discord, Foren) – mit dem fertigen Text. |
@@ -318,7 +321,7 @@ Fragen bündeln: lieber eine Liste mit fünf Freigaben als fünf Unterbrechungen
 
 ```markdown
 # editlicious – Distributionsbericht
-Stand: <Datum, Uhrzeit> · Version: 1.0.0 · Bearbeitet von: Claude (Browser) für Marc Kronberg
+Stand: <Datum, Uhrzeit> · Version: 1.2.0 · Bearbeitet von: Claude (Browser) für Marc Kronberg
 
 ## Kurzfassung
 <3–5 Sätze: was ist live, was in Prüfung, was blockiert, wichtigster nächster Schritt>

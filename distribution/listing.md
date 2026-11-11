@@ -1,6 +1,6 @@
 # editlicious – Texte für Einträge
 
-> Quelle aller Aussagen: https://krocon.de/products/editlicious/, `README.md` und Release v1.0.0 (`facts.json`).
+> Quelle aller Aussagen: https://krocon.de/products/editlicious/, `README.md` und Release v1.2.0 (`facts.json`).
 > Keine Aussage hinzufügen, die dort nicht belegt ist. Englisch für internationale Portale, Deutsch für deutsche
 > (CHIP, heise download, Softpedia DE …). Der Name wird **immer klein** geschrieben: editlicious.
 
@@ -32,8 +32,9 @@ millions of lines, lines with millions of characters, files up to 4 GB. It is fr
   drawn.
 - **Distraction-free** – no toolbars, no side panels. The menu bar appears on Alt, tabs only with a second file, F1
   hides everything but the text. Every function is a command in the command palette with a shortcut.
-- **Editing** – several carets, column selection, selections that grow with every double click, find and replace
-  with regular expressions, sort lines, ten word markers that jump, count and stay in “Copy as HTML”.
+- **Editing** – several carets, column selection, word completion, arithmetic where you type, selections that grow
+  with every double click, find and replace with regular expressions, sort lines, ten word markers that jump, count
+  and stay in “Copy as HTML”.
 - **Your encodings, your line endings** – detected on load, kept on save; saving is atomic and keeps permissions and
   symlinks.
 - **Looks** – syntax colours for more than 70 languages (Sublime/TextMate grammars, log files and INI included),
@@ -56,9 +57,9 @@ und bearbeitet – Millionen Zeilen, Zeilen mit Millionen Zeichen, Dateien bis 4
   senkrecht und waagerecht. Logdateien, Datenexporte und minifiziertes JSON öffnen ohne Warten.
 - **Ablenkungsfrei** – keine Werkzeugleisten, keine Seitenleisten. Die Menüleiste erscheint mit Alt, Tabs erst ab der
   zweiten Datei, F1 blendet alles außer dem Text aus. Jede Funktion ist ein Befehl in der Befehlspalette mit Kürzel.
-- **Bearbeiten** – mehrere Cursor, Blockauswahl, eine Auswahl, die mit jedem Doppelklick wächst, Suchen und Ersetzen
-  mit regulären Ausdrücken, Zeilen sortieren, zehn Wort-Marker, die springen, zählen und in „Als HTML kopieren“
-  erhalten bleiben.
+- **Bearbeiten** – mehrere Cursor, Blockauswahl, Wort-Vervollständigung, Rechnen im Text, eine Auswahl, die mit
+  jedem Doppelklick wächst, Suchen und Ersetzen mit regulären Ausdrücken, Zeilen sortieren, zehn Wort-Marker, die
+  springen, zählen und in „Als HTML kopieren“ erhalten bleiben.
 - **Deine Encodings, deine Zeilenenden** – beim Laden erkannt, beim Speichern beibehalten; Speichern ist atomar und
   erhält Rechte und Symlinks.
 - **Aussehen** – Syntaxfarben für mehr als 70 Sprachen (Sublime/TextMate-Grammatiken, auch Logdateien und INI),
@@ -83,7 +84,7 @@ Gemessen mit Release-Builds der Engine auf einer kleinen Linux-Maschine mit zwei
 
 - Allgemein: Developer Tools / Text Editors · Utilities
 - AlternativeTo: die Kategorie, unter der vergleichbare Texteditoren stehen (dort nachsehen, nicht raten)
-- Linux (Desktop-Datei im .deb v1.0.0): `Development;` – `Development;TextEditor;Utility;` wäre passender
+- Linux (Desktop-Datei im .deb v1.2.0): `Development;` – `Development;TextEditor;Utility;` wäre passender
   (`src-tauri/linux/editlicious.desktop`, nächstes Release)
 - AppStream: `Development`, `TextEditor`, `Utility`
 
@@ -129,4 +130,4 @@ Icon: https://raw.githubusercontent.com/krocon/editlicious/main/src-tauri/icons/
 ## This Week in Rust – Entwurf (nur nach Freigabe)
 
 Abschnitt „Project/Tooling Updates“ verlinkt Artikel, keine Repos. Ohne Blogartikel/Release-Ankündigung von Marc →
-`WARTET_AUF_MARC`. Zeilenvorschlag, sobald es einen gibt: `[editlicious 1.0: a text editor for huge files with a Rust rope engine](<Artikel-URL>)`.
+`WARTET_AUF_MARC`. Zeilenvorschlag, sobald es einen gibt: `[editlicious 1.2: a text editor for huge files with a Rust rope engine](<Artikel-URL>)`.
