@@ -8,12 +8,20 @@ Millions of lines. Lines with millions of characters. Almost no chrome.</p>
 ---
 
 editlicious is the reboot of a Java/Swing editor from 2012 as a modern desktop app for **macOS, Windows and Linux**,
-built with [Tauri 2](https://tauri.app), Angular 22 (zoneless, signals) and Rust.
+built with [Tauri 2](https://tauri.app), Angular 22 (zoneless, signals) and Rust – and, with the same engine, a
+**web component** for your own pages ([npm: `editlicious-editor`](https://www.npmjs.com/package/editlicious-editor)).
+
+**[Download](https://github.com/krocon/editlicious/releases/latest)** ·
+[Product page](https://krocon.de/products/editlicious/) ·
+[Live demo](https://krocon.de/products/editlicious/demo/)
 
 - **Huge files first** – the text lives in a rope in the Rust backend; the window only ever renders what you see,
   vertically *and* horizontally.
 - **Distraction-free** – menu, tabs and status bar hide away; everything is reachable by shortcut and command palette.
-- **Your encodings, your line endings** – detected on load, kept on save.
+- **Your encodings, your line endings** – detected on load, kept on save; saving is atomic.
+- **Find and replace** with regular expressions, a mark for every match beside the scroll bar, go to line.
+- **Several carets and column selection**, sort lines, change case, move, duplicate and join lines.
+- **Syntax colours** for more than 70 languages and **thirteen colour schemes** from light to dark.
 - **Selections that grow** with every double click – word, `snake_case` part, path segment, brackets, line,
   paragraph ([`docs/selection.md`](docs/selection.md)).
 - **Word completion** (Ctrl+Space) from the words around the cursor and typical words of the language –
@@ -22,14 +30,28 @@ built with [Tauri 2](https://tauri.app), Angular 22 (zoneless, signals) and Rust
 - **Ten word markers** that jump (F7), count and stay in “Copy as HTML” – solid colours for e-mail.
 - **Colour values as swatches** in the gutter (`#hex`, `rgb()`, `hsl()`, `0xAARRGGBB`, `"ffRRGGBB"`), converted
   with one action.
+- **Arithmetic where you type** – `255/8=` shows and inserts `31.875`.
 - **Record and play back** – macros, and typing scripts with a human rhythm, rendered straight to video at any
   size (`editlicious render`, [`docs/scripts.md`](docs/scripts.md)).
 - **AI control (MCP)** – opt-in: Claude Code and other assistants can open, read, type and record
   ([`docs/mcp.md`](docs/mcp.md)).
 
-> Status: in development. Progress and plan: [`prompts/README.md`](prompts/README.md).
+> Current release: **1.2.0** – [release notes](https://github.com/krocon/editlicious/releases). How it was built,
+> prompt by prompt: [`prompts/README.md`](prompts/README.md).
 
 ![editlicious with a Rust file, the find bar and marks in the scroll bar](site/img/main.png)
+
+## Download
+
+Packages are on the [releases page](https://github.com/krocon/editlicious/releases/latest), with `SHA256SUMS.txt`:
+
+| OS | Package | Note |
+|---|---|---|
+| macOS 12+ | `.dmg` (Apple silicon and Intel) | not code-signed yet: the first time, right-click the app → Open |
+| Windows 10/11 | setup `.exe`, `.msi` | not code-signed yet: SmartScreen → More info → Run anyway |
+| Linux | `.deb`, `.rpm`, `.AppImage` | |
+
+No telemetry, no account, no update pings.
 
 ## Website and live demo
 
@@ -39,10 +61,11 @@ real editing engine (`ed-core`) in the browser as WebAssembly. See [`site/README
 
 ## Embedding the editor in a web page
 
-The same editor view and engine (as WebAssembly in a worker) also come as a standalone component:
+The same editor view and engine (as WebAssembly in a worker) also come as a standalone component – from npm
+(`npm install editlicious-editor`) or straight from a CDN:
 
 ```html
-<script type="module" src="editlicious-editor.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/editlicious-editor/editlicious-editor.js"></script>
 <editlicious-editor language="Rust" scheme="one" word-wrap status-bar></editlicious-editor>
 ```
 
@@ -83,7 +106,8 @@ Requirements: Node ≥ 22.22.3, pnpm 10, Rust stable ≥ 1.93 and the
 ## Release
 
 Packages for macOS, Windows and Linux are built by the *Release* workflow (tag `v*`) as a draft release –
-see [`docs/release.md`](docs/release.md). Third-party licences: [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt).
+see [`docs/release.md`](docs/release.md). The npm package is the folder `dist/element/editlicious-editor/` after
+`pnpm build:element`. Third-party licences: [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt).
 
 ## License
 
