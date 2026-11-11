@@ -43,6 +43,7 @@ jobs:
       version: ${{ steps.v.outputs.version }}
       publish: ${{ steps.v.outputs.publish }}
       body: ${{ steps.notes.outputs.body }}
+      release_id: ${{ steps.draft.outputs.id }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -95,6 +96,36 @@ jobs:
             cat release-body.md
             echo 'EOF_RELEASE_BODY'
           } >> "$GITHUB_OUTPUT"
+      # The draft is made here, once. Left to tauri-action, each of the three build jobs looks for
+      # the release and creates it when it finds none – in v1.3.0 two of them did, the packages
+      # ended up on two drafts and SHA256SUMS.txt failed. A draft left by an earlier run is reused.
+      - name: One draft release for all build jobs
+        id: draft
+        if: steps.v.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          tag="v${{ steps.v.outputs.version }}"
+          found=$(gh api "repos/$GH_REPO/releases?per_page=100" \
+            --jq "[.[] | select(.tag_name == \"$tag\") | {id, draft}]")
+          if [ "$(jq '[.[] | select(.draft | not)] | length' <<< "$found")" != "0" ]; then
+            echo "::error::$tag is published already"; exit 1
+          fi
+          case "$(jq length <<< "$found")" in
+            0)
+              id=$(gh api --method POST "repos/$GH_REPO/releases" \
+                -f tag_name="$tag" -f target_commitish="$GITHUB_SHA" -f name="editlicious $tag" \
+                -F body=@release-body.md -F draft=true \
+                -F prerelease=${{ startsWith(steps.v.outputs.version, '0.') }} --jq .id)
+              echo "draft release $id created" >> "$GITHUB_STEP_SUMMARY" ;;
+            1)
+              id=$(jq '.[0].id' <<< "$found")
+              echo "draft release $id of an earlier run reused" >> "$GITHUB_STEP_SUMMARY" ;;
+            *)
+              echo "::error::more than one draft for $tag – delete all but one"; exit 1 ;;
+          esac
+          echo "id=$id" >> "$GITHUB_OUTPUT"
 
   build:
     needs: check
@@ -228,11 +259,8 @@ jobs:
           # TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           # TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: v__VERSION__
-          releaseName: editlicious v__VERSION__
-          releaseBody: ${{ needs.check.outputs.body }}
-          releaseDraft: true
-          prerelease: ${{ startsWith(needs.check.outputs.version, '0.') }}
+          # the draft of the pre-flight job – never one of its own (see there)
+          releaseId: ${{ needs.check.outputs.release_id }}
           args: ${{ matrix.args }} --config src-tauri/tauri.sidecar.conf.json
       - name: Build only (dry-run)
         if: needs.check.outputs.publish != 'true'
