@@ -107,7 +107,7 @@
     { "os": "linux", "type": "rpm", "arch": "x86_64", "url": "https://github.com/krocon/editlicious/releases/download/v1.2.0/editlicious-1.2.0-1.x86_64.rpm", "sha256": "9cc9b825fa7580767e447e50225b27f4f2826be3588da3aa2a4b5fc9be8ebb3b", "size": 8523868 },
     { "os": "linux", "type": "AppImage", "arch": "x86_64", "url": "https://github.com/krocon/editlicious/releases/download/v1.2.0/editlicious_1.2.0_amd64.AppImage", "sha256": "054eaba20f9f15b260285fd282b7e31f0e242654797d6b114bcd219cb8580ab4", "size": 86309368 }
   ],
-  "checksumsFile": "https://github.com/krocon/editlicious/releases/download/v1.2.0/SHA256SUMS.txt (sha256 9d288106949a316b025e2ac8fca0c11b52d6bea678bb273dc1129e754412df43) – its six lines for dmg, setup.exe, msi, deb, rpm and AppImage equal the sums above. Its seventh line names 'editlicious.app.tar.gz' (48b7c811…), a file the release does not have; the asset is 'editlicious_universal.app.tar.gz' (5650d4ee…). So 'sha256sum -c SHA256SUMS.txt' reports one missing file. v1.0.0 had no SHA256SUMS.txt at all.",
+  "checksumsFile": "https://github.com/krocon/editlicious/releases/download/v1.2.0/SHA256SUMS.txt (sha256 3058ada675f1d52d9b124cba5a5830b4eb0d0fe11a34a2d7e58d85dd7a617428) – lists all seven files of the release; 'sha256sum -c SHA256SUMS.txt' passes. Replaced on 2026-11-11: the first file named 'editlicious.app.tar.gz' instead of 'editlicious_universal.app.tar.gz'. v1.0.0 has no SHA256SUMS.txt.",
   "licenseFileSha256AtTag": { "tag": "v1.2.0", "file": "LICENSE", "sha256": "786cdc49559acade1d3ff493832ec03a03382c3b3ac4ad3dd4b2047b74be1526" },
   "images": {
     "icon": "https://raw.githubusercontent.com/krocon/editlicious/main/src-tauri/icons/icon.png",

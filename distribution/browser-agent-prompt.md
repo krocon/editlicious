@@ -75,10 +75,8 @@ Kernfakten (aus Release-API, Paketen, README und Produktseite am 11.11.2026 gepr
   Plattformen (s. Abschnitt 4).
 - **Beigaben in jedem Paket:** `editlicious-mcp` (MCP-Server für KI-Assistenten, in der App standardmäßig aus, nur
   lokal) und die CLI `editlicious render` (Aufnahmen/Skripte als Video, MP4 braucht ein externes ffmpeg).
-- **Prüfsummendatei:** v1.2.0 hat ein `SHA256SUMS.txt`; seine Zeilen für die sechs Pakete unten stimmen mit den
-  `sha256:`-Angaben der Release-Seite überein (das sind die Werte unten). Die siebte Zeile nennt
-  `editlicious.app.tar.gz`, das Asset heißt aber `editlicious_universal.app.tar.gz` und hat eine andere Summe –
-  im Bericht als Befund nennen, nicht „reparieren“.
+- **Prüfsummendatei:** v1.2.0 hat ein `SHA256SUMS.txt` mit allen sieben Dateien des Release; die Zeilen für die
+  sechs Pakete unten stimmen mit den `sha256:`-Angaben der Release-Seite überein (das sind die Werte unten).
 - **Web Component:** Der Editor gibt es auch als npm-Paket `editlicious-editor` (für Webseiten). Das ist eine
   Bibliothek, nicht die Desktop-App und kein MCP-Server – für die Einträge hier nur als Zusatzinformation.
 - **Downloads (stabil, versioniert):**
@@ -302,7 +300,7 @@ Vor diesen Aktionen **anhalten und ausdrücklich fragen** (Marc muss mit „ja�
 
 | Freigabe | Was |
 |---|---|
-| **A** | Änderungen an Marcs bestehenden öffentlichen Projekten: Repo-Description/Topics/Website, Releases (Texte, Assets), README, Produktseite. **Releases nie ändern**, nur vorschlagen (z. B. fehlerhaftes `SHA256SUMS.txt`). |
+| **A** | Änderungen an Marcs bestehenden öffentlichen Projekten: Repo-Description/Topics/Website, Releases (Texte, Assets), README, Produktseite. **Releases nie ändern**, nur vorschlagen (z. B. eine fehlende Datei). |
 | **B** | Neue öffentliche Repositories oder Projekte in Marcs Namen (Homebrew-Tap, Scoop-Bucket, SourceForge-Projekt), Commits in Marcs Repos, Reservieren von Paketnamen (crates.io, Snap-Name). |
 | **C** | Bedingungen akzeptieren, die über normale Nutzung hinausgehen: CLA (Microsoft bei winget), Publisher-/Developer-Agreements (Snapcraft, Chocolatey, Stores), rechtlich verbindliche Erklärungen („Ich bin Rechteinhaber …“). Den Wortlaut bzw. Link zeigen. |
 | **D** | Jeder öffentliche Beitrag in Marcs Namen (HN, Product Hunt, Reddit, Lobsters, This Week in Rust, Discord, Foren) – mit dem fertigen Text. |
