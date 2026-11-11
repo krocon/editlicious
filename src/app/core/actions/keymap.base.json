@@ -85,6 +85,7 @@
     "Alt+ArrowUp": "edit.moveLinesUp",
     "Alt+ArrowDown": "edit.moveLinesDown",
     "Mod+j": "edit.joinLines",
+    "Mod+/": "edit.toggleComment",
     "Mod+d": "edit.addNextOccurrence",
     "Mod+Shift+F7": "edit.toggleMarker",
     "Mod+Shift+F8": "edit.clearMarkers",

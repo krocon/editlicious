@@ -3017,3 +3017,169 @@ fn measure_029_a_hundred_thousand_markers() {
     assert!(t2 < t0 * 1.5 + 50.0, "{t0} {t2}");
     let _ = s0;
 }
+
+// ---------------------------------------------------------------- view after shortening (prompt 031)
+
+/// A line of 200 cells and a short one; the caret at the end of the long one (view scrolled).
+fn scrolled_right() -> Session {
+    let mut s = session(&format!("{}\nshort", "x".repeat(200)));
+    mv(&mut s, Motion::LineEnd);
+    let f = run(&mut s, Command::Frame);
+    assert!(f.left > 100.0, "{}", f.left);
+    assert_eq!(f.max_width, 200);
+    s
+}
+
+#[test]
+fn replace_range_that_shortens_the_widest_line_shows_column_one() {
+    let mut s = scrolled_right();
+    replace_range(&mut s, (0, 0), (0, 200), "a\nbb\nccc", true);
+    let f = run(&mut s, Command::Frame);
+    assert_eq!(caret(&s), (2, 3));
+    assert_eq!(f.left, 0.0);
+    assert_eq!(f.max_width, 5, "the widest line now: short");
+    // the cursors staying in their text: the same
+    let mut s = scrolled_right();
+    replace_range(&mut s, (0, 0), (0, 200), "a\nbb\nccc", false);
+    let f = run(&mut s, Command::Frame);
+    assert_eq!(f.left, 0.0);
+    assert_eq!(f.max_width, 5);
+}
+
+#[test]
+fn typing_over_the_widest_line_shows_column_one() {
+    let mut s = scrolled_right();
+    run(
+        &mut s,
+        Command::Select {
+            sels: vec![Sel {
+                anchor: Pos::new(0, 0),
+                head: Pos::new(0, 200),
+            }],
+        },
+    );
+    assert!(s.scroll().1 > 100.0);
+    let f = run(
+        &mut s,
+        Command::Type {
+            text: "word".into(),
+        },
+    );
+    assert_eq!(f.left, 0.0);
+    assert_eq!(f.max_width, 5);
+}
+
+#[test]
+fn deleting_the_widest_line_shows_column_one() {
+    let mut s = scrolled_right();
+    let f = run(&mut s, Command::DeleteLines);
+    assert_eq!(text(&s), "short");
+    assert_eq!(f.left, 0.0);
+    assert_eq!(f.max_width, 5);
+}
+
+#[test]
+fn undo_brings_the_wide_line_and_the_view_back_redo_shows_column_one() {
+    let mut s = scrolled_right();
+    replace_range(&mut s, (0, 0), (0, 200), "a", true);
+    assert_eq!(s.scroll().1, 0.0);
+    let f = run(&mut s, Command::Undo);
+    assert_eq!(f.max_width, 200);
+    let cell = s.cell_of(s.primary().head) as f64;
+    assert!(
+        f.left <= cell && cell < f.left + 40.0,
+        "the caret is in view: {cell} at {}",
+        f.left
+    );
+    let f = run(&mut s, Command::Redo);
+    assert_eq!(f.left, 0.0);
+    assert_eq!(f.max_width, 5);
+}
+
+#[test]
+fn a_change_elsewhere_does_not_move_the_view() {
+    let mut s = session(&format!("{}\nshort\nlast", "x".repeat(200)));
+    let left = run(
+        &mut s,
+        Command::GoTo {
+            line: 0,
+            ch: 100,
+            select: false,
+        },
+    )
+    .left;
+    assert!(left > 50.0);
+    replace_range(&mut s, (2, 0), (2, 4), "other text", false);
+    let f = run(&mut s, Command::Frame);
+    assert_eq!(f.left, left);
+    assert_eq!(f.max_width, 200);
+}
+
+#[test]
+fn typing_at_the_end_of_a_wide_line_follows_the_caret_steadily() {
+    let mut s = scrolled_right();
+    let mut left = s.scroll().1;
+    for _ in 0..50 {
+        let f = run(&mut s, Command::Type { text: "y".into() });
+        assert_eq!(f.left, left + 1.0, "one cell per key, never back");
+        left = f.left;
+    }
+    // … and back again with Backspace: the view never shows less than the caret
+    for _ in 0..50 {
+        let f = run(&mut s, Command::Backspace);
+        let cell = s.cell_of(s.primary().head) as f64;
+        assert!(f.left <= cell && cell < f.left + 40.0);
+    }
+}
+
+#[test]
+fn the_view_is_never_scrolled_past_a_short_text_by_its_caret() {
+    // the caret alone does not hold the view to the right: only as far as it needs to be seen
+    let mut s = scrolled_right();
+    replace_range(&mut s, (0, 0), (0, 200), "0123456789", true);
+    let f = run(&mut s, Command::Frame);
+    assert_eq!(caret(&s), (0, 10));
+    assert_eq!(f.left, 0.0);
+}
+
+#[test]
+fn wrapped_view_after_shortening_a_long_line() {
+    use crate::document::FULL_LINE_LIMIT;
+    let long = "x".repeat(FULL_LINE_LIMIT + 5_000);
+    let mut s = session(&format!("{long}\nshort"));
+    run(
+        &mut s,
+        Command::Configure {
+            tab_width: None,
+            insert_spaces: None,
+            detect: false,
+            wrap: Some(true),
+            colors: None,
+            expand_weights: None,
+            math: None,
+            words: None,
+        },
+    );
+    mv(&mut s, Motion::LineEnd);
+    assert!(run(&mut s, Command::Frame).left > 10_000.0);
+    // still a long line, but shorter: the view goes back to its end
+    let n = FULL_LINE_LIMIT + 5_000;
+    replace_range(&mut s, (0, FULL_LINE_LIMIT + 100), (0, n), "", false);
+    put(&mut s, 1, 0);
+    put(&mut s, 0, 5);
+    let f = run(
+        &mut s,
+        Command::ScrollTo {
+            top: None,
+            left: Some(1e9),
+        },
+    );
+    assert_eq!(f.max_width, FULL_LINE_LIMIT + 100);
+    assert_eq!(f.left, (FULL_LINE_LIMIT + 100) as f64 - 40.0 + 2.0);
+    // a short line instead: wrapped lines never scroll sideways
+    mv(&mut s, Motion::LineEnd);
+    replace_range(&mut s, (0, 0), (0, FULL_LINE_LIMIT + 100), "a\nb", true);
+    let f = run(&mut s, Command::Frame);
+    assert_eq!(f.left, 0.0);
+    assert_eq!(f.max_width, 5);
+}

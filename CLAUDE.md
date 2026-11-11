@@ -107,7 +107,8 @@ src-tauri/                    Rust (Tauri 2), Crate `editlicious`, Lib `ed_lib`
                               hints (Rechenausdruck am Caret, Hinweis und Vorschläge),
                               complete (Wort-Vervollständigung: Präfix, Kandidaten, Lexikon),
                               snippet (Textbausteine: Parser, Platzhalter-Modus – 030), deco (Markierungen
-                              von außen – 029), track (Positionen wandern über das Änderungsprotokoll)
+                              von außen – 029), track (Positionen wandern über das Änderungsprotokoll),
+                              comment (Zeilenkommentar umschalten, Zeichen je Sprache – 031)
     lexicon/*.txt             Wortlisten je Sprache für die Vervollständigung (023)
     src/math.rs               Rechen-Parser (Vorlage MathParser): Rangfolge, Funktionen, Zahlenformate
     testdata/document.cases.json  datengetriebene Bearbeitungsfälle; math.cases.json Rechenfälle

@@ -236,6 +236,14 @@ export interface EditliciousEditorElement extends HTMLElement {
   completionSources: 'both' | 'provider' | 'words';
   /** Snippets by prefix (property only). */
   snippets: Snippet[] | null;
+  /**
+   * What starts a line comment for `runAction('edit.toggleComment')` (Ctrl+/ – Cmd+/ on macOS)
+   * when the page knows better than the grammar: the first mark is the one set, all are
+   * recognised when removing (MySQL: `['--', '#']`). `null` = the marks of the language;
+   * a language without a line comment (CSS, HTML, JSON) and plain text have none – the action
+   * then changes nothing. As attribute `line-comment`: marks separated by blanks.
+   */
+  lineComment: string | string[] | null;
 
   /** The whole text – crosses into the page only when asked for. */
   getValue(): Promise<string>;

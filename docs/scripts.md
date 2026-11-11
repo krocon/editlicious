@@ -54,7 +54,7 @@ do {"type":"toggleMarker"}
 | `keys "Ctrl+D"` | show keys or a note in an exported video for a moment (nothing happens in the editor) |
 | `goto 12:5`, `select 12:5 12:9` | place the caret, select |
 | `move wordRight [select] [n]` | `left right up down wordLeft wordRight lineStart lineEnd pageUp pageDown docStart docEnd` |
-| `newline`, `backspace 3`, `delete`, `undo`, `redo`, `indent`, `outdent`, `selectAll`, `copy`, `cut`, `paste`, `duplicateLines`, `deleteLines`, `joinLines`, `toggleMarker`, `clearMarkers`, `addNextOccurrence`, `singleCursor` | editor commands, optionally repeated |
+| `newline`, `backspace 3`, `delete`, `undo`, `redo`, `indent`, `outdent`, `selectAll`, `copy`, `cut`, `paste`, `duplicateLines`, `deleteLines`, `joinLines`, `toggleComment`, `toggleMarker`, `clearMarkers`, `addNextOccurrence`, `singleCursor` | editor commands, optionally repeated |
 | `find "text" [regex] [case] [word] [back]` | find and select the next match |
 | `do {json}` | any engine command, e.g. `do {"type":"sortLines","options":{"unique":true}}` |
 

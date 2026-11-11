@@ -20,7 +20,7 @@ built with [Tauri 2](https://tauri.app), Angular 22 (zoneless, signals) and Rust
 - **Distraction-free** – menu, tabs and status bar hide away; everything is reachable by shortcut and command palette.
 - **Your encodings, your line endings** – detected on load, kept on save; saving is atomic.
 - **Find and replace** with regular expressions, a mark for every match beside the scroll bar, go to line.
-- **Several carets and column selection**, sort lines, change case, move, duplicate and join lines.
+- **Several carets and column selection**, sort lines, change case, move, duplicate and join lines, toggle line comments.
 - **Syntax colours** for more than 70 languages and **thirteen colour schemes** from light to dark.
 - **Selections that grow** with every double click – word, `snake_case` part, path segment, brackets, line,
   paragraph ([`docs/selection.md`](docs/selection.md)).

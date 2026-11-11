@@ -3,6 +3,7 @@
 //! renders (Marc, 26.10.2026; design 002 E13).
 
 pub mod colors;
+pub mod comment;
 pub mod complete;
 pub mod deco;
 pub mod expand;
@@ -122,6 +123,9 @@ pub struct Session {
     overwrite: bool,
     seq: u64,
     max_width: usize,
+    /// The text revision `max_width` was last taken from the view for (prompt 031): after an
+    /// edit the widest line may be shorter or gone.
+    width_revision: Option<u64>,
     drag: Option<DragOrigin>,
     notice: Option<String>,
     search: Option<(Query, Regex)>,
@@ -158,6 +162,8 @@ pub struct Session {
     snippet: Option<snippet::SnippetState>,
     /// Markers the page put on the text (design 029).
     decos: deco::Decos,
+    /// Line comment marks given from outside (prompt 031 E7); empty = those of the language.
+    comment_marks: Vec<String>,
 }
 
 /// Suggestions shown for a line (prompt 020): arithmetic or words (prompt 023).
@@ -198,6 +204,7 @@ impl Session {
             overwrite: false,
             seq: 0,
             max_width: 0,
+            width_revision: None,
             drag: None,
             notice: None,
             search: None,
@@ -219,6 +226,7 @@ impl Session {
             read_only: false,
             snippet: None,
             decos: deco::Decos::default(),
+            comment_marks: Vec::new(),
         }
     }
 
@@ -274,6 +282,7 @@ impl Session {
         self.doc = doc;
         self.highlighter = lang.and_then(|l| Highlighter::new(&l));
         self.max_width = 0;
+        self.width_revision = None;
         self.drag = None;
         // a new text: nothing of the old one is left to follow
         self.snippet = None;
@@ -820,6 +829,11 @@ impl Session {
                 text,
                 caret,
             } => self.replace_range(from, to, &text, caret)?,
+            Command::ToggleComment => self.toggle_comment()?,
+            Command::SetLineComment { marks } => {
+                self.set_line_comment(marks);
+                reveal = Reveal::No;
+            }
             Command::InsertSnippet {
                 template,
                 from,
@@ -1849,14 +1863,37 @@ impl Session {
     fn clamp_scroll(&mut self) {
         let max_top = self.doc.line_count().saturating_sub(1) as f64;
         self.top = self.top.clamp(0.0, max_top);
+        if self.width_revision != Some(self.doc.revision()) {
+            // the text changed: what was the widest line may be shorter or gone (prompt 031 E1)
+            self.width_revision = Some(self.doc.revision());
+            self.max_width = self.width_in_view();
+        }
         let max_left = (self.max_width as f64 - self.view_cols + 2.0).max(0.0);
         if self.wrap && !self.doc.is_long(self.primary().head.line) {
             self.left = 0.0;
             return;
         }
-        // the caret may sit right of everything seen so far (end of a long line)
+        // the caret may sit right of everything seen so far (end of a long line): the view may
+        // stay as far right as showing it takes, not further (prompt 031 E2)
         let caret = self.cell_of(self.primary().head) as f64;
-        self.left = self.left.clamp(0.0, max_left.max(caret));
+        let for_caret = caret - self.view_cols.floor().max(1.0) + 1.0 + H_MARGIN;
+        self.left = self.left.clamp(0.0, max_left.max(for_caret));
+    }
+
+    /// The widest of the lines in view, as [`Session::frame`] reports it – the cost follows
+    /// the view, never the document (a long line counts its characters, no layout).
+    fn width_in_view(&self) -> usize {
+        let count = self.doc.line_count();
+        let first = (self.top.floor() as usize).min(count.saturating_sub(1));
+        let end = (first + self.view_lines.ceil() as usize + 1).min(count);
+        (first..end)
+            .map(|line| match self.layout(line) {
+                Some(lay) if self.wrap => lay.width().min(self.wrap_width()),
+                Some(lay) => lay.width(),
+                None => self.doc.line_len(line),
+            })
+            .max()
+            .unwrap_or(0)
     }
 
     /// Scrolls so the primary caret is visible.

@@ -253,6 +253,16 @@ pub enum Command {
         #[serde(default)]
         caret: bool,
     },
+    /// Comments the lines of the cursors out, or in again when every line with text is a
+    /// comment already (prompt 031); one undo step. Without a line comment for the language:
+    /// notice `no_line_comment`.
+    ToggleComment,
+    /// What starts a line comment, given from outside (prompt 031 E7): the first mark is set,
+    /// all are recognised when removing. `None` (or no marks) = those of the language.
+    SetLineComment {
+        #[serde(default)]
+        marks: Option<Vec<String>>,
+    },
 }
 
 /// Settings of the arithmetic (prompt 020).
@@ -347,6 +357,7 @@ impl Command {
                 | Command::Copy
                 | Command::CopyResult
                 | Command::SetReadOnly { .. }
+                | Command::SetLineComment { .. }
                 | Command::SetDecorations { .. }
                 | Command::ClearDecorations { .. }
         )
@@ -387,6 +398,7 @@ impl Command {
                 | Command::Evaluate
                 | Command::ReplaceRange { .. }
                 | Command::InsertSnippet { .. }
+                | Command::ToggleComment
         )
     }
 }

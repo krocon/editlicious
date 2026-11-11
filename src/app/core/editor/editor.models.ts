@@ -162,7 +162,11 @@ export type Command =
   /** A snippet with placeholders in place of `from..to` (default: the selection; design 030). */
   | { type: 'insertSnippet'; template: string; from?: Pos; to?: Pos; vars?: Record<string, string> }
   /** One undo step; cursors keep their place in the text, `caret`: one caret behind (027 E3). */
-  | { type: 'replaceRange'; from: Pos; to: Pos; text: string; caret?: boolean };
+  | { type: 'replaceRange'; from: Pos; to: Pos; text: string; caret?: boolean }
+  /** Comments the lines of the cursors out or in again (prompt 031). */
+  | { type: 'toggleComment' }
+  /** Line comment marks from outside; `null` = those of the language (prompt 031 E7). */
+  | { type: 'setLineComment'; marks: string[] | null };
 
 /** One marker of the page (`deco::DecoSpec`, design 029); positions 0-based. */
 export interface DecoSpec {

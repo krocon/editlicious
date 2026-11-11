@@ -78,6 +78,7 @@ export function buildMenuModel(os: Os, input: MenuInputs): TopMenuNode[] {
         a('edit.moveLinesUp'),
         a('edit.moveLinesDown'),
         a('edit.joinLines'),
+        a('edit.toggleComment'),
         sep,
         a('edit.sortAsc'),
         a('edit.sortDesc'),

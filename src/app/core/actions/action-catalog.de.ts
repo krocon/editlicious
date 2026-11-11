@@ -111,6 +111,7 @@ const FIXED: Record<string, string> = {
   'edit.moveLinesUp': 'Zeilen nach oben verschieben',
   'edit.moveLinesDown': 'Zeilen nach unten verschieben',
   'edit.joinLines': 'Zeilen verbinden',
+  'edit.toggleComment': 'Zeilenkommentar umschalten',
   'edit.trimTrailing': 'Leerraum am Zeilenende entfernen',
   'edit.indentToSpaces': 'Einrückung in Leerzeichen',
   'edit.indentToTabs': 'Einrückung in Tabs',

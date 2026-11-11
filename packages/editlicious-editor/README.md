@@ -90,6 +90,7 @@ Every attribute is also a property (`el.wordWrap = true`). Properties may be set
 | `completion-sources` | `completionSources` | `both`, `provider`, `words` – with a provider: its entries, the words of the text, or both | `both` |
 | – | `completionProvider` | a function `(ctx) => items` – see [Suggestions from your page](#suggestions-from-your-page) | `null` |
 | – | `snippets` | `[{ prefix, body, description? }]` – see [Snippets](#snippets) | `null` |
+| `line-comment` | `lineComment` | what starts a line comment, when you know better than the grammar: `'--'` or `['--', '#']` (attribute: separated by blanks) – see [Line comments](#line-comments) | the language's |
 | `ui-language` | `uiLanguage` | `auto`, `en`, `de` | `auto` |
 
 Boolean attributes follow HTML: present = `true` (`<editlicious-editor readonly word-wrap>`).
@@ -233,6 +234,26 @@ ed.snippets = [{ prefix: 'sel', body: 'SELECT ${1:*} FROM ${2:table};$0', descri
 
 New lines of a template take the indentation of the line it is inserted in; a tab is the editor's indentation.
 
+## Line comments
+
+<kbd>Ctrl</kbd>+<kbd>/</kbd> (<kbd>Cmd</kbd>+<kbd>/</kbd> on macOS; on a German keyboard `/` is
+<kbd>Shift</kbd>+<kbd>7</kbd>) or `runAction('edit.toggleComment')` comments the lines of the selection – or the
+line of the caret – out, and in again when every line with text is a comment already:
+
+```js
+ed.language = 'SQL';
+await ed.runAction('edit.toggleComment');   // "  select 1"  →  "  -- select 1"  →  "  select 1"
+ed.lineComment = ['--', '#'];               // MySQL: sets "--", removes "--" and "#"
+```
+
+- The mark comes from the language (`//`, `#`, `--`, `%`, `;` …). Languages without a line comment (CSS, HTML,
+  JSON) and plain text have none: the action changes nothing and says so in the status bar. Set `lineComment` when
+  your page knows the mark.
+- The mark stands in one column – where the least indented line starts – followed by one blank; removing takes
+  that blank along. Empty lines stay empty, line breaks stay what they are.
+- One undo step, also with several cursors and for 100 000 lines; the selection stays on the same text. A
+  selection ending at the start of a line does not include that line. Read-only: nothing happens.
+
 ## Events
 
 Events bubble and cross the shadow boundary (`composed`).
@@ -370,7 +391,7 @@ The font is set with the attributes `font-family` and `font-size` (or, while `fo
 The editor's shortcuts only act while focus is inside it; keys it does not use reach your page unchanged.
 <kbd>Ctrl/⌘</kbd>+<kbd>F</kbd> find, <kbd>F3</kbd> next match, <kbd>Ctrl</kbd>+<kbd>G</kbd> (macOS <kbd>⌘</kbd>+<kbd>L</kbd>) go to line,
 <kbd>Ctrl/⌘</kbd>+<kbd>Z</kbd>/<kbd>Shift</kbd>+<kbd>Z</kbd> undo/redo, <kbd>Ctrl</kbd>+<kbd>Space</kbd>
-complete a word, <kbd>Alt</kbd>+<kbd>Z</kbd> word wrap, <kbd>Ctrl/⌘</kbd>+<kbd>+</kbd>/<kbd>-</kbd> zoom. Full list:
+complete a word, <kbd>Ctrl/⌘</kbd>+<kbd>/</kbd> toggle line comment, <kbd>Alt</kbd>+<kbd>Z</kbd> word wrap, <kbd>Ctrl/⌘</kbd>+<kbd>+</kbd>/<kbd>-</kbd> zoom. Full list:
 [shortcuts](https://krocon.de/products/editlicious/#keys).
 
 ## Typing scripts

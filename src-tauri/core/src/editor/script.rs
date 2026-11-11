@@ -47,6 +47,7 @@ const SIMPLE: &[&str] = &[
     "duplicateLines",
     "deleteLines",
     "joinLines",
+    "toggleComment",
     "toggleMarker",
     "clearMarkers",
     "singleCursor",

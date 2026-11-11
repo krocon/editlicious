@@ -156,6 +156,13 @@ Hell/Dunkel der Systemfarben.
 Engine-Befehl `replaceRange` (ein Undo-Schritt, gleicher Text = keine Änderung, Cursor bleiben im Text).
 Positionen der Seite: `{ line, ch }` 1-basiert, `ch` in Unicode-Codepunkten (README „Positions“).
 
+**Ansicht nach Änderungen, Zeilenkommentar (031):** `clamp_scroll` bestimmt `max_width` nach jeder Textänderung
+(Revision) neu aus den Zeilen im Blick – Kosten folgen der Ansicht, nie dem Dokument; der Cursor hält die Ansicht
+nur so weit rechts, wie es braucht, ihn zu zeigen. `editor/comment.rs`: Befehl `toggleComment` (ein Undo-Schritt,
+Zeichen in einer Spalte) mit eigener Tabelle der Kommentarzeichen je Grammatik (syntects Metadaten sind nicht im
+geladenen Satz); `setLineComment` bzw. die Eigenschaft `lineComment` geben das Zeichen von außen vor. Sprachen ohne
+Zeilenkommentar: Notiz `no_line_comment`, keine Änderung.
+
 **Snippets (030):** `ed-core` `editor/snippet.rs` (Parser `$1`, `${1:…}`, `$0`, `$NAME`; Platzhalter-Modus in der
 Sitzung: Tab/Shift+Tab springen, gleiche Nummer = Mehrfach-Cursor) und `editor/track.rs`: Positionen wandern über
 das Änderungsprotokoll des Dokuments (`track_edits`/`take_edits`, nur aktiv, solange jemand folgt). Befehl

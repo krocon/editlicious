@@ -51,6 +51,7 @@ const EN = {
   noSuggestions: 'No suggestions.',
   noNote: 'No markers.',
   noExpression: 'No arithmetic expression at the cursor.',
+  noLineComment: 'This language has no line comment.',
   resultCopied: 'Result copied.',
 };
 
@@ -104,6 +105,7 @@ export const EDITOR_TEXTS = translatable('editor', EN, {
     noSuggestions: 'Keine Vorschläge.',
     noNote: 'Keine Markierungen.',
     noExpression: 'Am Cursor steht kein Rechenausdruck.',
+    noLineComment: 'Diese Sprache hat keinen Zeilenkommentar.',
     resultCopied: 'Ergebnis kopiert.',
   },
 });
@@ -127,6 +129,8 @@ export function noticeText(code: string): string {
       return EDITOR_TEXTS.noMarker;
     case 'no_expression':
       return EDITOR_TEXTS.noExpression;
+    case 'no_line_comment':
+      return EDITOR_TEXTS.noLineComment;
     case 'no_suggestions':
       return EDITOR_TEXTS.noSuggestions;
     case 'no_note':

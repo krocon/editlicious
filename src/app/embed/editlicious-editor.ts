@@ -174,6 +174,14 @@ export function embedSchemeAttributes(
   return scheme === 'none' ? { theme: colorScheme, scheme: 'none' } : schemeAttributes(scheme);
 }
 
+/** `--`, `-- #` (attribute: marks separated by blanks) or `['--', '#']`; nothing = the language's. */
+function lineCommentAttribute(v: unknown): string[] | null {
+  const marks = (typeof v === 'string' ? v.split(/\s+/) : Array.isArray(v) ? v : []).filter(
+    (m): m is string => typeof m === 'string' && m !== '',
+  );
+  return marks.length ? marks : null;
+}
+
 function lineNumbersAttribute(v: unknown): 'absolute' | 'relative' | 'off' {
   return v === 'relative' || v === 'off' ? v : 'absolute';
 }
@@ -275,6 +283,14 @@ export class EditliciousEditor {
   });
   /** Snippets by prefix: in the suggestion list, Tab expands them (design 030 E6). Property only. */
   readonly snippets = input<EdSnippet[] | null>(null);
+  /**
+   * What starts a line comment (`edit.toggleComment`, prompt 031) when the page knows better
+   * than the grammar: the first mark is set, all are recognised (`['--', '#']`). `null` = the
+   * language's.
+   */
+  readonly lineComment = input<string[] | null, unknown>(null, {
+    transform: lineCommentAttribute,
+  });
 
   // ------------------------------------------------------------------ outputs
   readonly textChange = output<EdChange>();
@@ -381,6 +397,12 @@ export class EditliciousEditor {
         if (this.docId() !== null) void this.view()?.run({ type: 'setReadOnly', readOnly: ro });
       });
     });
+    effect(() => {
+      const marks = this.lineComment();
+      untracked(() => {
+        if (this.docId() !== null) void this.view()?.run({ type: 'setLineComment', marks });
+      });
+    });
     this.destroyRef.onDestroy(() => {
       this.destroyed = true;
       const id = this.docId();
@@ -401,6 +423,8 @@ export class EditliciousEditor {
       if (this.destroyed) return;
       if (this.isReadOnly())
         await this.api.command(info.id, { type: 'setReadOnly', readOnly: true });
+      const marks = this.lineComment();
+      if (marks) await this.api.command(info.id, { type: 'setLineComment', marks });
       this.docId.set(info.id);
       this.ready.emit();
       this.dispatch('ed-ready', null);

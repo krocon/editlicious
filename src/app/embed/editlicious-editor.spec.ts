@@ -30,6 +30,7 @@ const flush = async () => {
       [snippets]="snippetsA()"
       [wordSuggest]="suggestA()"
       [readOnly]="readOnlyA()"
+      [lineComment]="commentA()"
       [wordWrap]="true"
       lineNumbers="relative"
       [statusBar]="true"
@@ -48,6 +49,7 @@ class Host {
   readonly snippetsA = signal<EdSnippet[] | null>(null);
   readonly suggestA = signal(false);
   readonly readOnlyA = signal(false);
+  readonly commentA = signal<string | string[] | null>(null);
   changes: EdChange[] = [];
   carets: EdCaret[] = [];
   ready: string[] = [];
@@ -460,6 +462,30 @@ describe('EditliciousEditor (design 025)', () => {
     await ea.setValue('set');
     expect(api.texts.get(id)).toBe('set');
     expect(await ea.getSlice(1, 1)).toBe('set');
+  });
+
+  it('toggles line comments and hands the marks of the page to the engine (prompt 031)', async () => {
+    const { api, ea, host, fixture } = await setup();
+    const id = [...api.texts.keys()][0];
+    const marks = () =>
+      api.commands.filter((c) => c.id === id && c.cmd.type === 'setLineComment').map((c) => c.cmd);
+    expect(marks()).toEqual([]);
+    expect(ea.runAction('edit.toggleComment')).toBe(true);
+    await flush();
+    expect(api.commands.at(-1)?.cmd).toEqual({ type: 'toggleComment' });
+    host.commentA.set(['--', '#']);
+    await fixture.whenStable();
+    await flush();
+    expect(marks().at(-1)).toEqual({ type: 'setLineComment', marks: ['--', '#'] });
+    // as an attribute: marks separated by blanks
+    host.commentA.set('// #');
+    await fixture.whenStable();
+    await flush();
+    expect(marks().at(-1)).toEqual({ type: 'setLineComment', marks: ['//', '#'] });
+    host.commentA.set(null);
+    await fixture.whenStable();
+    await flush();
+    expect(marks().at(-1)).toEqual({ type: 'setLineComment', marks: null });
   });
 
   it('plays a typing script on its own session, in order and stoppable', async () => {

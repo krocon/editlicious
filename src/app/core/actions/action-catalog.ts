@@ -212,6 +212,7 @@ export const ACTIONS: readonly ActionDef[] = [
   E('edit.moveLinesUp', 'Move lines up', { type: 'moveLines', up: true }, { repeat: true }),
   E('edit.moveLinesDown', 'Move lines down', { type: 'moveLines', up: false }, { repeat: true }),
   E('edit.joinLines', 'Join lines', { type: 'joinLines' }, { repeat: true }),
+  E('edit.toggleComment', 'Toggle line comment', { type: 'toggleComment' }),
   E('edit.trimTrailing', 'Remove trailing whitespace', { type: 'trimTrailingWhitespace' }),
   E('edit.indentToSpaces', 'Indentation to spaces', { type: 'convertIndentation', spaces: true }),
   E('edit.indentToTabs', 'Indentation to tabs', { type: 'convertIndentation', spaces: false }),
