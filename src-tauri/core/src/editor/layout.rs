@@ -71,8 +71,8 @@ impl LineLayout {
     /// The character boundary at or before `cell` (vertical moves keep the goal cell).
     pub fn ch_at_or_before(&self, cell: usize) -> usize {
         let mut best = 0;
-        for i in 0..=self.len() {
-            if self.cells[i] <= cell {
+        for (i, &c) in self.cells[..=self.len()].iter().enumerate() {
+            if c <= cell {
                 best = i;
             } else {
                 break;
